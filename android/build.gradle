@@ -21,10 +21,11 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        maven { url 'https://jitpack.io' }  // AGREGAR ESTA LÍNEA
     }
-        plugins.withId('kotlin-android') {
+    plugins.withId('kotlin-android') {
         kotlin {
-            jvmToolchain(17) // Establecer JVM toolchain a 17 para Kotlin
+            jvmToolchain(17)
         }
     }
 }

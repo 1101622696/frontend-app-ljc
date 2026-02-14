@@ -99,9 +99,18 @@ const inicializarNotificacionesNativas = async () => {
       }
       
       // Obtener token
-      const { token } = await FirebaseMessaging.getToken();
-      console.log('Token FCM obtenido:', token);
-      tokenFCM.value = token;
+      // const { token } = await FirebaseMessaging.getToken();
+      // console.log('Token FCM obtenido:', token);
+      // tokenFCM.value = token;
+      // Obtener token
+const result = await FirebaseMessaging.getToken();
+console.log('Resultado completo FCM:', result);
+tokenFCM.value = result.token;
+
+if (!result.token) {
+  console.error('No se obtuvo token FCM');
+  return false;
+}
       
       // Configurar listeners
       FirebaseMessaging.addListener('notificationReceived', (notification) => {

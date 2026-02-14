@@ -12,6 +12,7 @@ import com.capacitorjs.plugins.filesystem.FilesystemPlugin;
 import com.capacitorjs.plugins.share.SharePlugin;
 import com.capacitorjs.plugins.toast.ToastPlugin;
 import com.capacitorjs.plugins.device.DevicePlugin;
+import io.capawesome.capacitorjs.plugins.firebase.messaging.FirebaseMessagingPlugin;
 
 public class MainActivity extends BridgeActivity {
     @Override
@@ -23,5 +24,6 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(SharePlugin.class);
         registerPlugin(ToastPlugin.class);  
         registerPlugin(DevicePlugin.class);
+        registerPlugin(FirebaseMessagingPlugin.class);
     }
 }
