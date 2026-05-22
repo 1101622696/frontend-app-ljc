@@ -4,50 +4,46 @@ import { ref } from 'vue'
 import { Notify } from 'quasar'
 import { useStoreUsuarios } from './usuarios'
 
-export const useStoreMantenimiento = defineStore(
-  'Mantenimiento',
+export const useStoreGastos = defineStore(
+  'Gasto',
   () => {
     let loading = ref(false)
-    let mantenimientos = ref([])
-    // const useUsuario = useStoreUsuarios();
+    let gastos = ref([])
+    // const useUsuario = useStoreUsuarios()
 
-    const obtenerMantenimientos = async () => {
+    const obtenerGastos = async () => {
       const useUsuario = useStoreUsuarios()
       loading.value = true
       try {
-        let response = await axios.get(`api/mantenimientos`, {
+        let response = await axios.get(`api/gastos/gastos-vehiculos`, {
+          headers: {
+            // "x-token": localStorage.getItem('x-token')
+            'x-token': useUsuario.token,
+          },
+        })
+        console.log('Respuesta gasto:', response.data)
+        return response.data
+      } catch (error) {
+        console.error('No se pudo obtener el gasto', error)
+        return { resumen: null }
+      } finally {
+        loading.value = false
+      }
+    }
+
+    const obtenerdatosdelgasto = async (consecutivo) => {
+      const useUsuario = useStoreUsuarios()
+      try {
+        let response = await axios.get(`api/gastos/obtenerdatosgasto/${consecutivo}`, {
           headers: {
             // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
         console.log('Respuesta desde store:', response.data)
-        return Array.isArray(response.data) ? response.data : response.data.mantenimientos || []
-      } catch (error) {
-        console.error('No se pudo obtener los mantenimientos', error)
-        return []
-      } finally {
-        loading.value = false
-      }
-    }
-
-    const obtenerdatodemantenimiento = async (consecutivo) => {
-      const useUsuario = useStoreUsuarios()
-      loading.value = true
-      try {
-        let response = await axios.get(
-          `api/mantenimientos/obtenerdatosmantenimiento/${consecutivo}`,
-          {
-            headers: {
-              // "x-token": localStorage.getItem('x-token')
-              'x-token': useUsuario.token,
-            },
-          },
-        )
-        console.log('Respuesta desde store:', response.data)
         return response.data
       } catch (error) {
-        console.error('No se pudo obtener los datos del mantenimiento', error)
+        console.error('No se pudo obtener los datos del gasto', error)
         return null
       } finally {
         loading.value = false
@@ -58,7 +54,7 @@ export const useStoreMantenimiento = defineStore(
       const useUsuario = useStoreUsuarios()
       loading.value = true
       try {
-        let response = await axios.get(`api/mantenimientos/resumen-solicitante/placa/${placa}`, {
+        let response = await axios.get(`api/gastos/resumen-solicitante/placa/${placa}`, {
           headers: {
             // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
@@ -74,12 +70,12 @@ export const useStoreMantenimiento = defineStore(
       }
     }
 
-    const obtenerMantenimientosOrdenados = async (tipo = 'fecha', orden = 'desc') => {
+    const obtenerGastosOrdenados = async (tipo = 'fecha', orden = 'desc') => {
       const useUsuario = useStoreUsuarios()
 
       loading.value = true
       try {
-        const response = await axios.get(`api/mantenimientos/ordenados`, {
+        const response = await axios.get(`api/gastos/ordenados`, {
           params: { tipo, orden },
           headers: {
             // "x-token": localStorage.getItem('x-token')
@@ -89,52 +85,28 @@ export const useStoreMantenimiento = defineStore(
 
         return response.data
       } catch (err) {
-        console.error(`No se pudo obtener los mantenimientos ordenados por ${tipo}:`, err)
+        console.error(`No se pudo obtener los gastos ordenados por ${tipo}:`, err)
         throw err
       } finally {
         loading.value = false
       }
     }
 
-    const obtenerMantenimientosFiltrados = async (tipo, valor) => {
-      const useUsuario = useStoreUsuarios()
-
-      loading.value = true
-      // console.log(`Enviando petición: tipo=${tipo}, valor=${valor}`);
-
-      try {
-        const response = await axios.get(`api/mantenimientos/filtrados`, {
-          params: { tipo, valor }, // Asegúrate de que estos nombres coincidan con el backend
-          headers: {
-            // "x-token": localStorage.getItem('x-token')
-            'x-token': useUsuario.token,
-          },
-        })
-
-        // console.log("Respuesta del servidor:", response.data);
-        return response.data
-      } catch (err) {
-        console.error(`No se pudo obtener los mantenimientos filtrados por ${tipo}:`, err)
-        console.error('Detalles del error:', err.response?.data || err.message)
-        throw err
-      } finally {
-        loading.value = false
-      }
-    }
-
-    const postMantenimiento = async (formData) => {
+    const postGasto = async (formData) => {
       const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
-        console.log(localStorage.getItem('x-token'))
-        const response = await axios.post('api/mantenimientos/crear', formData, {
+        console.log('Enviando datos al servidor...')
+        const response = await axios.post('api/gastos/gastos-vehiculos', formData, {
           headers: {
             // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
+        console.log('Respuesta recibida:', response)
+
         Notify.create({
-          message: 'mantenimiento creado correctamente',
+          message: 'gasto creado correctamente',
           color: 'positive',
           position: 'bottom',
         })
@@ -143,7 +115,7 @@ export const useStoreMantenimiento = defineStore(
       } catch (error) {
         Notify.create({
           type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al crear mantenimiento',
+          message: error.response?.data?.mensaje || 'Error al registrar gasto',
         })
         loading.value = true
         console.log(error)
@@ -153,12 +125,12 @@ export const useStoreMantenimiento = defineStore(
       }
     }
 
-    const putMantenimiento = async (consecutivo, formData) => {
+    const putGasto = async (consecutivo, formData) => {
       const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
         console.log('Enviando datos al servidor...')
-        const response = await axios.put(`api/mantenimientos/editar/${consecutivo}`, formData, {
+        const response = await axios.put(`api/gastos/editar/${consecutivo}`, formData, {
           headers: {
             // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
@@ -167,7 +139,7 @@ export const useStoreMantenimiento = defineStore(
         console.log('Respuesta recibida:', response)
 
         Notify.create({
-          message: 'mantenimiento editado correctamente',
+          message: 'gasto editado correctamente',
           color: 'positive',
           position: 'bottom',
         })
@@ -176,7 +148,7 @@ export const useStoreMantenimiento = defineStore(
       } catch (error) {
         Notify.create({
           type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al editar mantenimiento',
+          message: error.response?.data?.mensaje || 'Error al registrar gasto',
         })
         loading.value = true
         console.log(error)
@@ -187,15 +159,14 @@ export const useStoreMantenimiento = defineStore(
     }
 
     return {
-      obtenerMantenimientos,
+      obtenerGastos,
       obtenerResumenPorPlaca,
-      obtenerdatodemantenimiento,
-      obtenerMantenimientosFiltrados,
-      obtenerMantenimientosOrdenados,
-      postMantenimiento,
-      putMantenimiento,
+      obtenerdatosdelgasto,
+      obtenerGastosOrdenados,
+      postGasto,
+      putGasto,
       loading,
-      mantenimientos,
+      gastos,
       // useUsuario,
     }
   },

@@ -27,40 +27,45 @@ export default defineRouter(function (/* { store, ssrContext } */) {
   })
  
   // esto es del nuevo beforeEach, por lo del rol 
-  Router.beforeEach((to, from, next) => {
-    // Check if the route requires authentication
-    if (to.meta.perfiles) {
-      const useUsuario = useStoreUsuarios();
-      const userRole = useUsuario.perfile;
-      const token = useUsuario.token;
-      console.log('Token existe:', !!useUsuario.token);
-      console.log('perfil de usuario:', useUsuario.perfile);
-      // const userRole = useUsuario.perfile;
-      
-      console.log('Current perfil de usuario:', userRole);
-      console.log('Required profiles:', to.meta.perfiles);
-      
-      // If there's no profile or token, redirect to login
-      if (!userRole || !token) {
-        console.log('redirigiendo al login - no hay token o perfil');
-      console.log('Token existe sin saber porque se pierde el token:', !!useUsuario.token);
-        useUsuario.eliminarToken(); // Limpiar para asegurar
-        return next('/');
-      }
-      // Check if user has the required profile
-      if (to.meta.perfiles.includes(userRole)) {
-        console.log('Usuario autorizado');
-        return next();
-      } else {
-        console.log('usuario no autorizado para esta ruta');
-        // Redirect to home or unauthorized page
-        return next('/IndexPage');
-      }
-    }
+Router.beforeEach(async (to, from, next) => {
+  if (to.meta.perfiles) {
+    const useUsuario = useStoreUsuarios();
     
-    // Routes without profile restrictions
-    return next();
-  });
+    // Esperar a que el store esté listo si el token existe en localStorage
+    // pero perfile aún no se ha cargado
+const tokenEnStorage = localStorage.getItem('x-token');
+
+// Si el store no tiene perfile aún, leerlo directo del persist de Pinia
+let userRole = useUsuario.perfile;
+let token = useUsuario.token;
+
+if (tokenEnStorage && !userRole) {
+  try {
+    const persistedStore = JSON.parse(localStorage.getItem('usuarios-store') || '{}');
+    userRole = persistedStore.perfile || '';
+    token = persistedStore.token || tokenEnStorage;
+    // Restaurar manualmente al store
+    if (userRole) useUsuario.perfile = userRole;
+    if (token) useUsuario.token = token;
+  } catch (e) {
+    console.error('Error leyendo store persistido:', e);
+  }
+}
+    console.log('perfil de usuario:', userRole);
+
+    if (!userRole || !token) {
+      useUsuario.eliminarToken();
+      return next('/');
+    }
+
+    if (to.meta.perfiles.includes(userRole)) {
+      return next();
+    } else {
+      return next('/IndexPage');
+    }
+  }
+  return next();
+});
 
   return Router
 })

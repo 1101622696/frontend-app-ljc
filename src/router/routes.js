@@ -1,18 +1,10 @@
-// // import { createRouter, createWebHashHistory } from 'vue-router';
-// // import { useStoreUsuarios } from '../stores/usuarios.js'; // Ajusta esta ruta según tu estructura
-
 import LoginPage from '../pages/LoginPage.vue';
-import RescontrasenaPage from '../pages/RescontrasenaPage.vue';
 import Home from '../layouts/MainLayout.vue'; 
 
 const routes = [
   { 
     path: '/', 
     component: LoginPage 
-  },
-  { 
-    path: '/Rescontrasena', 
-    component: RescontrasenaPage 
   },
   { 
     path: '/IndexPage', 
@@ -23,55 +15,91 @@ const routes = [
         path: 'HomePage', 
         name: 'HomePage', 
         component: () => import('../pages/HomePage.vue'),
-        meta: { perfiles: ['jefepiloto', 'coordinador', 'piloto', 'cliente'] } 
+        meta: { perfiles: ['administrador', 'propietario', 'conductor'] } 
       },
       { 
         path: 'gpsPage', 
         name: 'gpsPage', 
         component: () => import('../pages/gpsPage.vue'),
-        meta: { perfiles: ['jefepiloto'] } 
+        meta: { perfiles: ['administrador', 'propietario', 'conductor'] } 
       },
       { 
         path: 'Solicitudes', 
         name: 'SolicitudesPage', 
         component: () => import('../pages/SolicitudesPage.vue'),
-        meta: { perfiles: ['jefepiloto', 'coordinador', 'cliente'] }
+        meta: { perfiles: ['administrador', 'propietario', 'conductor'] }
       },
       { 
-        path: 'PilotosPage', 
-        name: 'PilotosPage', 
-        component: () => import('../pages/PilotosPage.vue'),
-        meta: { perfiles: ['jefepiloto'] }
+        path: 'Clientes', 
+        name: 'ClientesPage', 
+        component: () => import('../pages/ClientesPage.vue'),
+        meta: { perfiles: ['administrador', 'propietario'] }
       },
       { 
-        path: 'DronesPage', 
-        name: 'DronesPage', 
-        component: () => import('../pages/DronesPage.vue'),
-        meta: { perfiles: ['jefepiloto'] }
+        path: 'Combustible', 
+        name: 'CombustiblePage', 
+        component: () => import('../pages/CombustiblePage.vue'),
+        meta: { perfiles: ['administrador', 'propietario', 'conductor'] }
       },
       { 
-        path: 'MantenimientoPage', 
+        path: 'Mantenimiento', 
         name: 'MantenimientoPage', 
         component: () => import('../pages/MantenimientoPage.vue'),
-        meta: { perfiles: ['jefepiloto'] }
+        meta: { perfiles: ['administrador', 'propietario'] }
       },
       { 
-        path: 'LookerPage', 
-        name: 'LookerPage', 
-        component: () => import('../pages/LookerPage.vue'),
-        meta: { perfiles: ['jefepiloto', 'cliente'] }
+        path: 'Vehiculos', 
+        name: 'VehiculosPage', 
+        component: () => import('../pages/VehiculosPage.vue'),
+        meta: { perfiles: ['administrador', 'propietario', 'conductor'] }
       },
       { 
-        path: 'BitacoraPage', 
-        name: 'BitacoraPage', 
-        component: () => import('../pages/BitacoraPage.vue'),
-        meta: { perfiles: ['jefepiloto', 'coordinador', 'piloto', 'cliente'] }
+        path: 'Prestamos', 
+        name: 'PrestamosPage', 
+        component: () => import('../pages/PrestamosPage.vue'),
+        meta: { perfiles: ['administrador', 'propietario', 'conductor'] }
       },
       { 
-        path: 'UsuariosPage', 
+        path: 'Preoperacionales', 
+        name: 'PreoperacionalesPage', 
+        component: () => import('../pages/PreoperacionalesPage.vue'),
+        meta: { perfiles: ['administrador', 'propietario', 'conductor'] }
+      },
+      { 
+        path: 'Usuarios', 
         name: 'UsuariosPage', 
         component: () => import('../pages/UsuariosPage.vue'),
-        meta: { perfiles: ['jefepiloto'] }
+        meta: { perfiles: ['administrador', 'propietario', 'conductor'] }
+      },
+      { 
+        path: 'Gastos', 
+        name: 'GastosPage', 
+        component: () => import('../pages/GastosPage.vue'),
+        meta: { perfiles: ['administrador', 'propietario'] }
+      },
+      { 
+        path: 'Viajes', 
+        name: 'ViajesPage', 
+        component: () => import('../pages/ViajesPage.vue'),
+        meta: { perfiles: ['administrador', 'propietario', 'conductor'] }
+      },
+      { 
+        path: 'ResumenVehiculos', 
+        name: 'ResumenVehiculosPage', 
+        component: () => import('../pages/ResumenVehiculosPage.vue'), 
+        meta: { perfiles: ['administrador', 'propietario'] }
+      },
+      { 
+        path: 'Nomina', 
+        name: 'NominaPage', 
+        component: () => import('../pages/NominaPage.vue'), 
+        meta: { perfiles: ['administrador', 'propietario', 'conductor'] }
+      },
+      { 
+        path: 'Satrack', 
+        name: 'SatrackPage', 
+        component: () => import('../pages/SatrackPage.vue'), 
+        meta: { perfiles: ['administrador', 'propietario'] }
       }
     ]
   },
@@ -84,42 +112,3 @@ const routes = [
 
 
 export default routes;
-
-
-
-
-// const routes = [
-//   {
-//     path: '/',
-//     component: () => import('layouts/MainLayout.vue'),
-//     children: [
-//       { path: '', component: () => import('pages/IndexPage.vue') },
-//       { path: 'gpsPage', name: 'gpsPage', component: () => import('pages/gpsPage.vue') },
-//       { path: 'PrevuelosPage', name: 'PrevuelosPage', component: () => import('pages/PrevuelosPage.vue') },
-//       { path: 'PostvuelosPage', name: 'PostvuelosPage', component: () => import('pages/PostvuelosPage.vue') },
-//       { path: 'SolicitudesPage', name: 'SolicitudesPage', component: () => import('pages/SolicitudesPage.vue') },
-//       { path: 'AprobarvueloPage', name: 'AprobarvueloPage', component: () => import('pages/AprobarvueloPage.vue') },
-//       { path: 'AprobarprevueloPage', name: 'AprobarprevueloPage', component: () => import('pages/AprobarprevueloPage.vue') },
-//       { path: 'AprobarpostvueloPage', name: 'AprobarpostvueloPage', component: () => import('pages/AprobarpostvueloPage.vue') },
-//       { path: 'PilotosPage', name: 'PilotosPage', component: () => import('pages/PilotosPage.vue') },
-//       { path: 'DronesPage', name: 'DronesPage', component: () => import('pages/DronesPage.vue') },
-//       { path: 'MantenimientoPage', name: 'MantenimientoPage', component: () => import('pages/MantenimientoPage.vue') },
-//       { path: 'LookerPage', name: 'LookerPage', component: () => import('pages/LookerPage.vue') },
-//       { path: 'BitacoraPage', name: 'BitacoraPage', component: () => import('pages/BitacoraPage.vue') },
-//       { path: 'UsuariosPage', name: 'UsuariosPage', component: () => import('pages/UsuariosPage.vue') },
-//       // { path: 'LoginPage', name: 'LoginPage', component: () => import('pages/LoginPage.vue') }
-
-//     ]
-//   },
-
-//   // Always leave this as last one,
-//   // but you can also remove it
-//   {
-//     path: '/:catchAll(.*)*',
-//     component: () => import('pages/ErrorNotFound.vue')
-//   }
-// ]
-
-// export default routes
-
-

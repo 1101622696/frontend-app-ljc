@@ -21,7 +21,7 @@
             v-model="ordenActual"
             toggle-color="primary"
             :options="opcionesOrdenamiento"
-            @update:model-value="cargarMantenimientos"
+            @update:model-value="cargarCombustibles"
           />
         </div>
 
@@ -52,15 +52,15 @@
 
       <q-list bordered separator>
         <q-item
-          v-for="mantenimiento in mantenimientos"
-          :key="mantenimiento.consecutivo"
+          v-for="combustible in combustibles"
+          :key="combustible.consecutivo"
           clickable
-          @click="verDetalles(mantenimiento.consecutivo)"
+          @click="verDetalles(combustible.consecutivo)"
         >
           <q-item-section>
-            <q-item-label>{{ mantenimiento.consecutivo }} - {{ mantenimiento.placa }}</q-item-label>
-            <q-item-label caption v-if="mantenimiento.valorFiltro !== undefined">
-              {{ obtenerEtiquetaValor(mantenimiento.valorFiltro) }}
+            <q-item-label>{{ combustible.consecutivo }} - {{ combustible.placa }}</q-item-label>
+            <q-item-label caption v-if="combustible.valorFiltro !== undefined">
+              {{ obtenerEtiquetaValor(combustible.valorFiltro, combustible) }}
             </q-item-label>
           </q-item-section>
         </q-item>
@@ -71,59 +71,131 @@
       <q-dialog v-model="mostrarDetalles" persistent>
         <q-card style="min-width: 350px">
           <q-card-section>
-            <div class="text-h6">Detalles del Mantenimiento</div>
+            <div class="text-h6">Detalles del Combustible</div>
           </q-card-section>
 
-          <q-card-section class="q-pt-none" v-if="detallesMantenimiento">
+          <q-card-section class="q-pt-none" v-if="detallesCombustible">
             <div class="q-pa-md">
               <div class="row q-mb-md">
                 <div class="col-4 text-weight-bold">Consecutivo:</div>
-                <div class="col-8">{{ detallesMantenimiento.consecutivo }}</div>
+                <div class="col-8">{{ detallesCombustible.consecutivo }}</div>
+              </div>
+              <div class="row q-mb-md">
+                <div class="col-4 text-weight-bold">Fecha de registro:</div>
+                <div class="col-8">{{ detallesCombustible.fecha_registro }}</div>
               </div>
               <div class="row q-mb-md">
                 <div class="col-4 text-weight-bold">Placa:</div>
-                <div class="col-8">{{ detallesMantenimiento.placa }}</div>
+                <div class="col-8">{{ detallesCombustible.placa }}</div>
               </div>
               <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Tipo de mantenimiento:</div>
-                <div class="col-8">{{ detallesMantenimiento.tipo_mantenimiento }}</div>
+                <div class="col-4 text-weight-bold">Odómetro actual:</div>
+                <div class="col-8">{{ detallesCombustible.odometro_actual }}</div>
               </div>
               <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Descripción:</div>
-                <div class="col-8">{{ detallesMantenimiento.descripcion }}</div>
+                <div class="col-4 text-weight-bold">Galones cargados:</div>
+                <div class="col-8">{{ detallesCombustible.galones_cargados }}</div>
               </div>
               <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Valor del mantenimiento:</div>
-                <div class="col-8">{{ detallesMantenimiento.valor_mantenimiento }}</div>
+                <div class="col-4 text-weight-bold">Valor pagado:</div>
+                <div class="col-8">{{ detallesCombustible.valor_pagado }}</div>
               </div>
               <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Odómetro:</div>
-                <div class="col-8">{{ detallesMantenimiento.odometro }}</div>
+                <div class="col-4 text-weight-bold">Precio por galón:</div>
+                <div class="col-8">{{ detallesCombustible.precio_por_galon }}</div>
               </div>
               <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Correo del que registra:</div>
-                <div class="col-8">{{ detallesMantenimiento.correo_usuario }}</div>
+                <div class="col-4 text-weight-bold">Kilómetros recorridos:</div>
+                <div class="col-8">{{ detallesCombustible.km_recorridos }}</div>
               </div>
               <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Usuario que regista:</div>
-                <div class="col-8">{{ detallesMantenimiento.usuario }}</div>
+                <div class="col-4 text-weight-bold">Rendimiento real:</div>
+                <div class="col-8">{{ detallesCombustible.rendimiento_real }}</div>
               </div>
               <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Fecha de creación del registro:</div>
-                <div class="col-8">{{ detallesMantenimiento.fecha_creacion }}</div>
+                <div class="col-4 text-weight-bold">Rendimiento esperado:</div>
+                <div class="col-8">{{ detallesCombustible.rendimiento_esperado }}</div>
               </div>
+              <div class="row q-mb-md">
+                <div class="col-4 text-weight-bold">Diferencia de rendimiento:</div>
+                <div class="col-8">{{ detallesCombustible.diferencia_rendimiento }}</div>
+              </div>
+              <div class="row q-mb-md">
+                <div class="col-4 text-weight-bold">Alerta:</div>
+                <div class="col-8">{{ detallesCombustible.alerta }}</div>
+              </div>
+              <div class="row q-mb-md">
+                <div class="col-4 text-weight-bold">Correo usuario:</div>
+                <div class="col-8">{{ detallesCombustible.correo_usuario }}</div>
+              </div>
+              <div class="row q-mb-md">
+                <div class="col-4 text-weight-bold">Usuario:</div>
+                <div class="col-8">{{ detallesCombustible.usuario }}</div>
+              </div>
+              <div class="row q-mb-md">
+                <div class="col-4 text-weight-bold">Estado de la factura:</div>
+                <div class="col-8">{{ detallesCombustible.estado_factura }}</div>
+              </div>
+              <div class="row q-mb-md">
+                <div class="col-4 text-weight-bold">Número de factura:</div>
+                <div class="col-8">{{ detallesCombustible.numero_factura }}</div>
+              </div>
+
               <q-btn
                 outline
                 color="orange"
                 icon="folder"
                 label="Ver archivos"
                 size="sm"
-                @click="abrirVisor(detallesMantenimiento.link, 'Documentos')"
+                @click="abrirVisor(detallesCombustible.link_factura, 'Documentos')"
               />
             </div>
 
+            <div class="row q-mb-md">
+              <div class="col-4 text-weight-bold">Legalización:</div>
+              <div class="col-8">
+                <q-toggle
+                  :model-value="
+                    detallesCombustible.estado_factura?.toLowerCase().trim() === 'legalizado'
+                  "
+                  :disable="
+                    detallesCombustible.estado_factura?.toLowerCase().trim() !== 'pendiente'
+                  "
+                  color="primary"
+                  @click="cambiarEstado"
+                />
+              </div>
+            </div>
+
+            <q-input
+              v-if="detallesCombustible.estado_factura === 'pendiente'"
+              v-model="numeroFactura"
+              label="Número de factura"
+              dense
+            />
+
             <q-card-actions align="right">
-              <q-btn class="option-button" @click="editar(detallesMantenimiento)"> ✏️ </q-btn>
+              <q-btn
+                class="option-button"
+                :disable="
+                  ['legalizado'].includes(
+                    detallesCombustible?.estado_factura,
+                  )
+                "
+                @click="editar(detallesCombustible)"
+              >
+                ✏️
+
+                <q-tooltip
+                  v-if="
+                    ['legalizado'].includes(
+                      detallesCombustible?.estado_factura,
+                    )
+                  "
+                >
+                  Este combustible no puede ser editado
+                </q-tooltip>
+              </q-btn>
             </q-card-actions>
           </q-card-section>
 
@@ -145,10 +217,10 @@
       </q-dialog>
 
       <q-dialog v-model="alert" persistent>
-        <q-card class="bg-grey-2">
+        <q-card class="" style="width: 700px">
           <q-card-section class="bg-primary text-white">
             <div class="text-h6 text-weight-bold">
-              {{ accion == 1 ? 'Agregar Mantenimiento' : 'Editar Mantenimiento' }}
+              {{ accion == 1 ? 'Agregar Combustible' : 'Editar Combustible' }}
             </div>
           </q-card-section>
 
@@ -164,6 +236,7 @@
                   :dense="dense"
                   disable
                 />
+
                 <!-- Propietario y Admin: select con opciones -->
                 <q-select
                   v-else
@@ -177,75 +250,64 @@
               </div>
 
               <div class="col-12">
-                <q-select
-                  outlined
-                  rounded
-                  v-model="formulario.tipo_mantenimiento"
-                  label="Tipo de mantenimiento:"
-                  :options="tipoMantenimientoOptions"
-                />
-              </div>
-
-              <div class="col-12">
                 <q-input
                   outlined
                   rounded
-                  v-model.trim="formulario.descripcion"
-                  label="Descripción"
-                  :dense="dense"
-                />
-              </div>
-
-              <div class="col-12">
-                <q-input
-                  outlined
-                  rounded
-                  v-model="valmantenimientoFormatted"
-                  label="Valor del mantenimiento"
-                  :dense="dense"
-                 @update:model-value="formatearValMantenimiento"
-                />
-              </div>
-
-              <div class="col-12">
-                <q-input
-                  outlined
-                  rounded
-                  v-model="odometroFormatted"
+                  v-model.trim="formulario.odometro_actual"
                   label="Odómetro"
                   :dense="dense"
-                 @update:model-value="formatearOdometro"
                 />
               </div>
 
               <div class="col-12">
-                <q-banner class="q-mt-lg q-mb-sm text-indigo">Adjuntar Archivos</q-banner>
-                <q-file
-                  label="Seleccionar archivos"
+                <q-input
                   outlined
                   rounded
-                  multiple
-                  v-model="archivosSeleccionados"
-                  @update:model-value="manejarSeleccionArchivos"
-                  accept="image/*, application/pdf, .doc, .docx, .xls, .xlsx, .kml, .kmz"
-                  clearable
-                  style="max-width: 400px"
+                  v-model.trim="formulario.galones_cargados"
+                  label="Galones cargados"
+                  :dense="dense"
                 />
+              </div>
 
-                <div class="q-mt-md row q-col-gutter-sm">
-                  <q-chip
-                    v-for="(archivo, index) in formulario.archivos"
-                    :key="index"
-                    removable
-                    @remove="eliminarArchivo(index)"
-                    class="q-ma-xs"
+              <div class="col-12">
+                <q-input
+                  rounded
+                  outlined
+                  v-model="valorpagadoFormatted"
+                  label="Valor pagado"
+                  :dense="dense"
+                  @update:model-value="formatearValorpagado"
+                />
+              </div>
+            </div>
+
+            <div class="col-12">
+              <q-banner class="q-mt-lg q-mb-sm text-indigo">Adjuntar Archivos</q-banner>
+              <q-file
+                label="Seleccionar archivos"
+                rounded
+                outlined
+                multiple
+                v-model="archivosSeleccionados"
+                @update:model-value="manejarSeleccionArchivos"
+                accept="image/*, application/pdf, .doc, .docx, .xls, .xlsx, .kml, .kmz"
+                clearable
+                style="max-width: 400px"
+              />
+
+              <div class="q-mt-md row q-col-gutter-sm">
+                <q-chip
+                  v-for="(archivo, index) in formulario.archivos"
+                  :key="index"
+                  removable
+                  @remove="eliminarArchivo(index)"
+                  class="q-ma-xs"
+                >
+                  {{ archivo.name }}
+                  <q-tooltip
+                    >{{ archivo.type }} - {{ (archivo.size / 1024).toFixed(2) }} KB</q-tooltip
                   >
-                    {{ archivo.name }}
-                    <q-tooltip
-                      >{{ archivo.type }} - {{ (archivo.size / 1024).toFixed(2) }} KB</q-tooltip
-                    >
-                  </q-chip>
-                </div>
+                </q-chip>
               </div>
             </div>
           </q-card-section>
@@ -255,9 +317,9 @@
               @click="guardar"
               color="accent"
               class="text-white"
-              :loading="useMantenimiento.loading"
+              :loading="useCombustible.loading"
             >
-              {{ esEdicion ? 'Actualizar' : 'Agregar' }}
+              {{ accion === 2 ? 'Actualizar' : 'Agregar' }}
               <template v-slot:loading>
                 <q-spinner color="white" size="1em" />
               </template>
@@ -269,16 +331,25 @@
     </div>
 
     <q-btn color="primary" :label="'Registrar nuevo'" class="q-mt-md" @click="abrir" />
+<div class="text-center q-mt-md" v-if="hayMas">
+  <q-btn
+    flat
+    color="primary"
+    label="Cargar más"
+    :loading="cargando"
+    @click="cargarMas"
+  />
+</div>
   </q-page>
 </template>
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
-import { useStoreMantenimiento } from '../stores/mantenimientos'
-import { useStoreVehiculos } from '../stores/vehiculos'
-import { useStoreUsuarios } from '../stores/usuarios'
+import { useStoreCombustible } from '../stores/combustible'
 import { useQuasar } from 'quasar'
-import { TIPOS_FILTRO, CONFIG_FILTROS } from '../composables/filtrosmantenimientos'
+import { TIPOS_FILTRO, CONFIG_FILTROS } from '../composables/filtroscombustibles'
+import { useStoreUsuarios } from '../stores/usuarios'
+import { useStoreVehiculos } from '../stores/vehiculos'
 import { useDriveVisor } from '../composables/useDriveVisor'
 import DriveVisor from 'src/components/VisorDrive.vue'
 
@@ -294,38 +365,60 @@ const {
   esPdf,
 } = useDriveVisor()
 
-const useMantenimiento = useStoreMantenimiento()
-const useVehiculo = useStoreVehiculos()
+const useCombustible = useStoreCombustible()
 const useUsuario = useStoreUsuarios()
+const useVehiculo = useStoreVehiculos()
+
+const perfilUsuario = computed(() => useUsuario.perfile)
 
 const alert = ref(false)
 const accion = ref(1)
 const $q = useQuasar()
-const valmantenimientoFormatted = ref('')
-const odometroFormatted = ref('')
+
+const paginaActual = ref(1)
+const hayMas = ref(false)
+
+async function cargarMas() {
+  paginaActual.value++
+  await cargarCombustibles()
+}
+
+const valorpagadoFormatted = ref('')
+
+function formatearValorpagado(val) {
+  valorpagadoFormatted.value = formatearNumero(val)
+
+  formulario.value.valor_pagado = Number(valorpagadoFormatted.value.replace(/\./g, ''))
+}
+
+function formatearNumero(valor) {
+  if (!valor) return ''
+  const limpio = valor.toString().replace(/\D/g, '')
+  return new Intl.NumberFormat('es-CO').format(limpio)
+}
 
 const estadoInicial = {
   placa: '',
-  tipo_mantenimiento: '',
-  descripcion: '',
-  valor_mantenimiento: '',
-  odometro: '',
+  odometro_actual: '',
+  galones_cargados: '',
+  valor_pagado: '',
   archivos: [],
 }
+
+const numeroFactura = ref('')
 
 const formulario = ref({ ...estadoInicial })
 const cargando = ref(false)
 
 const tipoLista = ref(TIPOS_FILTRO.TODOS)
 const ordenActual = ref('desc')
-const mantenimientos = ref([])
+const combustibles = ref([])
 const valorFiltroTexto = ref(null)
 
-const detallesMantenimiento = ref(null)
+const detallesCombustible = ref(null)
 const mostrarDetalles = ref(false)
 
 const placasOptions = ref([])
-const perfilUsuario = computed(() => useUsuario.perfile)
 
 async function cargarPlacas() {
   try {
@@ -351,8 +444,6 @@ async function cargarPlacas() {
     console.error(e)
   }
 }
-
-const tipoMantenimientoOptions = ['Correctivo', 'Preventivo']
 
 function abrir() {
   accion.value = 1
@@ -385,20 +476,20 @@ function cerrar() {
 //     let response
 
 //     if (props.esEdicion) {
-//       response = await useMantenimiento.putMantenimiento(formulario.value.placa, formData)
+//       response = await useCombustible.putCombustible(formulario.value.placa, formData)
 //     } else {
-//       response = await useMantenimiento.postMantenimiento(formData)
+//       response = await useCombustible.postCombustible(formData)
 //     }
 
 //     console.log('Respuesta exitosa:', response)
 
+//     cargarCombustibles()
 //     cerrar()
-//     cargarMantenimientos()
 //     alert.value = false
 //     resetearFormulario()
 //   } catch (error) {
 //     console.error('Error al guardar:', error)
-//     mostrarMensajeError('Error al guardar el mantenimiento')
+//     mostrarMensajeError('Error al guardar el combustible')
 //   } finally {
 //     cargando.value = false
 //   }
@@ -430,38 +521,34 @@ async function guardar() {
     let response
 
     if (accion.value === 2) {
-      response = await useMantenimiento.putMantenimiento(formulario.value.consecutivo, formData)
+      response = await useCombustible.putCombustible(formulario.value.consecutivo, formData)
     } else {
-      response = await useMantenimiento.postMantenimiento(formData)
+      response = await useCombustible.postCombustible(formData)
     }
 
     console.log('Respuesta exitosa:', response)
 
     cerrar()
-    cargarMantenimientos()
+    cargarCombustibles()
     resetearFormulario()
   } catch (error) {
     console.error('Error completo:', error)
-    mostrarMensajeError('Error al guardar el mantenimiento')
+    mostrarMensajeError('Error al guardar el combustible')
   } finally {
     cargando.value = false
   }
 }
 
-function editar(mantenimiento) {
+function editar(combustible) {
   accion.value = 2
 
   formulario.value = {
     ...estadoInicial,
-    ...mantenimiento,
+    ...combustible,
   }
 
-    valmantenimientoFormatted.value = formatearNumero(
-    mantenimiento.valor_mantenimiento || 0
-  )
-
-    odometroFormatted.value = formatearNumero(
-    mantenimiento.odometro || 0
+    valorpagadoFormatted.value = formatearNumero(
+    combustible.valor_pagado || 0
   )
 
   alert.value = true
@@ -470,44 +557,48 @@ function editar(mantenimiento) {
 async function validar() {
   let verificado = true
 
-  const { placa, tipo_mantenimiento, valor_mantenimiento, odometro } = formulario.value
+  const { placa, odometro_actual, galones_cargados } = formulario.value
 
   if (placa === '') {
-    mostrarMensajeError('Seleccione la placa')
+    mostrarMensajeError('Diligencie la placa')
     verificado = false
   }
-  if (tipo_mantenimiento === '') {
-    mostrarMensajeError('Seleccione el tipo demantenimiento')
+  if (odometro_actual === '') {
+    mostrarMensajeError('Diligencie el odometro actual')
     verificado = false
   }
-  if (valor_mantenimiento === '') {
-    mostrarMensajeError('Diligencie el valor del mantenimiento')
+  if (galones_cargados === '') {
+    mostrarMensajeError('Diligencie los galones cargados')
     verificado = false
   }
-  if (odometro === '') {
-    mostrarMensajeError('Diligencie el odómetro actual del vehículo')
-    verificado = false
-  }
+
   return verificado
 }
 
 async function verDetalles(consecutivo) {
   try {
-    const detalle = await useMantenimiento.obtenerdatodemantenimiento(consecutivo)
+    const detalle = await useCombustible.obtenerdatosdecombustible(consecutivo)
     console.log('Detalles obtenidos:', detalle)
 
     if (detalle) {
-      detallesMantenimiento.value = {
+      detallesCombustible.value = {
         consecutivo: detalle['consecutivo'] || '',
+        fecha_registro: detalle['fecha_registro'] || '',
         placa: detalle['placa'] || '',
-        tipo_mantenimiento: detalle['tipo_mantenimiento'] || '',
-        descripcion: detalle['descripcion'] || '',
-        valor_mantenimiento: detalle['valor_mantenimiento'] || '',
-        odometro: detalle['odometro'] || '',
+        odometro_actual: detalle['odometro_actual'] || '',
+        galones_cargados: detalle['galones_cargados'] || '',
+        valor_pagado: detalle['valor_pagado'] || '',
+        precio_por_galon: detalle['precio_por_galon'] || '',
+        km_recorridos: detalle['km_recorridos'] || '',
+        rendimiento_real: detalle['rendimiento_real'] || '',
+        rendimiento_esperado: detalle['rendimiento_esperado'] || '',
+        diferencia_rendimiento: detalle['diferencia_rendimiento'] || '',
+        alerta: detalle['alerta'] || '',
         correo_usuario: detalle['correo_usuario'] || '',
         usuario: detalle['usuario'] || '',
-        fecha_creacion: detalle['fecha_creacion'] || '',
-        link: detalle['link'] || '',
+        estado_factura: detalle['estado_factura'] || '',
+        numero_factura: detalle['numero_factura'] || '',
+        link_factura: detalle['link_factura'] || '',
       }
       mostrarDetalles.value = true
     } else {
@@ -533,11 +624,17 @@ const opcionesOrdenamiento = computed(() => {
 
 watch(tipoLista, (newValue) => {
   const filtro = CONFIG_FILTROS[newValue]
+
   if (filtro.esFiltroTexto && filtro.opcionesFiltro?.length > 0) {
     valorFiltroTexto.value = filtro.opcionesFiltro[0].valor
   } else {
     valorFiltroTexto.value = null
   }
+})
+
+watch([tipoLista, valorFiltroTexto, ordenActual], async () => {
+  paginaActual.value = 1
+  await cargarCombustibles()
 })
 
 function cargarListaPor(tipo) {
@@ -557,18 +654,24 @@ function cargarListaPor(tipo) {
     // console.log(`Tipo cambiado a ${tipo}, sin valor por defecto`);
   }
 
-  cargarMantenimientos()
+  cargarCombustibles()
 }
 
 function actualizarValorFiltro(nuevoValor) {
   // console.log(`Cambiando valor del filtro a: ${nuevoValor}`);
   valorFiltroTexto.value = nuevoValor
-  cargarMantenimientos()
+  cargarCombustibles()
 }
 
-function obtenerEtiquetaValor(valor) {
-  if (tipoLista.value === TIPOS_FILTRO.VALOR) {
-    return `$ ${Number(valor).toLocaleString('es-CO')} COP`
+function obtenerEtiquetaValor(valor, item) {
+  if (tipoLista.value === TIPOS_FILTRO.MES) {
+    return `${Number(item.valor_pagado).toLocaleString('es-CO')} COP`
+  }
+
+  if (tipoLista.value === TIPOS_FILTRO.VALOR_PAGADO) {
+    return `${valor} COP`
+  } else if (tipoLista.value === TIPOS_FILTRO.PRECIO_POR_GALON) {
+    return `${valor} COP`
   }
 
   return valor
@@ -589,117 +692,117 @@ const opcionesFiltroTexto = computed(() => {
   return []
 })
 
-// async function cargarMantenimientos() {
+// async function cargarCombustibles() {
 //   try {
-//     let response
+//     let response = []
+//     // ADMINISTRADOR
+//     if (perfilUsuario.value === 'administrador') {
+//       if (tipoLista.value === TIPOS_FILTRO.TODOS) {
+//         response = await useCombustible.obtenerCombustible()
+//       } else if (filtroActual.value.esFiltroTexto) {
+//         response = await useCombustible.obtenerCombustiblesFiltrados(
+//           filtroActual.value.campoDatos,
+//           valorFiltroTexto.value,
+//         )
+//       } else {
+//         response = await useCombustible.obtenerCombustiblesOrdenados(
+//           filtroActual.value.campoOrden,
+//           ordenActual.value,
+//         )
+//       }
+//     }
+//     // PROPIETARIO Y CONDUCTOR
+//     else {
+//       const placasUsuario = useUsuario.user?.placa_asignada?.split(',').map((p) => p.trim()) || []
+//       let todosLosCombustibles = []
+//       for (const placa of placasUsuario) {
+//         const data = await useCombustible.obtenerResumenPorPlaca(placa)
+//         const lista = data?.resumen?.total?.consecutivos || []
+//         todosLosCombustibles.push(...lista)
+//       }
+//       response = todosLosCombustibles
+//       // FILTROS TEXTO
+//       if (filtroActual.value?.esFiltroTexto) {
+//         response = response.filter((item) => {
+//           const valor = item[filtroActual.value.campoDatos]
 
-//     if (tipoLista.value === TIPOS_FILTRO.TODOS) {
-//       response = await useMantenimiento.obtenerMantenimientos()
-//     } else if (filtroActual.value.esFiltroTexto) {
-//       // console.log(`Filtrando por: ${tipoLista.value}, valor: ${valorFiltroTexto.value}`);
+//           return String(valor).toLowerCase().includes(String(valorFiltroTexto.value).toLowerCase())
+//         })
+//       }
+//       // ORDENAMIENTOS
+//       else if (tipoLista.value !== TIPOS_FILTRO.TODOS) {
+//         const campo = filtroActual.value.campoOrden
 
-//       response = await useMantenimiento.obtenerMantenimientosFiltrados(
-//         tipoLista.value,
-//         valorFiltroTexto.value,
-//       )
-//     } else {
-//       response = await useMantenimiento.obtenerMantenimientosOrdenados(
-//         filtroActual.value.campoOrden,
-//         ordenActual.value,
-//       )
+//         response.sort((a, b) => {
+//           const valorA = parseFloat(a[campo]) || 0
+//           const valorB = parseFloat(b[campo]) || 0
+//           return ordenActual.value === 'desc' ? valorB - valorA : valorA - valorB
+//         })
+//       }
 //     }
 //     if (Array.isArray(response)) {
-//       mantenimientos.value = response.map((item) => {
+//       combustibles.value = response.map((item) => {
 //         const result = {
-//           consecutivo: item['consecutivo'] || '',
-//           placa: item['placa'] || '',
+//           consecutivo: item.consecutivo || '',
+//           placa: item.placa || '',
+//           valor_pagado: item.valor_pagado || 0,
 //         }
-
 //         const campoDatos = filtroActual.value?.campoDatos
 //         if (campoDatos && item[campoDatos] !== undefined) {
 //           result.valorFiltro = item[campoDatos]
 //         }
-
+//         if (tipoLista.value === TIPOS_FILTRO.MES) {
+//           result.valorFiltro = item.valor_pagado
+//         }
 //         return result
 //       })
 //     } else {
 //       console.error('Error en formato de respuesta:', response)
-//       mantenimientos.value = []
+//       combustibles.value = []
 //     }
 //   } catch (error) {
-//     console.error(`Error al cargar mantenimientos por ${tipoLista.value}:`, error)
-//     mantenimientos.value = []
+//     console.error(`Error al cargar combustibles por ${tipoLista.value}:`, error)
+//     combustibles.value = []
 //   }
 // }
-function formatearValMantenimiento(val) {
-  valmantenimientoFormatted.value = formatearNumero(val)
 
-  // guardar número real en tu formulario
-  formulario.value.valor_mantenimiento = Number(
-    valmantenimientoFormatted.value.replace(/\./g, ''),
-  )
-}
-
-function formatearOdometro(val) {
-  odometroFormatted.value = formatearNumero(val)
-
-  // guardar número real en tu formulario
-  formulario.value.odometro = Number(
-    odometroFormatted.value.replace(/\./g, ''),
-  )
-}
-
-function formatearNumero(valor) {
-  if (!valor) return ''
-
-  // quitar todo lo que no sea número
-  const limpio = valor.toString().replace(/\D/g, '')
-
-  // formatear con puntos
-  return new Intl.NumberFormat('es-CO').format(limpio)
-}
-
-async function cargarMantenimientos() {
+async function cargarCombustibles() {
   try {
     let response = []
-    // ADMINISTRADOR
+    let hayMasData = false
+
     if (perfilUsuario.value === 'administrador') {
       if (tipoLista.value === TIPOS_FILTRO.TODOS) {
-        response = await useMantenimiento.obtenerMantenimientos()
+        const res = await useCombustible.obtenerCombustible(paginaActual.value)
+        response = res.datos
+        hayMasData = res.hayMas
       } else if (filtroActual.value.esFiltroTexto) {
-        response = await useMantenimiento.obtenerMantenimientosFiltrados(
+        response = await useCombustible.obtenerCombustiblesFiltrados(
           filtroActual.value.campoDatos,
           valorFiltroTexto.value,
         )
       } else {
-        response = await useMantenimiento.obtenerMantenimientosOrdenados(
+        response = await useCombustible.obtenerCombustiblesOrdenados(
           filtroActual.value.campoOrden,
           ordenActual.value,
         )
       }
-    }
-    // PROPIETARIO Y CONDUCTOR
-    else {
+    } else {
       const placasUsuario = useUsuario.user?.placa_asignada?.split(',').map((p) => p.trim()) || []
-      let todosLosMantenimientos = []
+      let todosLosCombustibles = []
       for (const placa of placasUsuario) {
-        const data = await useMantenimiento.obtenerResumenPorPlaca(placa)
+        const data = await useCombustible.obtenerResumenPorPlaca(placa)
         const lista = data?.resumen?.total?.consecutivos || []
-        todosLosMantenimientos.push(...lista)
+        todosLosCombustibles.push(...lista)
       }
-      response = todosLosMantenimientos
-      // FILTROS TEXTO
+      response = todosLosCombustibles
       if (filtroActual.value?.esFiltroTexto) {
         response = response.filter((item) => {
           const valor = item[filtroActual.value.campoDatos]
-
           return String(valor).toLowerCase().includes(String(valorFiltroTexto.value).toLowerCase())
         })
-      }
-      // ORDENAMIENTOS
-      else if (tipoLista.value !== TIPOS_FILTRO.TODOS) {
+      } else if (tipoLista.value !== TIPOS_FILTRO.TODOS) {
         const campo = filtroActual.value.campoOrden
-
         response.sort((a, b) => {
           const valorA = parseFloat(a[campo]) || 0
           const valorB = parseFloat(b[campo]) || 0
@@ -707,8 +810,11 @@ async function cargarMantenimientos() {
         })
       }
     }
+
+    hayMas.value = hayMasData
+
     if (Array.isArray(response)) {
-      mantenimientos.value = response.map((item) => {
+      const nuevos = response.map((item) => {
         const result = {
           consecutivo: item.consecutivo || '',
           placa: item.placa || '',
@@ -723,27 +829,57 @@ async function cargarMantenimientos() {
         }
         return result
       })
+
+      if (paginaActual.value === 1) {
+        combustibles.value = nuevos
+      } else {
+        combustibles.value = [...combustibles.value, ...nuevos]
+      }
     } else {
-      console.error('Error en formato de respuesta:', response)
-      mantenimientos.value = []
+      combustibles.value = []
     }
   } catch (error) {
-    console.error(`Error al cargar mantenimientos por ${tipoLista.value}:`, error)
-    mantenimientos.value = []
+    console.error(`Error al cargar combustibles por ${tipoLista.value}:`, error)
+    combustibles.value = []
   }
 }
 
 onMounted(async () => {
+  await cargarCombustibles()
   await cargarPlacas()
-
-  // Actualizar opciones dinámicas del filtro PLACA
-  CONFIG_FILTROS[TIPOS_FILTRO.PLACA].opcionesFiltro = placasOptions.value.map((placa) => ({
-    valor: placa,
-    etiqueta: placa,
-  }))
-
-  cargarMantenimientos()
 })
+
+const cambiarEstado = async () => {
+  try {
+    if (detallesCombustible.value.estado_factura === 'pendiente') {
+      if (!numeroFactura.value) {
+        $q.notify({
+          type: 'warning',
+          message: 'Debes ingresar número de factura',
+        })
+        return
+      }
+
+      await useCombustible.putLegalizarCombustible(detallesCombustible.value.consecutivo, {
+        numero_factura: numeroFactura.value,
+      })
+
+      detallesCombustible.value.estado_factura = 'legalizado'
+
+      $q.notify({
+        type: 'positive',
+        message: 'Combustible legalizado correctamente',
+      })
+    }
+  } catch (error) {
+    console.error('Error:', error)
+
+    $q.notify({
+      type: 'negative',
+      message: error.response?.data?.mensaje || 'Error al legalizar',
+    })
+  }
+}
 
 function manejarSeleccionArchivos(files) {
   if (files) {
@@ -780,8 +916,7 @@ function eliminarArchivo(index) {
 function resetearFormulario() {
   formulario.value = { ...estadoInicial }
   accion.value = 1
-  valmantenimientoFormatted.value = ''
-  odometroFormatted.value = ''
+  valorpagadoFormatted.value = ''
 }
 
 function mostrarMensajeError(mensaje) {
@@ -801,6 +936,6 @@ function mostrarMensajeError(mensaje) {
 // }
 
 defineOptions({
-  name: 'MantenimientoPage',
+  name: 'CombustiblePage',
 })
 </script>

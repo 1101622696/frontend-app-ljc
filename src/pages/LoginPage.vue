@@ -11,7 +11,10 @@
           <div class="inputbox password-box">
             <input :type="passwordFieldType" required v-model="passwordLogin" />
             <label for="">Contraseña</label>
-            <i :class="['eye-icon', passwordVisible ? 'fas fa-eye-slash' : 'fas fa-eye']" @click="togglePasswordVisibility"></i>
+            <i
+              :class="['eye-icon', passwordVisible ? 'fas fa-eye-slash' : 'fas fa-eye']"
+              @click="togglePasswordVisibility"
+            ></i>
           </div>
           <button type="submit">Iniciar</button>
           <div class="register"></div>
@@ -28,121 +31,159 @@
         </div>
         <button type="submit" @click="recuperar()">Recuperar contraseña</button>
       </div>
+
+      <!-- Paso 2: verificar código -->
+      <div class="recuperarcontrasena" v-if="vifVerificarCodigo">
+        <div class="divbtx">
+          <button type="button" class="btx" @click="cerrar()">X</button>
+        </div>
+        <div class="inputbox">
+          <input type="text" required v-model="codigoIngresado" />
+          <label>Código recibido</label>
+        </div>
+        <button type="button" @click="verificarCodigo()">Verificar código</button>
+      </div>
+
+      <!-- Paso 3: nueva contraseña -->
+      <div class="recuperarcontrasena" v-if="vifNuevaPassword">
+        <div class="divbtx">
+          <button type="button" class="btx" @click="cerrar()">X</button>
+        </div>
+        <div class="inputbox">
+          <input type="password" required v-model="nuevaPassword" />
+          <label>Nueva contraseña</label>
+        </div>
+        <div class="inputbox">
+          <input type="password" required v-model="confirmarPassword" />
+          <label>Confirmar contraseña</label>
+        </div>
+        <button type="button" @click="cambiarPassword()">Cambiar contraseña</button>
+      </div>
     </div>
   </div>
 </template>
 
-
 <script setup>
+import { ref, computed } from 'vue'
+import { useStoreUsuarios } from '../stores/usuarios'
+import { useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
 
+const router = useRouter()
+const UseUsuario = useStoreUsuarios()
+const email = ref('')
+const passwordLogin = ref('')
+const passwordVisible = ref(false)
+const $q = useQuasar()
+const vifRecontrasena = ref(false)
+const emailrecuperador = ref('')
 
-import { ref, computed } from 'vue';
-import { useStoreUsuarios } from '../stores/usuarios';
-import { useRouter } from 'vue-router';
-import { useQuasar } from 'quasar';
-import axios from 'axios';
+// Paso 2: verificar código
+const vifVerificarCodigo = ref(false)
+const codigoIngresado = ref('')
 
-const router = useRouter();
-const UseUsuario = useStoreUsuarios();
-const email = ref('');
-const passwordLogin = ref('');
-const passwordVisible = ref(false);
-const $q = useQuasar();
-const vifRecontrasena = ref(false);
-const emailrecuperador = ref('');
+// Paso 3: nueva contraseña
+const vifNuevaPassword = ref(false)
+const nuevaPassword = ref('')
+const confirmarPassword = ref('')
 
-const passwordFieldType = computed(() => (passwordVisible.value ? 'text' : 'password'));
-
+const passwordFieldType = computed(() => (passwordVisible.value ? 'text' : 'password'))
 const togglePasswordVisibility = () => {
-  passwordVisible.value = !passwordVisible.value;
-};
-
-const mostrarMensajeError = (mensaje) => {
-  $q.notify({
-    type: 'negative',
-    message: mensaje,
-    position: 'bottom-right',
-  });
-};
-
-const mostrarMensajeExito = (mensaje) => {
-  $q.notify({
-    type: 'positive',
-    message: mensaje,
-    position: 'bottom-right',
-  });
-};
-
-const iniciar = async () => {
-  try {
-    if (email.value === '' || passwordLogin.value === '') {
-      mostrarMensajeError('El correo electrónico y la contraseña son obligatorios');
-      return;
-    }
-
-    // Usar el método login del store y no manipular localStorage directamente
-    const res = await UseUsuario.login(email.value, passwordLogin.value);
-    
-    // El token ya se guarda en el store, así que solo verificamos si la operación fue exitosa
-       
-    if (res && res.status === 200) {
-      router.push('/IndexPage');
-    } else {
-      mostrarMensajeError('Correo electrónico o contraseña incorrectos');
-    }
-  } catch (error) {
-    if (error.response && error.response.data) {
-      mostrarMensajeError(error.response.data.msg);
-    } else {
-      // mostrarMensajeError('Ha ocurrido un error en el servidor');
-      console.log(error);
-    }
-  }
-};
-
-function activador() {
-  vifRecontrasena.value = true;
+  passwordVisible.value = !passwordVisible.value
 }
 
+function mostrarMensajeError(mensaje) {
+  $q.notify({ type: 'negative', message: mensaje, position: 'bottom-right' })
+}
+function mostrarMensajeExito(mensaje) {
+  $q.notify({ type: 'positive', message: mensaje, position: 'bottom-right' })
+}
+
+const iniciar = async () => {
+  if (email.value === '' || passwordLogin.value === '') {
+    mostrarMensajeError('El correo y la contraseña son obligatorios')
+    return
+  }
+  try {
+    const res = await UseUsuario.login(email.value, passwordLogin.value)
+    if (res && res.status === 200) {
+      router.push('/IndexPage')
+    } else {
+      mostrarMensajeError('Correo o contraseña incorrectos')
+    }
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+function activador() {
+  vifRecontrasena.value = true
+}
 function cerrar() {
-  vifRecontrasena.value = false;
+  vifRecontrasena.value = false
+  vifVerificarCodigo.value = false
+  vifNuevaPassword.value = false
+  emailrecuperador.value = ''
+  codigoIngresado.value = ''
+  nuevaPassword.value = ''
+  confirmarPassword.value = ''
 }
 
 async function recuperar() {
-  try {
-    if (emailrecuperador.value === '') {
-      mostrarMensajeError('Ingrese correo electrónico');
-      return;
-    }
-
-    const res = await axios.post('api/usuarios/recuperar-password', { email: emailrecuperador.value });
-
-    if (res.status === 200) {
-      mostrarMensajeExito('Correo de recuperación enviado');
-      vifRecontrasena.value = false;
-    } else {
-      mostrarMensajeError('Correo no encontrado en ningún usuario');
-    }
-  } catch (error) {
-    mostrarMensajeError('Ha ocurrido un error en el servidor');
-    console.log(error);
+  if (!emailrecuperador.value) {
+    mostrarMensajeError('Ingrese correo electrónico')
+    return
+  }
+  const res = await UseUsuario.solicitarRecuperacion(emailrecuperador.value)
+  if (res?.status === 200) {
+    mostrarMensajeExito('Código enviado al correo')
+    vifRecontrasena.value = false
+    vifVerificarCodigo.value = true
   }
 }
 
-defineOptions({
-  name: 'LoginPage'
-})
+async function verificarCodigo() {
+  if (!codigoIngresado.value) {
+    mostrarMensajeError('Ingrese el código')
+    return
+  }
+  const res = await UseUsuario.verificarCodigo(emailrecuperador.value, codigoIngresado.value)
+  if (res?.status === 200) {
+    mostrarMensajeExito('Código correcto')
+    vifVerificarCodigo.value = false
+    vifNuevaPassword.value = true
+  }
+}
 
+async function cambiarPassword() {
+  if (!nuevaPassword.value || !confirmarPassword.value) {
+    mostrarMensajeError('Complete los campos')
+    return
+  }
+  if (nuevaPassword.value !== confirmarPassword.value) {
+    mostrarMensajeError('Las contraseñas no coinciden')
+    return
+  }
+  const res = await UseUsuario.cambiarPassword(
+    emailrecuperador.value,
+    codigoIngresado.value,
+    nuevaPassword.value,
+  )
+  if (res?.status === 200) {
+    mostrarMensajeExito('Contraseña actualizada correctamente')
+    cerrar()
+  }
+}
 
+defineOptions({ name: 'LoginPage' })
 </script>
-
 
 <style scoped>
 .todo {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: "Poppins", sans-serif;
+  font-family: 'Poppins', sans-serif;
 }
 
 .password-box {
@@ -174,7 +215,8 @@ defineOptions({
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: url("https://i.postimg.cc/L8Z31yrP/DISE-OS-LOGOS-DRON-19.png") no-repeat center;
+  background: url('https://i.postimg.cc/jqP7ssKC/Whats-App-Image-2026-04-18-at-8-53-59-PM.png')
+    no-repeat center;
   background-size: cover;
 }
 
@@ -320,4 +362,3 @@ button:hover {
   justify-content: right;
 }
 </style>
-

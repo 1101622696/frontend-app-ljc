@@ -1,7 +1,7 @@
 {
-  "name": "sva",
+  "name": "ljc",
   "version": "0.0.1",
-  "description": "SVA APP",
+  "description": "LJC APP",
   "author": "(Diego Cardenas <cardenasdiegom6@gmail.com>)",
   "private": true,
   "dependencies": {

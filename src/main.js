@@ -8,8 +8,8 @@ import axios from "axios";
 import '@quasar/extras/material-icons/material-icons.css'
 import Swal from 'sweetalert2';
 
-// axios.defaults.baseURL = "http://localhost:4000/";
-axios.defaults.baseURL = "https://backend-dji.onrender.com";
+axios.defaults.baseURL = "http://localhost:4000/";
+// axios.defaults.baseURL = "https://backend-dji.onrender.com";
 
 let requestsPending = 0;
 

@@ -1,72 +1,114 @@
 export const linksList = [
-    // {
-    //   title: 'Docs',
-    //   caption: 'quasar.dev',
-    //   icon: 'las la-graduation-cap',
-    //   link: 'https://quasar.dev',
-    //   perfiles: ['jefepiloto']
-    // },
+  // {
+  //   title: 'Docs',
+  //   caption: 'quasar.dev',
+  //   icon: 'las la-graduation-cap',
+  //   link: 'https://quasar.dev',
+  //   perfiles: ['jefepiloto']
+  // },
+  {
+    title: 'Home',
+    caption: 'Dashboard',
+    icon: 'las la-home',
+    link: 'HomePage',
+    perfiles: ['administrador', 'propietario', 'conductor'],
+  },
+  {
+    title: 'Vehiculos',
+    caption: 'Vehiculos',
+    icon: 'las la-truck-moving',
+    link: 'VehiculosPage',
+    perfiles: ['administrador', 'propietario', 'conductor'],
+  },
+  {
+    title: 'GPS',
+    caption: 'Prueba gps',
+    icon: 'las la-map-marked-alt',
+    link: 'gpsPage',
+    perfiles: ['administrador', 'propietario', 'conductor'],
+  },
+  {
+    title: 'Viajes',
+    caption: 'Viajes',
+    icon: 'las la-route',
+    link: 'ViajesPage',
+    perfiles: ['administrador', 'propietario', 'conductor'],
+  },
+  {
+    title: 'Preoperacional',
+    caption: 'Preoperacionales',
+    icon: 'las la-school',
+    link: 'PreoperacionalesPage',
+    perfiles: ['administrador', 'propietario', 'conductor'],
+  },
     {
-      title: 'Home',
-      caption: 'Dashboard',
-      icon: 'las la-home',
-      link: 'HomePage',
-      perfiles: ['jefepiloto','coordinador', 'piloto', 'cliente']
-    },
-      {
-        title: 'Solicitudes',
-        caption: 'crear y ver solicitudes',
-        icon: 'las la-plane-departure',
-        link: 'SolicitudesPage',
-        perfiles: ['jefepiloto','coordinador', 'cliente']
-      },
-      {
-        title: 'Mantenimiento',
-        caption: 'Mantenimientos del dron',
-        icon: 'las la-tools',
-        link: 'MantenimientoPage',
-        perfiles: ['jefepiloto']
-      },
-      {
-        title: 'Pilotos',
-        caption: 'Crear y ver pilotos',
-        icon: 'las la-user-tie',
-        link: 'PilotosPage',
-        perfiles: ['jefepiloto']
-      },
-      {
-        title: 'Drones',
-        caption: 'Crear y ver Drones',
-        icon: 'las la-fighter-jet',
-        link: 'DronesPage',
-        perfiles: ['jefepiloto']
-      },
-      {
-        title: 'Looker',
-        caption: 'Looker',
-        icon: 'las la-chart-bar',
-        link: 'LookerPage',
-        perfiles: ['jefepiloto', 'cliente']
-      },
-      {
-        title: 'Bitacora',
-        caption: 'Bitacora',
-        icon: 'lab la-wpforms',
-        link: 'BitacoraPage',
-        perfiles: ['jefepiloto','coordinador', 'piloto', 'cliente']
-      },
-      {
-        title: 'Usuarios',
-        caption: 'Usuarios',
-        icon: 'las la-user-tie',
-        link: 'UsuariosPage',
-        perfiles: ['jefepiloto']
-      },
-      {
-        title: 'GPS',
-        caption: 'Prueba gps',
-        icon: 'las la-map-marked-alt',
-        link: 'gpsPage',
-        perfiles: ['jefepiloto']
-      },  
-  ]
+    title: 'Gastos',
+    caption: 'Gastos',
+    icon: 'las la-chart-line',
+    link: 'GastosPage',
+    perfiles: ['administrador', 'propietario'],
+  },
+    {
+    title: 'Combustible',
+    caption: 'Crear y ver combustible',
+    icon: 'las la-gas-pump',
+    link: 'CombustiblePage',
+    perfiles: ['administrador', 'propietario', 'conductor'],
+  },
+    {
+    title: 'Clientes',
+    caption: 'Crear y ver clientes',
+    icon: 'las la-user-tie',
+    link: 'ClientesPage',
+    perfiles: ['administrador', 'propietario'],
+  },
+    {
+    title: 'Solicitudes',
+    caption: 'crear y ver solicitudes',
+    icon: 'las la-suitcase-rolling',
+    link: 'SolicitudesPage',
+    perfiles: ['administrador', 'propietario', 'conductor'],
+  },
+  {
+    title: 'Mantenimiento',
+    caption: 'Mantenimientos de vehículos',
+    icon: 'las la-tools',
+    link: 'MantenimientoPage',
+    perfiles: ['administrador', 'propietario'],
+  },
+    {
+    title: 'Usuarios',
+    caption: 'Usuarios',
+    icon: 'las la-user-tie',
+    link: 'UsuariosPage',
+    perfiles: ['administrador', 'propietario', 'conductor'],
+  },
+    {
+    title: 'Prestamos',
+    caption: 'Prestamos',
+    icon: 'las la-hand-holding-usd',
+    link: 'PrestamosPage',
+    perfiles: ['administrador', 'propietario', 'conductor'],
+  },    
+  {
+    title: 'ResumenVehiculos',
+    caption: 'ResumenVehiculos',
+    icon: 'las la-truck-moving',
+    link: 'ResumenVehiculosPage',
+    perfiles: ['administrador', 'propietario'],
+  },
+  {
+    title: 'Nomina',
+    caption: 'Nomina',
+    icon: 'las la-hand-holding-usd',
+    link: 'NominaPage',
+    perfiles: ['administrador', 'propietario', 'conductor'],
+  },
+  {
+    title: 'Satrack',
+    caption: 'Satrack',
+    icon: 'las la-map-marked-alt',
+    link: 'SatrackPage',
+    perfiles: ['administrador', 'propietario'],
+  },
+]
