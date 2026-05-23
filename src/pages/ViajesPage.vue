@@ -552,6 +552,26 @@
             />
 
             <CampoGasto
+              label="Descargue conductor"
+              :valorInicial="formularioPropietario.descargue_conductor"
+              :tipoFacturaInicial="formularioPropietario.tipo_factura_descargue_conductor"
+              @update:valor="(v) => (formularioPropietario.descargue_conductor = v)"
+              @update:tipoFactura="(v) => (formularioPropietario.tipo_factura_descargue_conductor = v)"
+              @update:archivo="(v) => (formularioPropietario.descargue_conductor_archivos = v)"
+              :dense="dense"
+            />
+
+            <CampoGasto
+              label="Comisión conductor"
+              :valorInicial="formularioPropietario.comision_conductor"
+              :tipoFacturaInicial="formularioPropietario.tipo_factura_comision_conductor"
+              @update:valor="(v) => (formularioPropietario.comision_conductor = v)"
+              @update:tipoFactura="(v) => (formularioPropietario.tipo_factura_comision_conductor = v)"
+              @update:archivo="(v) => (formularioPropietario.comision_conductor_archivos = v)"
+              :dense="dense"
+            />
+
+            <CampoGasto
               label="Otro conductor"
               :valorInicial="formularioPropietario.otro_conductor"
               :tipoFacturaInicial="formularioPropietario.tipo_factura_otro_conductor"
@@ -829,11 +849,6 @@ async function cargarMas() {
   paginaActual.value++
   await cargarViajes()
 }
-
-// const dialogVisor = ref(false)
-// const visorTitulo = ref('')
-// const archivosVisor = ref([])
-// const cargandoVisor = ref(false)
 
 const tipoLista = ref(TIPOS_FILTRO.TODOS)
 const ordenActual = ref('desc')
@@ -1134,120 +1149,6 @@ const conteoEstados = computed(() => {
   })
   return conteo
 })
-
-// async function cargarViajes() {
-//   try {
-//     // Siempre cargar todos para el conteo
-//     const resTotal = await useViaje.obtenerResumenporPlaca()
-//     todosLosViajes.value = resTotal?.resumen?.total?.viajes || []
-
-//     let response
-
-//     if (tipoLista.value === 'todos') {
-//       response = todosLosViajes.value
-//     } else if (filtroActual.value.esFiltroTexto) {
-//       response = await useViaje.obtenerViajesFiltrados(tipoLista.value, valorFiltroTexto.value)
-//     } else {
-//       response = await useViaje.obtenerViajesOrdenados(
-//         filtroActual.value.campoOrden,
-//         ordenActual.value
-//       )
-//     }
-
-//     viajes.value = Array.isArray(response) ? response.map(item => ({
-//       consecutivo: item.consecutivo || '',
-//       placa: item.placa || '',
-//       cliente: item.cliente || '',
-//       destino: item.destino || '',
-//       fecha_inicio: item.fecha_inicio || '',
-//       estado_viaje: item.estado_viaje || '',
-//       valorFiltro: filtroActual.value.campoDatos ? item[filtroActual.value.campoDatos] : undefined
-//     })) : []
-
-//   } catch (e) {
-//     console.error(e)
-//     viajes.value = []
-//   }
-// }
-
-// async function cargarViajes() {
-//   try {
-//     let response = []
-//     // ADMINISTRADOR
-//     if (perfilUsuario.value === 'administrador') {
-//       // if (tipoLista.value === TIPOS_FILTRO.TODOS) {
-//       //   response = await useViaje.obtenerViajes()
-//       // }
-//       if (tipoLista.value === TIPOS_FILTRO.TODOS) {
-//         const res = await useViaje.obtenerViajes(paginaActual.value)
-//         response = res.datos
-//         hayMas.value = res.hayMas
-//       } else if (filtroActual.value.esFiltroTexto) {
-//         response = await useViaje.obtenerViajesFiltrados(
-//           filtroActual.value.campoDatos,
-//           valorFiltroTexto.value,
-//         )
-//       } else {
-//         response = await useViaje.obtenerViajesOrdenados(
-//           filtroActual.value.campoOrden,
-//           ordenActual.value,
-//         )
-//       }
-//     }
-//     // PROPIETARIO Y CONDUCTOR
-//     else {
-//       const placasUsuario = useUsuario.user?.placa_asignada?.split(',').map((p) => p.trim()) || []
-//       let todosLosViajes = []
-//       for (const placa of placasUsuario) {
-//         const data = await useViaje.obtenerResumenPorPlaca(placa)
-//         const lista = data?.resumen?.total?.consecutivos || []
-//         todosLosViajes.push(...lista)
-//       }
-//       response = todosLosViajes
-//       // FILTROS TEXTO
-//       if (filtroActual.value?.esFiltroTexto) {
-//         response = response.filter((item) => {
-//           const valor = item[filtroActual.value.campoDatos]
-
-//           return String(valor).toLowerCase().includes(String(valorFiltroTexto.value).toLowerCase())
-//         })
-//       }
-//       // ORDENAMIENTOS
-//       else if (tipoLista.value !== TIPOS_FILTRO.TODOS) {
-//         const campo = filtroActual.value.campoOrden
-
-//         response.sort((a, b) => {
-//           const valorA = parseFloat(a[campo]) || 0
-//           const valorB = parseFloat(b[campo]) || 0
-//           return ordenActual.value === 'desc' ? valorB - valorA : valorA - valorB
-//         })
-//       }
-//     }
-//     if (Array.isArray(response)) {
-//       viajes.value = response.map((item) => {
-//         const result = {
-//           consecutivo: item.consecutivo || '',
-//           placa: item.placa || '',
-//           cliente: item.cliente || '',
-//           destino: item.destino || '',
-//           fecha_inicio: item.fecha_inicio || '',
-//           estado_viaje: item.estado_viaje || '',
-//         }
-//         const campoDatos = filtroActual.value?.campoDatos
-//         if (campoDatos && item[campoDatos] !== undefined) {
-//           result.valorFiltro = item[campoDatos]
-//         }
-//         return result
-//       })
-//     } else {
-//       console.error('Error en formato de respuesta:', response)
-//       viajes.value = []
-//     }
-//   } catch (error) {
-//     console.error(`Error al cargar viajes por ${tipoLista.value}:`, error)
-//     viajes.value = []
-//   }
-// }
 
 async function cargarViajes() {
   try {

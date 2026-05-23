@@ -232,7 +232,7 @@
               />
             </div>
 
-       <!-- lo comentaré porque el preoperacional es de una sola vez, pero si se necesita, en el backend ya está el codigo para editarlo -->
+            <!-- lo comentaré porque el preoperacional es de una sola vez, pero si se necesita, en el backend ya está el codigo para editarlo -->
             <!-- <q-card-actions align="right">
               <q-btn class="option-button" @click="editar(detallesPreoperacional)"> ✏️ </q-btn>
             </q-card-actions> -->
@@ -341,6 +341,54 @@
                       ['fugas_visibles', 'Fugas visibles'],
                       ['correas', 'Correas en buen estado'],
                       ['filtro_aire', 'Filtro de aire'],
+                    ]"
+                    :key="campo[0]"
+                  >
+                    <CampoPreoperacional v-model="formulario[campo[0]]" :label="campo[1]" />
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
+
+            <!-- DIRECCIÓN -->
+            <q-card flat bordered class="rounded-borders q-mb-lg shadow-1">
+              <q-card-section>
+                <div class="text-subtitle1 text-primary text-weight-bold q-mb-md">
+                  🛠️ Dirección y Transmisión
+                </div>
+
+                <div class="row q-col-gutter-md">
+                  <div
+                    class="col-12"
+                    v-for="campo in [
+                      ['volante', 'Volante sin juego excesivo'],
+                      ['sin_fugas', 'Sin fugas hidráulicas'],
+                      ['cambios_suave', 'Cambios entran suavemente'],
+                      ['sin_ruidos', 'Sin ruidos anormales en diferencial'],
+                    ]"
+                    :key="campo[0]"
+                  >
+                    <CampoPreoperacional v-model="formulario[campo[0]]" :label="campo[1]" />
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
+
+            <!-- ACOPLE Y QUINTA RUEDA -->
+            <q-card flat bordered class="rounded-borders q-mb-lg shadow-1">
+              <q-card-section>
+                <div class="text-subtitle1 text-primary text-weight-bold q-mb-md">
+                  🛞Acople y quinta ruida
+                </div>
+
+                <div class="row q-col-gutter-md">
+                  <div
+                    class="col-12"
+                    v-for="campo in [
+                      ['quinta_rueda', 'Quinta rueda lubricada'],
+                      ['pasador_rey', 'Pasador rey correctamente asegurado'],
+                      ['mangueras_aire', 'Mangueras aire y cable eléctrico en buen estado'],
+                      ['seguro_acople', 'Seguro del acople verificado'],
                     ]"
                     :key="campo[0]"
                   >
@@ -658,7 +706,7 @@ async function guardar() {
         formData.append(key, value)
       }
     })
-    
+
     const response = await usePreoperacional.postPreoperacional(formData)
 
     console.log('Respuesta exitosa:', response)
@@ -809,15 +857,24 @@ onMounted(() => {
 
 async function cargarViajesPreoperacionales() {
   try {
+    const placa = useUsuario.user?.placa_asignada || ''
+
     const [responseViajes, responsePreop] = await Promise.all([
-      useViaje.obtenerResumenPorPlaca(),
+      useViaje.obtenerResumenPorPlaca(placa),
       usePreoperacional.obtenerPreoperacionales(),
     ])
+    console.log('responseViajes', responseViajes)
 
     if (!responseViajes?.ok) return
 
-    const viajes = responseViajes.resumen?.total?.viajes || []
+    // const viajes = responseViajes.resumen?.total?.viajes || []
+const viajes = responseViajes?.total?.consecutivos || []
 
+console.log(responseViajes)
+
+viajes.forEach((v) => {
+      console.log(v.consecutivo, v.estado_preoperacional)
+    })
     // Códigos de viaje que ya tienen preoperacional
     const viajesConPreop = new Set(
       Array.isArray(responsePreop) ? responsePreop.map((p) => p.codigo_viaje) : [],
@@ -826,17 +883,18 @@ async function cargarViajesPreoperacionales() {
     const placasUsuario =
       useUsuario.user?.placa_asignada?.split(',').map((p) => p.trim().toUpperCase()) || []
 
-    viajeOptions.value = viajes
-      .filter((v) => {
-        const placaViaje = v.placa?.toUpperCase()
-        const esPreoperacional = v.estado_preoperacional === 'se debe'
-        const sinPreop = !viajesConPreop.has(v.consecutivo) // ← excluir los que ya tienen
+viajeOptions.value = (responseViajes?.resumen?.total?.consecutivos || [])
+  .filter((v) => {
+    const placaViaje = v.placa?.toUpperCase()
+    const esPreoperacional = v.estado_preoperacional === 'se debe'
+    const sinPreop = !viajesConPreop.has(v.consecutivo)
 
-        if (perfilUsuario.value === 'administrador') {
-          return esPreoperacional && sinPreop
-        }
-        return esPreoperacional && sinPreop && placasUsuario.includes(placaViaje)
-      })
+    if (perfilUsuario.value === 'administrador') {
+      return esPreoperacional && sinPreop
+    }
+
+    return esPreoperacional && sinPreop && placasUsuario.includes(placaViaje)
+  })
       .map((v) => ({
         label: `${v.consecutivo} — ${v.placa} — ${v.destino}`,
         value: v.consecutivo,

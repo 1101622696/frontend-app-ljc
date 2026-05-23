@@ -184,9 +184,10 @@
                 <q-input
                   outlined
                   rounded
-                  v-model.trim="formulario.valor_gasto"
+                  v-model="valorgastoFormatted"
                   label="Valor del gasto"
                   :dense="dense"
+                  @update:model-value="formatearValorGasto"
                 />
               </div>
 
@@ -253,6 +254,19 @@ const valorFiltroTexto = ref(null)
 const detallesGasto = ref(null)
 const mostrarDetalles = ref(false)
 
+const valorgastoFormatted = ref('')
+
+function formatearValorGasto(val) {
+  valorgastoFormatted.value = formatearNumero(val)
+  formulario.value.valor_gasto = Number(valorgastoFormatted.value.replace(/\./g, ''))
+}
+
+function formatearNumero(valor) {
+  if (!valor) return ''
+  const limpio = valor.toString().replace(/\D/g, '')
+  return new Intl.NumberFormat('es-CO').format(limpio)
+}
+
 const placasOptions = ref([])
 
 function abrir() {
@@ -265,45 +279,6 @@ function cerrar() {
   resetearFormulario()
 }
 
-// async function guardar() {
-//   cargando.value = true
-
-//   if (!validar()) {
-//     cargando.value = false
-//     return
-//   }
-
-//   try {
-//     const formData = new FormData()
-
-//     Object.entries(formulario.value).forEach(([key, value]) => {
-//       if (value !== null && value !== undefined && value !== '') {
-//         formData.append(key, value)
-//       }
-//     })
-
-//     let response
-
-//     if (props.esEdicion) {
-//       response = await useGasto.putGasto(formulario.value.placa, formulario.value)
-//     } else {
-//       response = await useGasto.postGasto(formulario.value)
-//     }
-
-//     console.log('Respuesta exitosa:', response)
-
-//     cerrar()
-//     cargarGastos()
-//     alert.value = false
-//     resetearFormulario()
-//   } catch (error) {
-//     console.error('Error al guardar:', error)
-//     mostrarMensajeError('Error al guardar el gasto')
-//   } finally {
-//     cargando.value = false
-//   }
-// }
-
 async function guardar() {
   cargando.value = true
 
@@ -311,32 +286,17 @@ async function guardar() {
     cargando.value = false
     return
   }
-
   try {
-    const formData = new FormData()
 
-    Object.entries(formulario.value).forEach(([key, value]) => {
-      if (key === 'archivos' && Array.isArray(value)) {
-        value.forEach((file) => {
-          formData.append('archivos', file)
-        })
-      }
-
-      else if (Array.isArray(value)) {
-        formData.append(key, value.join(','))
-      }
-
-      else if (value !== null && value !== undefined && value !== '') {
-        formData.append(key, value)
-      }
-    })
-
+    const dataEnviar = {
+      ...formulario.value,
+    }
     let response
 
     if (accion.value === 2) {
-      response = await useGasto.putGasto(formulario.value.consecutivo, formData)
+      response = await useGasto.putGasto(formulario.value.consecutivo, dataEnviar)
     } else {
-      response = await useGasto.postGasto(formData)
+      response = await useGasto.postGasto(dataEnviar)
     }
 
     console.log('Respuesta exitosa:', response)
@@ -359,6 +319,11 @@ function editar(gasto) {
     ...estadoInicial,
     ...gasto,
   }
+
+  valorgastoFormatted.value = formatearNumero(
+    gasto.valor_gasto || 0
+  )
+
   alert.value = true
 }
 

@@ -176,20 +176,6 @@
                 <div class="col-4 text-weight-bold">Vencimiento Póliza:</div>
                 <div class="col-8">{{ detallesVehiculo.poliza_vencimiento }}</div>
               </div>
-              <!-- <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Adjuntos:</div>
-                <div class="col-8">
-                  <a :href="detallesVehiculo.link" target="_blank"> Ver archivo </a>
-                </div>
-              </div> -->
-              <q-btn
-                outline
-                color="orange"
-                icon="folder"
-                label="Ver archivos"
-                size="sm"
-                @click="abrirVisor(detallesVehiculo.link, 'Documentos')"
-              />
               <div class="row q-mb-md">
                 <div class="col-4 text-weight-bold">Estado:</div>
                 <div class="col-8">{{ detallesVehiculo.estado }}</div>
@@ -202,6 +188,14 @@
                 <div class="col-4 text-weight-bold">Rendimiento de kms por Galón:</div>
                 <div class="col-8">{{ detallesVehiculo.rendimiento_galon }}</div>
               </div>
+              <q-btn
+                outline
+                color="orange"
+                icon="folder"
+                label="Ver archivos"
+                size="sm"
+                @click="abrirVisor(detallesVehiculo.link, 'Documentos')"
+              />
             </div>
 
             <div class="row q-mb-md">
@@ -209,7 +203,7 @@
               <div class="col-8">
                 <q-toggle
                   v-model="isActive"
-                  :color="detallesVehiculo.estado === 'Activo' ? 'grey' : 'primary'"
+                  :color="detallesVehiculo.estado === 'activo' ? 'grey' : 'primary'"
                   @update:model-value="cambiarEstado"
                 />
               </div>
@@ -675,46 +669,6 @@ function cerrar() {
   resetearFormulario()
 }
 
-// async function guardar() {
-//   cargando.value = true
-
-//   if (!validar()) {
-//     cargando.value = false
-//     return
-//   }
-
-//   try {
-//     const formData = new FormData()
-
-//     Object.entries(formulario.value).forEach(([key, value]) => {
-//       if (key === 'archivos') {
-//         value.forEach((file) => formData.append('archivos', file))
-//       } else if (value !== null && value !== undefined && value !== '') {
-//         formData.append(key, value)
-//       }
-//     })
-//     let response
-
-//     if (props.esEdicion) {
-//       response = await useVehiculo.putVehiculo(formulario.value.placa, formData)
-//     } else {
-//       response = await useVehiculo.postVehiculo(formData)
-//     }
-
-//     console.log('Respuesta exitosa:', response)
-
-//     cerrar()
-//     cargarVehiculos()
-//     alert.value = false
-//     resetearFormulario()
-//   } catch (error) {
-//     console.error('Error al guardar:', error)
-//     mostrarMensajeError('Error al guardar el vehículo')
-//   } finally {
-//     cargando.value = false
-//   }
-// }
-
 async function guardar() {
   cargando.value = true
 
@@ -819,13 +773,21 @@ async function verDetalles(placa) {
         numero_chasis: detalle['numero_chasis'] || '',
         fecha_matricula: detalle['fecha_matricula'] || '',
         soat_expedicion: detalle['soat_expedicion'] || '',
+        soat: detalle['soat'] || '',
+        soat_vencimiento: detalle['soat_vencimiento'] || '',
         capacidad_ton: detalle['capacidad_ton'] || '',
         tecnico_expedicion: detalle['tecnico_expedicion'] || '',
         poliza_expedicion: detalle['poliza_expedicion'] || '',
+        poliza_vencimiento: detalle['poliza_vencimiento'] || '',
+        poliza: detalle['poliza'] || '',
+        estado: detalle['estado'] || '',
+        tecnico: detalle['tecnico'] || '',
+        tecnico_vencimiento: detalle['tecnico_vencimiento'] || '',
         archivos: detalle['archivos'] || '',
         fecha_creacion: detalle['fecha_creacion'] || '',
         rendimiento_galon: detalle['rendimiento_galon'] || '',
         link: detalle['link'] || '',
+        viajes: detalle['viajes'] || '',
       }
       mostrarDetalles.value = true
     } else {
@@ -1029,17 +991,17 @@ onMounted(() => {
 })
 
 const isActive = computed({
-  get: () => detallesVehiculo.value && detallesVehiculo.value.estado === 'Activo',
+  get: () => detallesVehiculo.value && detallesVehiculo.value.estado === 'activo',
   set: () => {},
 })
 const cambiarEstado = async () => {
   try {
-    if (detallesVehiculo.value.estado === 'Activo') {
+    if (detallesVehiculo.value.estado === 'activo') {
       await useVehiculo.putDesactivarVehiculo(detallesVehiculo.value.placa)
-      detallesVehiculo.value.estado = 'Inactivo'
+      detallesVehiculo.value.estado = 'inactivo'
     } else {
       await useVehiculo.putActivarVehiculo(detallesVehiculo.value.placa)
-      detallesVehiculo.value.estado = 'Activo'
+      detallesVehiculo.value.estado = 'activo'
     }
   } catch (error) {
     console.error('Error al cambiar estado del vehículo:', error)

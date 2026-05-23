@@ -183,7 +183,7 @@
               <div class="col-8">
                 <q-toggle
                   v-model="isActive"
-                  :color="detallesUsuario.estado === 'Activo' ? 'grey' : 'primary'"
+                  :color="detallesUsuario.estado === 'activo' ? 'grey' : 'primary'"
                   @update:model-value="cambiarEstado"
                 />
               </div>
@@ -406,7 +406,7 @@
                     <div class="text-caption text-grey-7 q-mb-xs">Fecha de expedición</div>
 
                     <q-date
-                      v-model="fecha_expedicion"
+                      v-model="formulario.fecha_expedicion"
                       minimal
                       bordered
                       class="rounded-borders full-width"
@@ -578,10 +578,11 @@
                     <q-input
                       outlined
                       rounded
-                      v-model.trim="formulario.salario_base"
+                      v-model="salariobaseFormatted"
                       label="Salario base"
                       dense
                       prefix="$"
+                      @update:model-value="formatearSalarioBase"
                     />
                   </div>
 
@@ -589,9 +590,11 @@
                     <q-input
                       outlined
                       rounded
-                      v-model.trim="formulario.sso"
+                      v-model="ssoFormatted"
                       label="Seguridad social"
+                      prefix="$"
                       dense
+                      @update:model-value="formatearSSO"
                     />
                   </div>
                 </div>
@@ -608,7 +611,7 @@
               rounded
               color="primary"
               :loading="useUsuario.loading"
-              @click="accion === 1 ? guardar() : editarUsuario()"
+              @click="guardar"
             >
               <q-icon :name="accion === 1 ? 'person_add' : 'edit'" class="q-mr-sm" />
 
@@ -647,12 +650,24 @@ const mesNomina = ref('')
 const calculoNomina = ref(null)
 const cargandoNomina = ref(false)
 
-// const props = defineProps({
-//   datos: {
-//     type: Object,
-//     default: () => ({}),
-//   },
-// })
+const salariobaseFormatted = ref('')
+const ssoFormatted = ref('')
+
+function formatearSalarioBase(val) {
+  salariobaseFormatted.value = formatearNumero(val)
+  formulario.value.salario_base = Number(salariobaseFormatted.value.replace(/\./g, ''))
+}
+
+function formatearSSO(val) {
+  ssoFormatted.value = formatearNumero(val)
+  formulario.value.sso = Number(ssoFormatted.value.replace(/\./g, ''))
+}
+
+function formatearNumero(valor) {
+  if (!valor) return ''
+  const limpio = valor.toString().replace(/\D/g, '')
+  return new Intl.NumberFormat('es-CO').format(limpio)
+}
 
 const estadoInicial = {
   nombre: '',
@@ -760,10 +775,7 @@ async function guardar() {
     let response
 
     if (accion.value === 2) {
-      response = await useUsuario.putUsuario(
-        formulario.value.email,
-        dataEnviar
-      )
+      response = await useUsuario.putUsuarios(formulario.value.email, dataEnviar)
     } else {
       response = await useUsuario.postUsuario(dataEnviar)
     }
@@ -773,11 +785,9 @@ async function guardar() {
     cerrar()
     cargarUsuarios()
     resetearFormulario()
-
   } catch (error) {
     console.error('Error completo:', error)
     mostrarMensajeError('Error al guardar el usuario')
-
   } finally {
     cargando.value = false
   }
@@ -792,10 +802,16 @@ function editar(usuario) {
     ...usuario,
 
     // convertir string -> array
-    placa_asignada: usuario.placa_asignada
-      ? usuario.placa_asignada.split(',')
-      : [],
+    placa_asignada: usuario.placa_asignada ? usuario.placa_asignada.split(',') : [],
   }
+
+    salariobaseFormatted.value = formatearNumero(
+    usuario.salario_base || 0
+  )
+
+    ssoFormatted.value = formatearNumero(
+    usuario.sso || 0
+  )
 
   alert.value = true
 }
@@ -803,14 +819,7 @@ function editar(usuario) {
 function validar() {
   let verificado = true
 
-  const {
-    nombre,
-    password,
-    perfil,
-    email,
-    placa_asignada,
-    documento
-  } = formulario.value
+  const { nombre, password, perfil, email, placa_asignada, documento } = formulario.value
 
   if (!nombre) {
     mostrarMensajeError('Diligencie el nombre')
@@ -893,6 +902,7 @@ async function verDetalles(email) {
         num_cuenta: detalle['num_cuenta'] || '',
         salario_base: detalle['salario_base'] || '',
         sso: detalle['sso'] || '',
+        estado: detalle['estado'] || '',
       }
       mostrarDetalles.value = true
     } else {
@@ -1041,17 +1051,17 @@ onMounted(() => {
 })
 
 const isActive = computed({
-  get: () => detallesUsuario.value && detallesUsuario.value.estado === 'Activo',
+  get: () => detallesUsuario.value && detallesUsuario.value.estado === 'activo',
   set: () => {},
 })
 const cambiarEstado = async () => {
   try {
-    if (detallesUsuario.value.estado === 'Activo') {
+    if (detallesUsuario.value.estado === 'activo') {
       await useUsuario.putInactivarUsuario(detallesUsuario.value.email)
-      detallesUsuario.value.estado = 'Inactivo'
+      detallesUsuario.value.estado = 'inactivo'
     } else {
       await useUsuario.putActivarUsuario(detallesUsuario.value.email)
-      detallesUsuario.value.estado = 'Activo'
+      detallesUsuario.value.estado = 'activo'
     }
   } catch (error) {
     console.error('Error al cambiar estado del usuario:', error)
@@ -1061,6 +1071,8 @@ const cambiarEstado = async () => {
 function resetearFormulario() {
   formulario.value = { ...estadoInicial }
   accion.value = 1
+  salariobaseFormatted.value = ''
+  ssoFormatted.value = ''
 }
 
 async function abrirCalcularNomina() {

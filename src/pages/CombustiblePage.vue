@@ -253,9 +253,10 @@
                 <q-input
                   outlined
                   rounded
-                  v-model.trim="formulario.odometro_actual"
+                  v-model="odometroactualFormatted"
                   label="Odómetro"
                   :dense="dense"
+                  @update:model-value="formatearOdometroActual"
                 />
               </div>
 
@@ -384,11 +385,16 @@ async function cargarMas() {
 }
 
 const valorpagadoFormatted = ref('')
+const odometroactualFormatted = ref('')
 
 function formatearValorpagado(val) {
   valorpagadoFormatted.value = formatearNumero(val)
-
   formulario.value.valor_pagado = Number(valorpagadoFormatted.value.replace(/\./g, ''))
+}
+
+function formatearOdometroActual(val) {
+  odometroactualFormatted.value = formatearNumero(val)
+  formulario.value.odometro_actual = Number(odometroactualFormatted.value.replace(/\./g, ''))
 }
 
 function formatearNumero(valor) {
@@ -549,6 +555,10 @@ function editar(combustible) {
 
     valorpagadoFormatted.value = formatearNumero(
     combustible.valor_pagado || 0
+  )
+
+    odometroactualFormatted.value = formatearNumero(
+    combustible.odometro_actual || 0
   )
 
   alert.value = true
@@ -866,10 +876,10 @@ const cambiarEstado = async () => {
 
       detallesCombustible.value.estado_factura = 'legalizado'
 
-      $q.notify({
-        type: 'positive',
-        message: 'Combustible legalizado correctamente',
-      })
+      // $q.notify({
+      //   type: 'positive',
+      //   message: 'Combustible legalizado correctamente',
+      // })
     }
   } catch (error) {
     console.error('Error:', error)
@@ -917,6 +927,7 @@ function resetearFormulario() {
   formulario.value = { ...estadoInicial }
   accion.value = 1
   valorpagadoFormatted.value = ''
+  odometroactualFormatted.value = ''
 }
 
 function mostrarMensajeError(mensaje) {

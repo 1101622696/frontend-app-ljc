@@ -11,101 +11,120 @@ export const useStoreVehiculos = defineStore(
     let vehiculos = ref([])
     // const useUsuario = useStoreUsuarios()
 
-const obtenerVehiculos = async () => {
+    const obtenerVehiculos = async () => {
       const useUsuario = useStoreUsuarios()
-  loading.value = true
-  try {
-    let response = await axios.get(`api/vehiculos/`, {
-      headers: {
-        // "x-token": localStorage.getItem('x-token')
-        'x-token': useUsuario.token,
-      },
-    })
-    console.log('Respuesta vehiculo:', response.data)
-    return response.data 
-  } catch (error) {
-    console.error('No se pudo obtener el vehiculo', error)
-    return { resumen: null }
-  } finally {
-    loading.value = false
-  }
-}
-
-const obtenerResumenPorPlaca = async (placa) => {
-      const useUsuario = useStoreUsuarios()
-  loading.value = true
-  try {
-    let response = await axios.get(`api/vehiculos/resumen-solicitante/placa/${placa}`, {
-      headers: {
-        // "x-token": localStorage.getItem('x-token')
-        'x-token': useUsuario.token,
-      },
-    })
-    console.log('Respuesta resumen por placa:', response.data)
-    return response.data 
-  } catch (error) {
-    console.error('No se pudo obtener el resumen por placa', error)
-    return { resumen: null }
-  } finally {
-    loading.value = false
-  }
-}
-
-const obtenerVehiculosOrdenados = async (tipo = 'fecha', orden = 'desc') => {
-      const useUsuario = useStoreUsuarios()
-   
-  loading.value = true;    
-    try {
-      const response = await axios.get(`api/vehiculos/ordenados`, {
-        params: { tipo, orden },
-        headers: {
-        // "x-token": localStorage.getItem('x-token')
-        'x-token': useUsuario.token,
-        },
-      });
-      
-      return response.data;
-    } catch (err) {
-      console.error(`No se pudo obtener los vehiculos ordenados por ${tipo}:`, err);
-      throw err;
-    } finally {
-      loading.value = false;
+      loading.value = true
+      try {
+        let response = await axios.get(`api/vehiculos/`, {
+          headers: {
+            // "x-token": localStorage.getItem('x-token')
+            'x-token': useUsuario.token,
+          },
+        })
+        console.log('Respuesta vehiculo:', response.data)
+        return response.data
+      } catch (error) {
+        console.error('No se pudo obtener el vehiculo', error)
+        return { resumen: null }
+      } finally {
+        loading.value = false
+      }
     }
-  };
 
-const obtenerVehiculosFiltrados = async (tipo, valor) => {
-    const useUsuario = useStoreUsuarios()
+    const obtenerResumenPorPlaca = async (placa) => {
+      const useUsuario = useStoreUsuarios()
+      loading.value = true
+      try {
+        let response = await axios.get(`api/vehiculos/resumen-solicitante/placa/${placa}`, {
+          headers: {
+            // "x-token": localStorage.getItem('x-token')
+            'x-token': useUsuario.token,
+          },
+        })
+        console.log('Respuesta resumen por placa:', response.data)
+        return response.data
+      } catch (error) {
+        console.error('No se pudo obtener el resumen por placa', error)
+        return { resumen: null }
+      } finally {
+        loading.value = false
+      }
+    }
 
-      loading.value = true;
-  // console.log(`Enviando petición: tipo=${tipo}, valor=${valor}`);
-  
-  try {
-    const response = await axios.get(`api/vehiculos/filtrados`, {
-      params: { tipo, valor },  // Asegúrate de que estos nombres coincidan con el backend
-      headers: {
-        // "x-token": localStorage.getItem('x-token')
-        'x-token': useUsuario.token,
-      },
-    });
-    
-    // console.log("Respuesta del servidor:", response.data);
-    return response.data;
-  } catch (err) {
-    console.error(`No se pudo obtener los vehiculos filtrados por ${tipo}:`, err);
-    console.error("Detalles del error:", err.response?.data || err.message);
-    throw err;
-  } finally {
-    loading.value = false;
-  }
-};
+    const obtenerVehiculosOrdenados = async (tipo = 'fecha', orden = 'desc') => {
+      const useUsuario = useStoreUsuarios()
+
+      loading.value = true
+      try {
+        const response = await axios.get(`api/vehiculos/ordenados`, {
+          params: { tipo, orden },
+          headers: {
+            // "x-token": localStorage.getItem('x-token')
+            'x-token': useUsuario.token,
+          },
+        })
+
+        return response.data
+      } catch (err) {
+        console.error(`No se pudo obtener los vehiculos ordenados por ${tipo}:`, err)
+        throw err
+      } finally {
+        loading.value = false
+      }
+    }
+
+    const obtenerVehiculosFiltrados = async (tipo, valor) => {
+      const useUsuario = useStoreUsuarios()
+
+      loading.value = true
+      // console.log(`Enviando petición: tipo=${tipo}, valor=${valor}`);
+
+      try {
+        const response = await axios.get(`api/vehiculos/filtrados`, {
+          params: { tipo, valor }, // Asegúrate de que estos nombres coincidan con el backend
+          headers: {
+            // "x-token": localStorage.getItem('x-token')
+            'x-token': useUsuario.token,
+          },
+        })
+
+        // console.log("Respuesta del servidor:", response.data);
+        return response.data
+      } catch (err) {
+        console.error(`No se pudo obtener los vehiculos filtrados por ${tipo}:`, err)
+        console.error('Detalles del error:', err.response?.data || err.message)
+        throw err
+      } finally {
+        loading.value = false
+      }
+    }
 
     const obtenerdatodevehiculo = async (placa) => {
-          const useUsuario = useStoreUsuarios()
+      const useUsuario = useStoreUsuarios()
       try {
         let response = await axios.get(`api/vehiculos/obtenerdatosvehiculo/${placa}`, {
           headers: {
-        // "x-token": localStorage.getItem('x-token')
-        'x-token': useUsuario.token,
+            // "x-token": localStorage.getItem('x-token')
+            'x-token': useUsuario.token,
+          },
+        })
+        console.log('Respuesta desde store:', response.data)
+        return response.data
+      } catch (error) {
+        console.error('No se pudo obtener los datos del vehiculo', error)
+        return null
+      } finally {
+        loading.value = false
+      }
+    }
+
+    const obtenerResumenVehiculo = async (placa, anio) => {
+      const useUsuario = useStoreUsuarios()
+      try {
+        let response = await axios.get(`api/resumenvehiculo/resumen-vehiculo/${placa}/${anio}`, {
+          headers: {
+            // "x-token": localStorage.getItem('x-token')
+            'x-token': useUsuario.token,
           },
         })
         console.log('Respuesta desde store:', response.data)
@@ -119,14 +138,14 @@ const obtenerVehiculosFiltrados = async (tipo, valor) => {
     }
 
     const postVehiculo = async (formData) => {
-          const useUsuario = useStoreUsuarios()
+      const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
         console.log('Enviando datos al servidor...')
         const response = await axios.post('api/vehiculos/crear', formData, {
           headers: {
-        // "x-token": localStorage.getItem('x-token')
-        'x-token': useUsuario.token,
+            // "x-token": localStorage.getItem('x-token')
+            'x-token': useUsuario.token,
           },
         })
         console.log('Respuesta recibida:', response)
@@ -150,18 +169,22 @@ const obtenerVehiculosFiltrados = async (tipo, valor) => {
         loading.value = false
       }
     }
-   
-        const postResumenVehiculoMensual = async (formData) => {
-          const useUsuario = useStoreUsuarios()
+
+    const postResumenVehiculoMensual = async (formData) => {
+      const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
         console.log('Enviando datos al servidor...')
-        const response = await axios.post('api/resumenvehiculo/resumen-vehiculo/mensual', formData, {
-          headers: {
-        // "x-token": localStorage.getItem('x-token')
-        'x-token': useUsuario.token,
+        const response = await axios.post(
+          'api/resumenvehiculo/resumen-vehiculo/mensual',
+          formData,
+          {
+            headers: {
+              // "x-token": localStorage.getItem('x-token')
+              'x-token': useUsuario.token,
+            },
           },
-        })
+        )
         console.log('Respuesta recibida:', response)
 
         Notify.create({
@@ -184,15 +207,15 @@ const obtenerVehiculosFiltrados = async (tipo, valor) => {
       }
     }
 
-const postResumenVehiculoAnual = async (formData) => {
-     const useUsuario = useStoreUsuarios()
+    const postResumenVehiculoAnual = async (formData) => {
+      const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
         console.log('Enviando datos al servidor...')
         const response = await axios.post('api/resumenvehiculo/resumen-vehiculo/anual', formData, {
           headers: {
-        // "x-token": localStorage.getItem('x-token')
-        'x-token': useUsuario.token,
+            // "x-token": localStorage.getItem('x-token')
+            'x-token': useUsuario.token,
           },
         })
         console.log('Respuesta recibida:', response)
@@ -218,14 +241,14 @@ const postResumenVehiculoAnual = async (formData) => {
     }
 
     const putVehiculo = async (placa, formData) => {
-        const useUsuario = useStoreUsuarios()
+      const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
         console.log('Enviando datos al servidor...')
         const response = await axios.put(`api/vehiculos/editar/${placa}`, formData, {
           headers: {
-        // "x-token": localStorage.getItem('x-token')
-        'x-token': useUsuario.token,
+            // "x-token": localStorage.getItem('x-token')
+            'x-token': useUsuario.token,
           },
         })
         console.log('Respuesta recibida:', response)
@@ -251,14 +274,14 @@ const postResumenVehiculoAnual = async (formData) => {
     }
 
     const putActivarVehiculo = async (placa, formData) => {
-        const useUsuario = useStoreUsuarios()
+      const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
         console.log('Enviando datos al servidor...')
         const response = await axios.put(`api/vehiculos/activar/${placa}`, formData, {
           headers: {
-        // "x-token": localStorage.getItem('x-token')
-        'x-token': useUsuario.token,
+            // "x-token": localStorage.getItem('x-token')
+            'x-token': useUsuario.token,
           },
         })
         console.log('Respuesta recibida:', response)
@@ -284,14 +307,14 @@ const postResumenVehiculoAnual = async (formData) => {
     }
 
     const putDesactivarVehiculo = async (placa, formData) => {
-         const useUsuario = useStoreUsuarios()
+      const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
         console.log('Enviando datos al servidor...')
         const response = await axios.put(`api/vehiculos/desactivar/${placa}`, formData, {
           headers: {
-        // "x-token": localStorage.getItem('x-token')
-        'x-token': useUsuario.token,
+            // "x-token": localStorage.getItem('x-token')
+            'x-token': useUsuario.token,
           },
         })
         console.log('Respuesta recibida:', response)
@@ -318,6 +341,7 @@ const postResumenVehiculoAnual = async (formData) => {
 
     return {
       obtenerdatodevehiculo,
+      obtenerResumenVehiculo,
       obtenerVehiculos,
       obtenerResumenPorPlaca,
       obtenerVehiculosFiltrados,

@@ -346,28 +346,17 @@ async function guardar() {
   }
 
   try {
-    const formData = new FormData()
-
-    Object.entries(formulario.value).forEach(([key, value]) => {
-      if (key === 'archivos' && Array.isArray(value)) {
-        value.forEach((file) => {
-          formData.append('archivos', file)
-        })
-      } else if (Array.isArray(value)) {
-        formData.append(key, value.join(','))
-      } else if (value !== null && value !== undefined && value !== '') {
-        formData.append(key, value)
-      }
-    })
+    const dataEnviar = {
+      ...formulario.value,
+    }
 
     let response
 
     if (accion.value === 2) {
-      response = await useCliente.putCliente(formulario.value.codigo, formData)
+      response = await useCliente.putCliente(formulario.value.codigo, dataEnviar)
     } else {
-      response = await useCliente.postCliente(formData)
+      response = await useCliente.postCliente(dataEnviar)
     }
-
     console.log('Respuesta exitosa:', response)
 
     cerrar()
