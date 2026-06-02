@@ -20,21 +20,6 @@
       <q-item-label class="q-mt-sm">Cargando datos...</q-item-label>
     </div>
 
-    <!-- <TablaRegistros
-      v-if="registrosActuales.length > 0"
-      :registros="registrosActuales"
-      :perfilUsuario="useUsuario.perfile"
-      @ver-detalles="verDetalle"
-      @editar="handleEditar"
-      @ir-prevuelo="handleIrAPrevuelo"
-      @ir-postvuelo="handleIrAPostvuelo"
-      @guardar-formulario="guardarFormularioHome"
-      @aprobar-directo="handleAprobarDirecto"
-      @denegar-directo="handleDenegarDirecto"
-      @cancelar-directo="handleCancelarDirecto"
-      @enespera-directo="handleEnesperaDirecto"
-    /> -->
-
     <div v-else class="text-center q-pa-md">
       <q-icon name="info" color="grey" size="3em" />
       <p>No hay datos disponibles para mostrar.</p>
@@ -57,26 +42,13 @@
 
 <script setup>
 
-// import { ref, computed, onMounted } from 'vue'
 import { ref } from 'vue'
-// import { useStoreUsuarios } from '../stores/usuarios'
-
-// const useUsuario = useStoreUsuarios()
 
 const cargando = ref(false)
-// const mostrarFormulario = ref(false)
-// const accionFormulario = ref('crear')
+
 const filtroEstadisticaActivo = ref(null)
 const pagina = ref(1)
 const totalPaginas = ref(1)
-
-// const tipoFormulario = ref(null)
-// const datosFormulario = ref(null)
-// const tab = ref(1)
-
-// onMounted(async () => {
-//   await cargarDatos()
-// })
 
 defineOptions({
   name: 'HomePage'

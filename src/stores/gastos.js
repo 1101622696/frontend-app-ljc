@@ -9,7 +9,6 @@ export const useStoreGastos = defineStore(
   () => {
     let loading = ref(false)
     let gastos = ref([])
-    // const useUsuario = useStoreUsuarios()
 
     const obtenerGastos = async () => {
       const useUsuario = useStoreUsuarios()
@@ -17,11 +16,9 @@ export const useStoreGastos = defineStore(
       try {
         let response = await axios.get(`api/gastos/gastos-vehiculos`, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta gasto:', response.data)
         return response.data
       } catch (error) {
         console.error('No se pudo obtener el gasto', error)
@@ -36,11 +33,9 @@ export const useStoreGastos = defineStore(
       try {
         let response = await axios.get(`api/gastos/obtenerdatosgasto/${consecutivo}`, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta desde store:', response.data)
         return response.data
       } catch (error) {
         console.error('No se pudo obtener los datos del gasto', error)
@@ -56,11 +51,9 @@ export const useStoreGastos = defineStore(
       try {
         let response = await axios.get(`api/gastos/resumen-solicitante/placa/${placa}`, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta resumen por placa:', response.data)
         return response.data
       } catch (error) {
         console.error('No se pudo obtener el resumen por placa', error)
@@ -78,7 +71,6 @@ export const useStoreGastos = defineStore(
         const response = await axios.get(`api/gastos/ordenados`, {
           params: { tipo, orden },
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
@@ -96,15 +88,11 @@ export const useStoreGastos = defineStore(
       const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
-        console.log('Enviando datos al servidor...')
         const response = await axios.post('api/gastos/gastos-vehiculos', formData, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta recibida:', response)
-
         Notify.create({
           message: 'gasto creado correctamente',
           color: 'positive',
@@ -129,15 +117,11 @@ export const useStoreGastos = defineStore(
       const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
-        console.log('Enviando datos al servidor...')
         const response = await axios.put(`api/gastos/editar/${consecutivo}`, formData, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta recibida:', response)
-
         Notify.create({
           message: 'gasto editado correctamente',
           color: 'positive',
@@ -167,7 +151,6 @@ export const useStoreGastos = defineStore(
       putGasto,
       loading,
       gastos,
-      // useUsuario,
     }
   },
   { persist: true },

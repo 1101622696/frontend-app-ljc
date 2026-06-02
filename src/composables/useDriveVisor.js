@@ -70,7 +70,7 @@ export function useDriveVisor() {
 //   const urlArchivo = (fileId) => `api/drive/archivo/${fileId}`
 // const urlArchivo = (fileId) => `/api/drive/archivo/${fileId}`
   
-const urlArchivo = (fileId) => `http://localhost:4000/api/drive/archivo/${fileId}`
+const urlArchivo = (fileId) => `https://backend-app-ljc.onrender.com/api/drive/archivo/${fileId}`
 // Detecta si el mimeType es imagen
   const esImagen = (mimeType) => mimeType?.startsWith('image/')
 

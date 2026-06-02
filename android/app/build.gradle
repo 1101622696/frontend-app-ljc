@@ -4,10 +4,10 @@ apply plugin: 'kotlin-android'
 apply plugin: 'com.google.gms.google-services'
 
 android {
-    namespace "com.misva.app"
+    namespace "com.miljc.app"
     compileSdk 34
     defaultConfig {
-        applicationId "com.misva.app"
+        applicationId "com.miljc.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

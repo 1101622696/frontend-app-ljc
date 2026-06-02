@@ -31,11 +31,8 @@ Router.beforeEach(async (to, from, next) => {
   if (to.meta.perfiles) {
     const useUsuario = useStoreUsuarios();
     
-    // Esperar a que el store esté listo si el token existe en localStorage
-    // pero perfile aún no se ha cargado
 const tokenEnStorage = localStorage.getItem('x-token');
 
-// Si el store no tiene perfile aún, leerlo directo del persist de Pinia
 let userRole = useUsuario.perfile;
 let token = useUsuario.token;
 

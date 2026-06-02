@@ -1,6 +1,7 @@
 <template>
   <q-layout view="hHh LpR fFf">
-    <q-header elevated class="bg-[#003144]">
+      <!-- <q-header elevated class="bg-[#003144]" style="padding-top: env(safe-area-inset-top)"> -->
+      <q-header elevated class="bg-[#00ff00]" style="padding-top: env(safe-area-inset-top)">
       <q-toolbar>
         <q-btn flat round dense icon="menu" @click="toggleSideMenu" />
         <q-toolbar-title>LJC</q-toolbar-title>

@@ -1,148 +1,363 @@
 <template>
-  <q-page class="flex flex-center">
-    <q-card-section>
-      <div class="row items-center q-col-gutter-md">
-        <div class="col-12 col-md-auto">
-          <q-btn-group spread>
-            <q-btn
-              v-for="(config, tipo) in filtrosConfig"
-              :key="tipo"
-              :label="tipo === 'todos' ? 'Todos' : `Por ${config.titulo.split(' ').pop()}`"
-              :icon="config.icono"
-              :color="config.color"
-              @click="cargarListaPor(tipo)"
-              :outline="tipoLista !== tipo"
-            />
-          </q-btn-group>
-        </div>
+  <q-page padding class="bg-grey-2">
 
-        <div class="col-12 col-md-auto" v-if="tipoLista !== 'todos' && !filtroActual.esFiltroTexto">
-          <q-btn-toggle
-            v-model="ordenActual"
-            toggle-color="primary"
-            :options="opcionesOrdenamiento"
-            @update:model-value="cargarMantenimientos"
-          />
-        </div>
-
-        <div class="col-12 col-md-auto" v-if="filtroActual.esFiltroTexto">
-          <q-select
-            v-model="valorFiltroTexto"
-            :options="opcionesFiltroTexto"
-            option-value="valor"
-            option-label="etiqueta"
-            dense
-            outlined
-            emit-value
-            map-options
-            @update:model-value="actualizarValorFiltro"
-          />
-        </div>
+    <!-- Filtros -->
+    <div class="filter-bar q-mb-md">
+      <div class="filter-scroll row no-wrap q-gutter-x-sm q-pb-xs">
+        <q-chip
+          v-for="(config, tipo) in filtrosConfig"
+          :key="tipo"
+          clickable
+          :icon="config.icono"
+          :color="tipoLista === tipo ? 'primary' : 'grey-2'"
+          :text-color="tipoLista === tipo ? 'white' : 'grey-8'"
+          class="filter-chip"
+          @click="cargarListaPor(tipo)"
+        >
+          {{ tipo === 'todos' ? 'Todos' : config.titulo.split(' ').pop() }}
+        </q-chip>
       </div>
-    </q-card-section>
 
-    <q-card-section>
-      <div class="text-h6 q-mb-md">
-        <q-icon :name="filtroActual.icono" :color="filtroActual.color" />
+      <div
+        v-if="tipoLista !== 'todos' && !filtroActual.esFiltroTexto"
+        class="row no-wrap q-gutter-x-sm q-mt-sm"
+      >
+        <q-chip
+          v-for="op in opcionesOrdenamiento"
+          :key="op.value"
+          clickable
+          size="sm"
+          :color="ordenActual === op.value ? 'secondary' : 'transparent'"
+          :text-color="ordenActual === op.value ? 'white' : 'grey-7'"
+          :outline="ordenActual !== op.value"
+          @click="ordenActual = op.value; cargarMantenimientos()"
+        >
+          {{ op.label }}
+        </q-chip>
+      </div>
+
+      <div v-if="filtroActual.esFiltroTexto" class="q-mt-sm">
+        <q-select
+          v-model="valorFiltroTexto"
+          :options="opcionesFiltroTexto"
+          option-value="valor"
+          option-label="etiqueta"
+          dense
+          outlined
+          rounded
+          emit-value
+          map-options
+          @update:model-value="actualizarValorFiltro"
+        />
+      </div>
+    </div>
+
+    <!-- Encabezado -->
+    <div class="row items-center q-mb-sm">
+      <q-icon
+        :name="filtroActual.icono"
+        :color="filtroActual.color"
+        size="20px"
+      />
+
+      <span class="text-subtitle1 text-weight-medium q-ml-xs">
         {{ filtroActual.titulo }}
         <span v-if="filtroActual.esFiltroTexto && valorFiltroTexto">
-          - {{ obtenerEtiquetaFiltroTexto(valorFiltroTexto) }}
+          · {{ obtenerEtiquetaFiltroTexto(valorFiltroTexto) }}
         </span>
-      </div>
+      </span>
 
-      <q-list bordered separator>
-        <q-item
-          v-for="mantenimiento in mantenimientos"
-          :key="mantenimiento.consecutivo"
-          clickable
-          @click="verDetalles(mantenimiento.consecutivo)"
-        >
-          <q-item-section>
-            <q-item-label>{{ mantenimiento.consecutivo }} - {{ mantenimiento.placa }}</q-item-label>
-            <q-item-label caption v-if="mantenimiento.valorFiltro !== undefined">
-              {{ obtenerEtiquetaValor(mantenimiento.valorFiltro) }}
-            </q-item-label>
-          </q-item-section>
-        </q-item>
-      </q-list>
-    </q-card-section>
+      <q-badge
+        color="blue-1"
+        text-color="blue-9"
+        class="q-ml-auto"
+        rounded
+      >
+        {{ mantenimientos.length }}
+      </q-badge>
+    </div>
 
-    <div>
-      <q-dialog v-model="mostrarDetalles" persistent>
-        <q-card style="min-width: 350px">
-          <q-card-section>
-            <div class="text-h6">Detalles del Mantenimiento</div>
-          </q-card-section>
+    <!-- Cards -->
+    <div class="q-gutter-y-sm">
+      <q-card
+        v-for="mantenimiento in mantenimientos"
+        :key="mantenimiento.consecutivo"
+        flat
+        bordered
+        class="mantenimiento-card cursor-pointer"
+        @click="verDetalles(mantenimiento.consecutivo)"
+      >
+        <q-card-section class="q-pa-md">
 
-          <q-card-section class="q-pt-none" v-if="detallesMantenimiento">
-            <div class="q-pa-md">
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Consecutivo:</div>
-                <div class="col-8">{{ detallesMantenimiento.consecutivo }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Placa:</div>
-                <div class="col-8">{{ detallesMantenimiento.placa }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Tipo de mantenimiento:</div>
-                <div class="col-8">{{ detallesMantenimiento.tipo_mantenimiento }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Descripción:</div>
-                <div class="col-8">{{ detallesMantenimiento.descripcion }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Valor del mantenimiento:</div>
-                <div class="col-8">{{ detallesMantenimiento.valor_mantenimiento }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Odómetro:</div>
-                <div class="col-8">{{ detallesMantenimiento.odometro }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Correo del que registra:</div>
-                <div class="col-8">{{ detallesMantenimiento.correo_usuario }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Usuario que regista:</div>
-                <div class="col-8">{{ detallesMantenimiento.usuario }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Fecha de creación del registro:</div>
-                <div class="col-8">{{ detallesMantenimiento.fecha_creacion }}</div>
-              </div>
-              <q-btn
-                outline
-                color="orange"
-                icon="folder"
-                label="Ver archivos"
-                size="sm"
-                @click="abrirVisor(detallesMantenimiento.link, 'Documentos')"
-              />
+          <div class="row items-center q-mb-sm">
+            <div class="avatar-chip q-mr-md">
+              {{ mantenimiento.placa?.substring(0,2) }}
             </div>
 
-            <q-card-actions align="right">
-              <q-btn class="option-button" @click="editar(detallesMantenimiento)"> ✏️ </q-btn>
-            </q-card-actions>
-          </q-card-section>
+            <div class="col">
+              <div class="text-body2 text-weight-medium">
+                {{ mantenimiento.placa }}
+              </div>
 
-          <DriveVisor
-            v-model="dialogAbierto"
-            :titulo="tituloVisor"
-            :archivos="archivos"
-            :cargando="cargandoVisor"
-            :error="errorVisor"
-            :url-archivo="urlArchivo"
-            :es-imagen="esImagen"
-            :es-pdf="esPdf"
+              <div class="text-caption text-grey-6">
+                #{{ mantenimiento.consecutivo }}
+              </div>
+            </div>
+
+            <q-space />
+
+            <q-badge
+              color="blue-1"
+              text-color="blue-9"
+              rounded
+              class="text-caption"
+            >
+              {{ mantenimiento.tipo_mantenimiento }}
+            </q-badge>
+          </div>
+
+          <div class="row q-gutter-sm">
+            <div class="metrica-chip col">
+              <div class="metrica-label">Valor</div>
+              <div class="metrica-valor">
+                {{ formatPeso(mantenimiento.valor_mantenimiento) }}
+              </div>
+            </div>
+
+            <div class="metrica-chip col">
+              <div class="metrica-label">Odómetro</div>
+              <div class="metrica-valor">
+                {{ mantenimiento.odometro }}
+              </div>
+            </div>
+
+            <div
+              v-if="mantenimiento.valorFiltro !== undefined"
+              class="metrica-chip col"
+            >
+              <div class="metrica-label">Categoría</div>
+              <div class="metrica-valor">
+                {{ obtenerEtiquetaValor(mantenimiento.valorFiltro) }}
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="row items-center q-mt-sm"
+            style="border-top: 1px solid rgba(0,0,0,.06); padding-top:8px"
+          >
+            <q-icon
+              name="event"
+              size="13px"
+              color="grey-5"
+              class="q-mr-xs"
+            />
+
+            <span class="text-caption text-grey-5">
+              {{ formatFecha(mantenimiento.fecha_creacion) }}
+            </span>
+
+            <q-space />
+
+            <q-icon
+              name="chevron_right"
+              color="grey-4"
+              size="16px"
+            />
+          </div>
+
+        </q-card-section>
+      </q-card>
+    </div>
+
+    <!-- Dialog Detalles -->
+    <q-dialog v-model="mostrarDetalles" persistent>
+      <q-card
+        style="min-width: 350px; max-width:95vw; width:500px; border-radius:16px !important;"
+      >
+
+        <!-- Header -->
+        <q-card-section class="q-pb-sm">
+          <div
+            class="row items-center"
+            v-if="detallesMantenimiento"
+          >
+            <div class="avatar-chip q-mr-md">
+              {{ detallesMantenimiento.placa?.substring(0,2) }}
+            </div>
+
+            <div class="col">
+              <div class="text-subtitle1 text-weight-medium">
+                {{ detallesMantenimiento.placa }}
+              </div>
+
+              <div class="text-caption text-grey-6">
+                #{{ detallesMantenimiento.consecutivo }}
+              </div>
+            </div>
+
+            <q-badge
+              color="blue-1"
+              text-color="blue-9"
+              rounded
+            >
+              {{ detallesMantenimiento.tipo_mantenimiento }}
+            </q-badge>
+          </div>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-section
+          class="q-pt-md"
+          v-if="detallesMantenimiento"
+          style="max-height:65vh; overflow-y:auto"
+        >
+
+          <!-- Banner -->
+          <div class="ganancia-banner ganancia-positiva q-mb-md">
+            <div
+              class="text-caption"
+              style="opacity:.7"
+            >
+              Valor del mantenimiento
+            </div>
+
+            <div class="text-h6 text-weight-bold">
+              {{ formatPeso(detallesMantenimiento.valor_mantenimiento) }}
+            </div>
+          </div>
+
+          <!-- General -->
+          <div class="seccion-titulo">
+            Información general
+          </div>
+
+          <div class="detalle-fila">
+            <span class="detalle-label">Consecutivo</span>
+            <span
+              class="detalle-valor"
+              style="font-family: monospace"
+            >
+              #{{ detallesMantenimiento.consecutivo }}
+            </span>
+          </div>
+
+          <div class="detalle-fila">
+            <span class="detalle-label">Placa</span>
+            <span class="detalle-valor">
+              {{ detallesMantenimiento.placa }}
+            </span>
+          </div>
+
+          <div class="detalle-fila">
+            <span class="detalle-label">Tipo</span>
+            <span class="detalle-valor">
+              {{ detallesMantenimiento.tipo_mantenimiento }}
+            </span>
+          </div>
+
+          <div class="detalle-fila">
+            <span class="detalle-label">Descripción</span>
+            <span class="detalle-valor">
+              {{ detallesMantenimiento.descripcion }}
+            </span>
+          </div>
+
+          <div class="detalle-fila">
+            <span class="detalle-label">Fecha creación</span>
+            <span class="detalle-valor">
+              {{ formatFecha(detallesMantenimiento.fecha_creacion) }}
+            </span>
+          </div>
+
+          <!-- Métricas -->
+          <div class="seccion-titulo q-mt-md">
+            Valores
+          </div>
+
+          <div class="row q-gutter-sm q-mb-sm">
+            <div class="metrica-chip col">
+              <div class="metrica-label">Valor</div>
+              <div class="metrica-valor">
+                {{ formatPeso(detallesMantenimiento.valor_mantenimiento) }}
+              </div>
+            </div>
+
+            <div class="metrica-chip col">
+              <div class="metrica-label">Odómetro</div>
+              <div class="metrica-valor">
+                {{ detallesMantenimiento.odometro }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Registro -->
+          <div class="seccion-titulo q-mt-md">
+            Registro
+          </div>
+
+          <div class="detalle-fila">
+            <span class="detalle-label">Usuario</span>
+            <span class="detalle-valor">
+              {{ detallesMantenimiento.usuario }}
+            </span>
+          </div>
+
+          <div class="detalle-fila">
+            <span class="detalle-label">Correo</span>
+            <span class="detalle-valor">
+              {{ detallesMantenimiento.correo_usuario }}
+            </span>
+          </div>
+
+        </q-card-section>
+
+        <DriveVisor
+          v-model="dialogAbierto"
+          :titulo="tituloVisor"
+          :archivos="archivos"
+          :cargando="cargandoVisor"
+          :error="errorVisor"
+          :url-archivo="urlArchivo"
+          :es-imagen="esImagen"
+          :es-pdf="esPdf"
+        />
+
+        <q-separator />
+
+        <q-card-actions class="q-pa-md">
+
+          <q-btn
+            outline
+            color="secondary"
+            icon="folder"
+            label="Ver archivos"
+            size="sm"
+            @click="abrirVisor(detallesMantenimiento.link, 'Documentos')"
           />
 
-          <q-card-actions align="right">
-            <q-btn flat label="Cerrar" color="primary" v-close-popup />
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
+          <q-space />
+
+          <q-btn
+            color="grey-7"        
+            flat
+            round
+            icon="edit"
+            label="Editar"
+            @click="editar(detallesMantenimiento)"
+          />
+
+          <q-btn
+            flat
+            label="Cerrar"
+            color="primary"
+            v-close-popup
+          />
+        </q-card-actions>
+
+      </q-card>
+    </q-dialog>
 
       <q-dialog v-model="alert" persistent>
         <q-card class="bg-grey-2">
@@ -203,7 +418,7 @@
                   v-model="valmantenimientoFormatted"
                   label="Valor del mantenimiento"
                   :dense="dense"
-                 @update:model-value="formatearValMantenimiento"
+                  @update:model-value="formatearValMantenimiento"
                 />
               </div>
 
@@ -214,7 +429,7 @@
                   v-model="odometroFormatted"
                   label="Odómetro"
                   :dense="dense"
-                 @update:model-value="formatearOdometro"
+                  @update:model-value="formatearOdometro"
                 />
               </div>
 
@@ -266,9 +481,14 @@
           </q-card-actions>
         </q-card>
       </q-dialog>
-    </div>
+    <!-- </div> -->
 
-    <q-btn color="primary" :label="'Registrar nuevo'" class="q-mt-md" @click="abrir" />
+    <!-- <q-btn color="primary" :label="'Registrar nuevo'" class="q-mt-md" @click="abrir" /> -->
+  
+      <q-page-sticky position="bottom-right" :offset="[18, 18]">
+      <q-btn fab icon="add" color="primary" @click="abrir" />
+    </q-page-sticky>
+
   </q-page>
 </template>
 
@@ -364,46 +584,6 @@ function cerrar() {
   resetearFormulario()
 }
 
-// async function guardar() {
-//   cargando.value = true
-
-//   if (!validar()) {
-//     cargando.value = false
-//     return
-//   }
-
-//   try {
-//     const formData = new FormData()
-
-//     Object.entries(formulario.value).forEach(([key, value]) => {
-//       if (key === 'archivos') {
-//         value.forEach((file) => formData.append('archivos', file))
-//       } else if (value !== null && value !== undefined && value !== '') {
-//         formData.append(key, value)
-//       }
-//     })
-//     let response
-
-//     if (props.esEdicion) {
-//       response = await useMantenimiento.putMantenimiento(formulario.value.placa, formData)
-//     } else {
-//       response = await useMantenimiento.postMantenimiento(formData)
-//     }
-
-//     console.log('Respuesta exitosa:', response)
-
-//     cerrar()
-//     cargarMantenimientos()
-//     alert.value = false
-//     resetearFormulario()
-//   } catch (error) {
-//     console.error('Error al guardar:', error)
-//     mostrarMensajeError('Error al guardar el mantenimiento')
-//   } finally {
-//     cargando.value = false
-//   }
-// }
-
 async function guardar() {
   cargando.value = true
 
@@ -456,13 +636,9 @@ function editar(mantenimiento) {
     ...mantenimiento,
   }
 
-    valmantenimientoFormatted.value = formatearNumero(
-    mantenimiento.valor_mantenimiento || 0
-  )
+  valmantenimientoFormatted.value = formatearNumero(mantenimiento.valor_mantenimiento || 0)
 
-    odometroFormatted.value = formatearNumero(
-    mantenimiento.odometro || 0
-  )
+  odometroFormatted.value = formatearNumero(mantenimiento.odometro || 0)
 
   alert.value = true
 }
@@ -494,7 +670,7 @@ async function validar() {
 async function verDetalles(consecutivo) {
   try {
     const detalle = await useMantenimiento.obtenerdatodemantenimiento(consecutivo)
-    console.log('Detalles obtenidos:', detalle)
+    // console.log('Detalles obtenidos:', detalle)
 
     if (detalle) {
       detallesMantenimiento.value = {
@@ -544,24 +720,18 @@ function cargarListaPor(tipo) {
   tipoLista.value = tipo
   ordenActual.value = 'desc'
 
-  // Obtener el filtro actual basado en el tipo
   const filtro = CONFIG_FILTROS[tipo]
 
-  // Asegurarnos de que hay un valor por defecto válido
   if (filtro.esFiltroTexto && filtro.opcionesFiltro?.length > 0) {
-    // Usar el primer valor como valor por defecto
     valorFiltroTexto.value = filtro.opcionesFiltro[0].valor
-    // console.log(`Tipo cambiado a ${tipo}, valor por defecto: ${valorFiltroTexto.value}`);
   } else {
     valorFiltroTexto.value = null
-    // console.log(`Tipo cambiado a ${tipo}, sin valor por defecto`);
   }
 
   cargarMantenimientos()
 }
 
 function actualizarValorFiltro(nuevoValor) {
-  // console.log(`Cambiando valor del filtro a: ${nuevoValor}`);
   valorFiltroTexto.value = nuevoValor
   cargarMantenimientos()
 }
@@ -589,73 +759,23 @@ const opcionesFiltroTexto = computed(() => {
   return []
 })
 
-// async function cargarMantenimientos() {
-//   try {
-//     let response
-
-//     if (tipoLista.value === TIPOS_FILTRO.TODOS) {
-//       response = await useMantenimiento.obtenerMantenimientos()
-//     } else if (filtroActual.value.esFiltroTexto) {
-//       // console.log(`Filtrando por: ${tipoLista.value}, valor: ${valorFiltroTexto.value}`);
-
-//       response = await useMantenimiento.obtenerMantenimientosFiltrados(
-//         tipoLista.value,
-//         valorFiltroTexto.value,
-//       )
-//     } else {
-//       response = await useMantenimiento.obtenerMantenimientosOrdenados(
-//         filtroActual.value.campoOrden,
-//         ordenActual.value,
-//       )
-//     }
-//     if (Array.isArray(response)) {
-//       mantenimientos.value = response.map((item) => {
-//         const result = {
-//           consecutivo: item['consecutivo'] || '',
-//           placa: item['placa'] || '',
-//         }
-
-//         const campoDatos = filtroActual.value?.campoDatos
-//         if (campoDatos && item[campoDatos] !== undefined) {
-//           result.valorFiltro = item[campoDatos]
-//         }
-
-//         return result
-//       })
-//     } else {
-//       console.error('Error en formato de respuesta:', response)
-//       mantenimientos.value = []
-//     }
-//   } catch (error) {
-//     console.error(`Error al cargar mantenimientos por ${tipoLista.value}:`, error)
-//     mantenimientos.value = []
-//   }
-// }
 function formatearValMantenimiento(val) {
   valmantenimientoFormatted.value = formatearNumero(val)
 
-  // guardar número real en tu formulario
-  formulario.value.valor_mantenimiento = Number(
-    valmantenimientoFormatted.value.replace(/\./g, ''),
-  )
+  formulario.value.valor_mantenimiento = Number(valmantenimientoFormatted.value.replace(/\./g, ''))
 }
 
 function formatearOdometro(val) {
   odometroFormatted.value = formatearNumero(val)
 
-  // guardar número real en tu formulario
-  formulario.value.odometro = Number(
-    odometroFormatted.value.replace(/\./g, ''),
-  )
+  formulario.value.odometro = Number(odometroFormatted.value.replace(/\./g, ''))
 }
 
 function formatearNumero(valor) {
   if (!valor) return ''
 
-  // quitar todo lo que no sea número
   const limpio = valor.toString().replace(/\D/g, '')
 
-  // formatear con puntos
   return new Intl.NumberFormat('es-CO').format(limpio)
 }
 
@@ -712,14 +832,17 @@ async function cargarMantenimientos() {
         const result = {
           consecutivo: item.consecutivo || '',
           placa: item.placa || '',
-          valor_pagado: item.valor_pagado || 0,
+          tipo_mantenimiento: item.tipo_mantenimiento || 0,
+          valor_mantenimiento: item.valor_mantenimiento || 0,
+          odometro: item.odometro || 0,
+          fecha_creacion: item.fecha_creacion || 0,
         }
         const campoDatos = filtroActual.value?.campoDatos
         if (campoDatos && item[campoDatos] !== undefined) {
           result.valorFiltro = item[campoDatos]
         }
         if (tipoLista.value === TIPOS_FILTRO.MES) {
-          result.valorFiltro = item.valor_pagado
+          result.valorFiltro = item.valor_mantenimiento
         }
         return result
       })
@@ -736,7 +859,6 @@ async function cargarMantenimientos() {
 onMounted(async () => {
   await cargarPlacas()
 
-  // Actualizar opciones dinámicas del filtro PLACA
   CONFIG_FILTROS[TIPOS_FILTRO.PLACA].opcionesFiltro = placasOptions.value.map((placa) => ({
     valor: placa,
     etiqueta: placa,
@@ -747,10 +869,8 @@ onMounted(async () => {
 
 function manejarSeleccionArchivos(files) {
   if (files) {
-    // Si es array de archivos
     if (Array.isArray(files)) {
       files.forEach((file) => {
-        // Verificar si el archivo ya existe en la lista (evitar duplicados)
         const existeArchivo = formulario.value.archivos.some(
           (a) => a.name === file.name && a.size === file.size && a.type === file.type,
         )
@@ -759,9 +879,7 @@ function manejarSeleccionArchivos(files) {
           formulario.value.archivos.push(file)
         }
       })
-    }
-    // Si es un solo archivo
-    else if (files instanceof File) {
+    } else if (files instanceof File) {
       const existeArchivo = formulario.value.archivos.some(
         (a) => a.name === files.name && a.size === files.size && a.type === files.type,
       )
@@ -792,15 +910,148 @@ function mostrarMensajeError(mensaje) {
   })
 }
 
-// function mostrarMensajeExito(mensaje) {
-//   $q.notify({
-//     type: 'positive',
-//     message: mensaje,
-//     position: 'bottom-right',
-//   })
-// }
+function formatFecha(fecha) {
+  if (!fecha) return ''
+  return new Date(fecha).toLocaleDateString('es-CO', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+function formatPeso(valor) {
+  if (!valor) return '-'
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    maximumFractionDigits: 0,
+  }).format(valor)
+}
 
 defineOptions({
   name: 'MantenimientoPage',
 })
+
 </script>
+
+<style scoped>
+.placa-badge {
+  background: #111827;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-family: monospace;
+}
+
+.metrica-chip {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  min-width: 0;
+}
+.metrica-chip.rendimiento-malo {
+  background: #fef2f2;
+}
+.metrica-chip.rendimiento-bueno {
+  background: #f0fdf4;
+}
+.metrica-label {
+  font-size: 10px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+.metrica-valor {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.filter-bar {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 12px;
+}
+
+.filter-scroll {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.filter-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-chip {
+  border-radius: 999px !important;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.avatar-chip {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1e50a2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.placa-badge-lg {
+  background: #111827;
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 6px 20px;
+  border-radius: 8px;
+  font-family: monospace;
+}
+
+.detalle-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+.detalle-fila:last-child {
+  border-bottom: none;
+}
+.detalle-label {
+  font-size: 13px;
+  color: #9ca3af;
+}
+.detalle-valor {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111827;
+  text-align: right;
+  max-width: 60%;
+}
+
+.mantenimiento-card {
+  border: 1px solid #e5e7eb !important;
+  border-radius: 12px !important;
+  transition: border-color 0.15s;
+}
+
+.mantenimiento-card:active {
+  opacity: 0.85;
+}
+</style>

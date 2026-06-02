@@ -2,6 +2,7 @@
 .thumbs.db
 node_modules
 android/app/google-services.json
+**/google-services.json
 
 # Quasar core related directories
 .quasar
@@ -32,3 +33,22 @@ yarn-error.log*
 
 # local .env files
 .env.local*
+.gradle/
+android/.gradle/
+# Android Studio / Gradle
+android/.gradle/
+android/.idea/
+android/.tmp/
+android/build/
+android/caches/
+android/daemon/
+android/kotlin-profile/
+android/native/
+
+# Android SDK local
+android/local.properties
+
+# Firebase
+android/app/google-services.json
+android/wrapper/dists/
+android/android/FakeDependency.jar

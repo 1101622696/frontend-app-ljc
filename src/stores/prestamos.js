@@ -9,78 +9,69 @@ export const useStorePrestamos = defineStore(
   () => {
     let loading = ref(false)
     let prestamos = ref([])
-    // const useUsuario = useStoreUsuarios()
 
-const obtenerPrestamos = async () => {
+    const obtenerPrestamos = async () => {
       const useUsuario = useStoreUsuarios()
-  loading.value = true
-  try {
-    let response = await axios.get(`api/prestamos/`, {
-      headers: {
-        // "x-token": localStorage.getItem('x-token')
-        'x-token': useUsuario.token,
-      },
-    })
-    console.log('Respuesta prestamo:', response.data)
-    return response.data 
-  } catch (error) {
-    console.error('No se pudo obtener el prestamo', error)
-    return { resumen: null }
-  } finally {
-    loading.value = false
-  }
-}
+      loading.value = true
+      try {
+        let response = await axios.get(`api/prestamos/`, {
+          headers: {
+            'x-token': useUsuario.token,
+          },
+        })
+        return response.data
+      } catch (error) {
+        console.error('No se pudo obtener el prestamo', error)
+        return { resumen: null }
+      } finally {
+        loading.value = false
+      }
+    }
 
-const obtenerResumenPorEmail = async (email) => {
-     const useUsuario = useStoreUsuarios()
-  loading.value = true
-  try {
-    let response = await axios.get(`api/prestamos/resumen-solicitante/${email}`, {
-      headers: {
-        // "x-token": localStorage.getItem('x-token')
-        'x-token': useUsuario.token,
-      },
-    })
-    console.log('Respuesta resumen por email:', response.data)
-    return response.data 
-  } catch (error) {
-    console.error('No se pudo obtener el resumen por email', error)
-    return { resumen: null }
-  } finally {
-    loading.value = false
-  }
-}
-
-const obtenerPrestamosPorPropietario = async () => {
+    const obtenerResumenPorEmail = async (email) => {
       const useUsuario = useStoreUsuarios()
-  loading.value = true
-  try {
-    let response = await axios.get(`api/prestamos/resumen-propietario`, {
-      headers: {
-        // "x-token": localStorage.getItem('x-token')
-        'x-token': useUsuario.token,
-      },
-    })
-    console.log('Respuesta prestamo:', response.data)
-    return response.data 
-  } catch (error) {
-    console.error('No se pudo obtener el prestamo', error)
-    return { resumen: null }
-  } finally {
-    loading.value = false
-  }
-}
+      loading.value = true
+      try {
+        let response = await axios.get(`api/prestamos/resumen-solicitante/${email}`, {
+          headers: {
+            'x-token': useUsuario.token,
+          },
+        })
+        return response.data
+      } catch (error) {
+        console.error('No se pudo obtener el resumen por email', error)
+        return { resumen: null }
+      } finally {
+        loading.value = false
+      }
+    }
+
+    const obtenerPrestamosPorPropietario = async () => {
+      const useUsuario = useStoreUsuarios()
+      loading.value = true
+      try {
+        let response = await axios.get(`api/prestamos/resumen-propietario`, {
+          headers: {
+            'x-token': useUsuario.token,
+          },
+        })
+        return response.data
+      } catch (error) {
+        console.error('No se pudo obtener el prestamo', error)
+        return { resumen: null }
+      } finally {
+        loading.value = false
+      }
+    }
 
     const obtenerdatodelprestamo = async (consecutivo) => {
       const useUsuario = useStoreUsuarios()
       try {
         let response = await axios.get(`api/prestamos/obtenerdatosprestamo/${consecutivo}`, {
           headers: {
-        // "x-token": localStorage.getItem('x-token')
-        'x-token': useUsuario.token,
+            'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta desde store:', response.data)
         return response.data
       } catch (error) {
         console.error('No se pudo obtener los datos del préstamo', error)
@@ -91,18 +82,14 @@ const obtenerPrestamosPorPropietario = async () => {
     }
 
     const postPrestamo = async (formData) => {
-         const useUsuario = useStoreUsuarios()
+      const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
-        console.log('Enviando datos al servidor...')
         const response = await axios.post('api/prestamos/crear', formData, {
           headers: {
-        // "x-token": localStorage.getItem('x-token')
-        'x-token': useUsuario.token,
+            'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta recibida:', response)
-
         Notify.create({
           message: 'prestamo creado correctamente',
           color: 'positive',
@@ -122,20 +109,16 @@ const obtenerPrestamosPorPropietario = async () => {
         loading.value = false
       }
     }
-   
+
     const putPrestamo = async (consecutivo, formData) => {
-          const useUsuario = useStoreUsuarios()
+      const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
-        console.log('Enviando datos al servidor...')
         const response = await axios.put(`api/prestamos/editar/${consecutivo}`, formData, {
           headers: {
-        // "x-token": localStorage.getItem('x-token')
-        'x-token': useUsuario.token,
+            'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta recibida:', response)
-
         Notify.create({
           message: 'Préstamo editado correctamente',
           color: 'positive',
@@ -165,7 +148,6 @@ const obtenerPrestamosPorPropietario = async () => {
       putPrestamo,
       loading,
       prestamos,
-      // useUsuario,
     }
   },
   { persist: true },

@@ -1,242 +1,500 @@
 <template>
-  <q-page class="flex flex-center">
-    <q-card-section>
-      <q-list bordered separator>
-        <q-item
-          v-for="preoperacional in preoperacionales"
-          :key="preoperacional.consecutivo"
-          clickable
-          @click="verDetalles(preoperacional.consecutivo)"
+  <q-page padding class="bg-grey-2">
+<!-- Encabezado -->
+<div class="row items-center q-mb-sm">
+  <q-icon
+    name="fact_check"
+    color="positive"
+    size="20px"
+  />
+
+  <span class="text-subtitle1 text-weight-medium q-ml-xs">
+    Preoperacionales
+  </span>
+
+  <q-badge
+    color="blue-1"
+    text-color="blue-9"
+    class="q-ml-auto"
+    rounded
+  >
+    {{ preoperacionales.length }}
+  </q-badge>
+</div>
+
+<!-- Cards -->
+<div class="q-gutter-y-sm">
+  <q-card
+    v-for="preoperacional in preoperacionales"
+    :key="preoperacional.consecutivo"
+    flat
+    bordered
+    class="nomina-card cursor-pointer"
+    @click="verDetalles(preoperacional.consecutivo)"
+  >
+    <q-card-section class="q-pa-md">
+
+      <div class="row items-center q-mb-sm">
+
+        <div class="avatar-chip q-mr-md">
+          {{ preoperacional.placa?.substring(0,2) }}
+        </div>
+
+        <div class="col">
+          <div class="text-body2 text-weight-medium">
+            {{ preoperacional.placa }}
+          </div>
+
+          <div class="text-caption text-grey-6">
+            #{{ preoperacional.consecutivo }}
+          </div>
+        </div>
+
+        <q-space />
+
+        <q-badge
+          color="green-1"
+          text-color="green-8"
+          rounded
         >
-          <q-item-section>
-            <q-item-label
-              >{{ preoperacional.consecutivo }} - {{ preoperacional.placa }}</q-item-label
-            >
-          </q-item-section>
-        </q-item>
-      </q-list>
+          Preoperacional
+        </q-badge>
+
+      </div>
+
+      <div class="row q-gutter-sm">
+
+        <div class="metrica-chip col">
+          <div class="metrica-label">Viaje</div>
+          <div class="metrica-valor">
+            {{ preoperacional.codigo_viaje || '-' }}
+          </div>
+        </div>
+
+        <div class="metrica-chip col">
+          <div class="metrica-label">Odómetro</div>
+          <div class="metrica-valor">
+            {{ preoperacional.odometro }}
+          </div>
+        </div>
+
+      </div>
+
+      <div
+        class="row items-center q-mt-sm"
+        style="border-top:1px solid rgba(0,0,0,.06); padding-top:8px"
+      >
+        <q-icon
+          name="event"
+          size="13px"
+          color="grey-5"
+          class="q-mr-xs"
+        />
+
+        <span class="text-caption text-grey-5">
+          {{ formatFecha(preoperacional.fecha_creacion) }}
+        </span>
+
+        <q-space />
+
+        <q-icon
+          name="chevron_right"
+          color="grey-4"
+          size="16px"
+        />
+      </div>
+
     </q-card-section>
+  </q-card>
+</div>
 
-    <div>
-      <q-dialog v-model="mostrarDetalles" persistent>
-        <q-card style="min-width: 350px">
-          <q-card-section>
-            <div class="text-h6">Detalles del Preoperacional</div>
-          </q-card-section>
+<q-dialog v-model="mostrarDetalles" persistent>
+  <q-card
+    style="min-width:350px; max-width:95vw; width:500px; border-radius:16px !important;"
+  >
 
-          <q-card-section class="q-pt-none" v-if="detallesPreoperacional">
-            <div class="q-pa-md">
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Consecutivo:</div>
-                <div class="col-8">{{ detallesPreoperacional.consecutivo }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Viajes:</div>
-                <div class="col-8">{{ detallesPreoperacional.codigo_viaje }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Vehículo del preoperacional:</div>
-                <div class="col-8">{{ detallesPreoperacional.placa }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Odómetro:</div>
-                <div class="col-8">{{ detallesPreoperacional.odometro }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Nivel de agua:</div>
-                <div class="col-8">{{ detallesPreoperacional.nivel_agua }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Nivel de aceite:</div>
-                <div class="col-8">{{ detallesPreoperacional.nivel_aceite }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Galones:</div>
-                <div class="col-8">{{ detallesPreoperacional.galones }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Fugas visibles:</div>
-                <div class="col-8">{{ detallesPreoperacional.fugas_visibles }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Presion frenos:</div>
-                <div class="col-8">{{ detallesPreoperacional.presion_frenos }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Fugas audibles:</div>
-                <div class="col-8">{{ detallesPreoperacional.fugas_audibles }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Freno de parqueo:</div>
-                <div class="col-8">{{ detallesPreoperacional.freno_parqueo }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">ABS sin testigo:</div>
-                <div class="col-8">{{ detallesPreoperacional.abs_sintestigo }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Prueba Freno:</div>
-                <div class="col-8">{{ detallesPreoperacional.prueba_freno }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Luces altas/bajas:</div>
-                <div class="col-8">{{ detallesPreoperacional.luces_altas_bajas }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Direccionales:</div>
-                <div class="col-8">{{ detallesPreoperacional.direccionales }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Luces de freno:</div>
-                <div class="col-8">{{ detallesPreoperacional.luces_freno }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Luces de remolque:</div>
-                <div class="col-8">{{ detallesPreoperacional.luces_remolque }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Testigo tablero:</div>
-                <div class="col-8">{{ detallesPreoperacional.testigo_tablero }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">filtro aire:</div>
-                <div class="col-8">{{ detallesPreoperacional.filtro_aire }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Volante:</div>
-                <div class="col-8">{{ detallesPreoperacional.volante }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Sin fugas:</div>
-                <div class="col-8">{{ detallesPreoperacional.sin_fugas }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Cambios suaves:</div>
-                <div class="col-8">{{ detallesPreoperacional.cambios_suave }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Sin ruidos:</div>
-                <div class="col-8">{{ detallesPreoperacional.sin_ruidos }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Cinturón de seguridad:</div>
-                <div class="col-8">{{ detallesPreoperacional.cinturon_seguridad }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Espejos:</div>
-                <div class="col-8">{{ detallesPreoperacional.espejos }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Extintor cabezote:</div>
-                <div class="col-8">{{ detallesPreoperacional.extintor_cabezote }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Extintor de trailer:</div>
-                <div class="col-8">{{ detallesPreoperacional.extintor_trailer }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Botiquín:</div>
-                <div class="col-8">{{ detallesPreoperacional.botiquin }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Triángulos reflectivos:</div>
-                <div class="col-8">{{ detallesPreoperacional.triangulos_reflectivos }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Kit de carretera:</div>
-                <div class="col-8">{{ detallesPreoperacional.kit_carretera }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Señalización Cómo Conduzco:</div>
-                <div class="col-8">{{ detallesPreoperacional.senalizacion_conduzco }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">correas:</div>
-                <div class="col-8">{{ detallesPreoperacional.correas }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Estado de la carpa:</div>
-                <div class="col-8">{{ detallesPreoperacional.estado_carpa }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Refrigerante:</div>
-                <div class="col-8">{{ detallesPreoperacional.refrigerante }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Pito/Bocina:</div>
-                <div class="col-8">{{ detallesPreoperacional.pito }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Alarma de retroceso:</div>
-                <div class="col-8">{{ detallesPreoperacional.alarma_retroceso }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Presión de llantas:</div>
-                <div class="col-8">{{ detallesPreoperacional.presion_llantas }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Desgaste de llantas:</div>
-                <div class="col-8">{{ detallesPreoperacional.desgaste_llantas }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Tuercas ajustadas:</div>
-                <div class="col-8">{{ detallesPreoperacional.tuercas_ajustadas }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Fisuras en la suspensión:</div>
-                <div class="col-8">{{ detallesPreoperacional.suspension_fisuras }}</div>
-              </div>
-              <!-- <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Acople de quinta rueda:</div>
-                <div class="col-8">{{ detallesPreoperacional.acople_quintarueda }}</div>
-              </div> -->
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Quinta rueda:</div>
-                <div class="col-8">{{ detallesPreoperacional.quinta_rueda }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Pasador de rey:</div>
-                <div class="col-8">{{ detallesPreoperacional.pasador_rey }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Mangueras de aire:</div>
-                <div class="col-8">{{ detallesPreoperacional.mangueras_aire }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Seguro acople:</div>
-                <div class="col-8">{{ detallesPreoperacional.seguro_acople }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Placas visibles:</div>
-                <div class="col-8">{{ detallesPreoperacional.placas_visibles }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Correo del usuario:</div>
-                <div class="col-8">{{ detallesPreoperacional.correo_usuario }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Usuario:</div>
-                <div class="col-8">{{ detallesPreoperacional.usuario }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Fecha del registro:</div>
-                <div class="col-8">{{ detallesPreoperacional.fecha_creacion }}</div>
-              </div>
-              <q-btn
-                outline
-                color="orange"
-                icon="folder"
-                label="Ver archivos"
-                size="sm"
-                @click="abrirVisor(detallesPreoperacional.link, 'Documentos')"
-              />
-            </div>
+<q-card-section class="q-pb-sm">
+  <div
+    class="row items-center"
+    v-if="detallesPreoperacional"
+  >
+    <div class="avatar-chip q-mr-md">
+      {{ detallesPreoperacional.placa?.substring(0,2) }}
+    </div>
 
-            <!-- lo comentaré porque el preoperacional es de una sola vez, pero si se necesita, en el backend ya está el codigo para editarlo -->
-            <!-- <q-card-actions align="right">
-              <q-btn class="option-button" @click="editar(detallesPreoperacional)"> ✏️ </q-btn>
-            </q-card-actions> -->
-          </q-card-section>
+    <div class="col">
+      <div class="text-subtitle1 text-weight-medium">
+        {{ detallesPreoperacional.placa }}
+      </div>
+
+      <div class="text-caption text-grey-6">
+        #{{ detallesPreoperacional.consecutivo }}
+      </div>
+    </div>
+
+    <q-badge
+      color="green-1"
+      text-color="green-8"
+      rounded
+    >
+      Preoperacional
+    </q-badge>
+  </div>
+</q-card-section>
+
+
+  <q-card-section
+  v-if="detallesPreoperacional"
+  class="q-pt-md"
+  style="max-height:65vh; overflow-y:auto"
+>
+
+  <!-- Banner -->
+  <div class="ganancia-banner ganancia-positiva q-mb-md">
+    <div class="text-caption" style="opacity:.7">
+      Inspección registrada
+    </div>
+
+    <div class="text-h6 text-weight-bold">
+      {{ detallesPreoperacional.placa }}
+    </div>
+  </div>
+
+  <!-- INFORMACIÓN GENERAL -->
+  <div class="seccion-titulo">
+    Información general
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Consecutivo</span>
+    <span class="detalle-valor">
+      #{{ detallesPreoperacional.consecutivo }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Placa</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.placa }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Viaje</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.codigo_viaje }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Odómetro</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.odometro }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Galones</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.galones }}
+    </span>
+  </div>
+
+  <!-- SECCIÓN 1 -->
+  <div class="seccion-titulo q-mt-md">
+    Motor y fluidos
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Nivel aceite motor</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.nivel_aceite }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Nivel refrigerante</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.refrigerante }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Fugas visibles</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.fugas_visibles }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Correas en buen estado</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.correas }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Filtro de aire</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.filtro_aire }}
+    </span>
+  </div>
+
+  <!-- SECCIÓN 2 -->
+  <div class="seccion-titulo q-mt-md">
+    Llantas y suspensión
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Presión de llantas</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.presion_llantas }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Desgaste de llantas</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.desgaste_llantas }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Tuercas ajustadas</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.tuercas_ajustadas }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Suspensión sin fisuras</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.suspension_fisuras }}
+    </span>
+  </div>
+
+  <!-- SECCIÓN 3 -->
+  <div class="seccion-titulo q-mt-md">
+    Acople y quinta rueda
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Quinta rueda lubricada</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.quinta_rueda }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Pasador rey asegurado</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.pasador_rey }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Mangueras aire</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.mangueras_aire }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Seguro del acople</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.seguro_acople }}
+    </span>
+  </div>
+
+  <!-- SECCIÓN 4 -->
+  <div class="seccion-titulo q-mt-md">
+    Sistema de frenos
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Presión aire</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.presion_frenos }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Fugas audibles</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.fugas_audibles }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Freno de parqueo</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.freno_parqueo }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">ABS</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.abs_sintestigo }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Prueba de freno</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.prueba_freno }}
+    </span>
+  </div>
+
+  <!-- SECCIÓN 5 -->
+  <div class="seccion-titulo q-mt-md">
+    Sistema eléctrico y señalización
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Luces bajas y altas</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.luces_altas_bajas }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Direccionales</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.direccionales }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Luces freno</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.luces_freno }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Luces remolque</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.luces_remolque }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Testigos tablero</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.testigo_tablero }}
+    </span>
+  </div>
+
+  <!-- SECCIÓN 6 -->
+  <div class="seccion-titulo q-mt-md">
+    Dirección y transmisión
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Volante</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.volante }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Sin fugas hidráulicas</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.sin_fugas }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Cambios suaves</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.cambios_suave }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Sin ruidos anormales</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.sin_ruidos }}
+    </span>
+  </div>
+
+  <!-- SECCIÓN 7 -->
+  <div class="seccion-titulo q-mt-md">
+    Cabina y elementos obligatorios
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Cinturón seguridad</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.cinturon_seguridad }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Espejos</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.espejos }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Extintor cabezote</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.extintor_cabezote }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Extintor trailer</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.extintor_trailer }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Botiquín</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.botiquin }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Triángulos reflectivos</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.triangulos_reflectivos }}
+    </span>
+  </div>
+
+  <!-- REGISTRO -->
+  <div class="seccion-titulo q-mt-md">
+    Registro
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Usuario</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.usuario }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Correo</span>
+    <span class="detalle-valor">
+      {{ detallesPreoperacional.correo_usuario }}
+    </span>
+  </div>
+
+  <div class="detalle-fila">
+    <span class="detalle-label">Fecha registro</span>
+    <span class="detalle-valor">
+      {{ formatFecha(detallesPreoperacional.fecha_creacion) }}
+    </span>
+  </div>
+
+</q-card-section>
+
+    <q-separator />
 
           <DriveVisor
             v-model="dialogAbierto"
@@ -248,12 +506,30 @@
             :es-imagen="esImagen"
             :es-pdf="esPdf"
           />
+          
+    <!-- FOOTER -->
+<q-card-actions class="q-pa-md">
+  <q-btn
+    outline
+    color="secondary"
+    icon="folder"
+    label="Ver archivos"
+    size="sm"
+    @click="abrirVisor(detallesPreoperacional.link, 'Documentos')"
+  />
 
-          <q-card-actions align="right">
-            <q-btn flat label="Cerrar" color="primary" v-close-popup />
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
+  <q-space />
+
+  <q-btn
+    flat
+    label="Cerrar"
+    color="primary"
+    v-close-popup
+  />
+</q-card-actions>
+
+  </q-card>
+</q-dialog>
 
       <q-dialog v-model="alert" persistent>
         <q-card class="bg-grey-1">
@@ -549,13 +825,18 @@
                   <div v-for="(archivo, index) in formulario.archivos" :key="index" class="col-12">
                     <q-chip
                       removable
+                      square
+                      color="blue-1"
+                      text-color="primary"
+                      icon="description"
                       @remove="eliminarArchivo(index)"
-                      color="primary"
-                      text-color="white"
-                      icon="attach_file"
                       class="full-width"
                     >
                       {{ archivo.name }}
+
+                      <q-tooltip>
+                        {{ archivo.type }} - {{ (archivo.size / 1024).toFixed(2) }} KB
+                      </q-tooltip>
                     </q-chip>
                   </div>
                 </div>
@@ -583,9 +864,14 @@
           </q-card-actions>
         </q-card>
       </q-dialog>
-    </div>
+    <!-- </div> -->
 
-    <q-btn color="primary" :label="'Registrar nuevo'" class="q-mt-md" @click="abrir" />
+    <!-- <q-btn color="primary" :label="'Registrar nuevo'" class="q-mt-md" @click="abrir" /> -->
+ 
+     <q-page-sticky position="bottom-right" :offset="[18, 18]">
+      <q-btn fab icon="add" color="primary" @click="abrir" />
+    </q-page-sticky>
+
   </q-page>
 </template>
 
@@ -595,9 +881,11 @@ import { useStorePreoperacionales } from '../stores/preoperacionales'
 import { useStoreViajes } from '../stores/viajes'
 import { useStoreUsuarios } from '../stores/usuarios'
 import { useQuasar } from 'quasar'
+import { guardarPendiente, guardarArchivosOffline } from '../composables/offlineDB'
 import CampoPreoperacional from 'src/components/CampoPreoperacional.vue'
 import { useDriveVisor } from '../composables/useDriveVisor'
 import DriveVisor from 'src/components/VisorDrive.vue'
+import { Notify } from 'quasar'
 
 const {
   dialogAbierto,
@@ -690,30 +978,38 @@ function cerrar() {
 
 async function guardar() {
   cargando.value = true
-
-  if (!validar()) {
-    cargando.value = false
-    return
-  }
+  if (!validar()) { cargando.value = false; return }
 
   try {
     const formData = new FormData()
+    const payloadPlano = {} // para SQLite (FormData no se puede serializar)
 
     Object.entries(formulario.value).forEach(([key, value]) => {
       if (key === 'archivos') {
         value.forEach((file) => formData.append('archivos', file))
       } else if (value !== null && value !== undefined && value !== '') {
         formData.append(key, value)
+        payloadPlano[key] = value // <-- guardar versión serializable
       }
     })
 
+    if (!navigator.onLine) {
+      // SIN CONEXIÓN: guardar local
+      // await guardarPendiente('preoperacional', payloadPlano)
+      const rutasArchivos = await guardarArchivosOffline(formulario.value.archivos)
+      await guardarPendiente('preoperacional', { ...payloadPlano, _archivos: rutasArchivos })
+
+      Notify.create({ message: 'Sin conexión. Guardado localmente, se enviará cuando haya señal.', color: 'warning', position: 'bottom' })
+      cerrar()
+      resetearFormulario()
+      return
+    }
+
+    // CON CONEXIÓN: flujo normal
     const response = await usePreoperacional.postPreoperacional(formData)
-
     console.log('Respuesta exitosa:', response)
-
     cerrar()
     cargarPreoperacionales()
-    alert.value = false
     resetearFormulario()
   } catch (error) {
     console.error('Error al guardar:', error)
@@ -746,7 +1042,7 @@ async function validar() {
 async function verDetalles(consecutivo) {
   try {
     const detalle = await usePreoperacional.obtenerdatospreoperacional(consecutivo)
-    console.log('Detalles obtenidos:', detalle)
+    // console.log('Detalles obtenidos:', detalle)
 
     if (detalle) {
       detallesPreoperacional.value = {
@@ -839,6 +1135,9 @@ async function cargarPreoperacionales() {
       preoperacionales.value = response.map((item) => ({
         consecutivo: item.consecutivo || '',
         placa: item.placa || '',
+        codigo_viaje: item.codigo_viaje || '',
+        odometro: item.odometro || '',
+        fecha_creacion: item.fecha_creacion || '',
       }))
     } else {
       console.error('Error en formato de respuesta:', response)
@@ -863,16 +1162,15 @@ async function cargarViajesPreoperacionales() {
       useViaje.obtenerResumenPorPlaca(placa),
       usePreoperacional.obtenerPreoperacionales(),
     ])
-    console.log('responseViajes', responseViajes)
+    // console.log('responseViajes', responseViajes)
 
     if (!responseViajes?.ok) return
 
-    // const viajes = responseViajes.resumen?.total?.viajes || []
-const viajes = responseViajes?.total?.consecutivos || []
+    const viajes = responseViajes?.total?.consecutivos || []
 
-console.log(responseViajes)
+    console.log(responseViajes)
 
-viajes.forEach((v) => {
+    viajes.forEach((v) => {
       console.log(v.consecutivo, v.estado_preoperacional)
     })
     // Códigos de viaje que ya tienen preoperacional
@@ -883,18 +1181,18 @@ viajes.forEach((v) => {
     const placasUsuario =
       useUsuario.user?.placa_asignada?.split(',').map((p) => p.trim().toUpperCase()) || []
 
-viajeOptions.value = (responseViajes?.resumen?.total?.consecutivos || [])
-  .filter((v) => {
-    const placaViaje = v.placa?.toUpperCase()
-    const esPreoperacional = v.estado_preoperacional === 'se debe'
-    const sinPreop = !viajesConPreop.has(v.consecutivo)
+    viajeOptions.value = (responseViajes?.resumen?.total?.consecutivos || [])
+      .filter((v) => {
+        const placaViaje = v.placa?.toUpperCase()
+        const esPreoperacional = v.estado_preoperacional === 'se debe'
+        const sinPreop = !viajesConPreop.has(v.consecutivo)
 
-    if (perfilUsuario.value === 'administrador') {
-      return esPreoperacional && sinPreop
-    }
+        if (perfilUsuario.value === 'administrador') {
+          return esPreoperacional && sinPreop
+        }
 
-    return esPreoperacional && sinPreop && placasUsuario.includes(placaViaje)
-  })
+        return esPreoperacional && sinPreop && placasUsuario.includes(placaViaje)
+      })
       .map((v) => ({
         label: `${v.consecutivo} — ${v.placa} — ${v.destino}`,
         value: v.consecutivo,
@@ -918,31 +1216,20 @@ watch(
 )
 
 function manejarSeleccionArchivos(files) {
-  if (files) {
-    // Si es array de archivos
-    if (Array.isArray(files)) {
-      files.forEach((file) => {
-        // Verificar si el archivo ya existe en la lista (evitar duplicados)
-        const existeArchivo = formulario.value.archivos.some(
-          (a) => a.name === file.name && a.size === file.size && a.type === file.type,
-        )
+  if (!files) return
 
-        if (!existeArchivo) {
-          formulario.value.archivos.push(file)
-        }
-      })
-    }
-    // Si es un solo archivo
-    else if (files instanceof File) {
-      const existeArchivo = formulario.value.archivos.some(
-        (a) => a.name === files.name && a.size === files.size && a.type === files.type,
-      )
+  const nuevos = Array.isArray(files) ? files : [files]
 
-      if (!existeArchivo) {
-        formulario.value.archivos.push(files)
-      }
+  nuevos.forEach((file) => {
+    const existe = formulario.value.archivos.some(
+      (a) => a.name === file.name && a.size === file.size && a.type === file.type
+    )
+    if (!existe) {
+      formulario.value.archivos.push(file)
     }
-  }
+  })
+
+  // El q-file queda visualmente "vacío" pero tus chips muestran los acumulados
 }
 
 function eliminarArchivo(index) {
@@ -962,15 +1249,138 @@ function mostrarMensajeError(mensaje) {
   })
 }
 
-// function mostrarMensajeExito(mensaje) {
-//   $q.notify({
-//     type: 'positive',
-//     message: mensaje,
-//     position: 'bottom-right',
-//   })
-// }
+function formatFecha(fecha) {
+  if (!fecha) return ''
+  return new Date(fecha).toLocaleDateString('es-CO', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
 
 defineOptions({
   name: 'PreoperacionalesPage',
 })
+
 </script>
+
+<style scoped>
+.preoperacionales-card {
+  border-radius: 12px !important;
+  transition: border-color 0.15s;
+}
+.preoperacionales-card:active {
+  opacity: 0.85;
+}
+
+.placa-badge {
+  background: #111827;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-family: monospace;
+}
+
+.metrica-chip {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  min-width: 0;
+}
+.metrica-chip.rendimiento-malo {
+  background: #fef2f2;
+}
+.metrica-chip.rendimiento-bueno {
+  background: #f0fdf4;
+}
+.metrica-label {
+  font-size: 10px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+.metrica-valor {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.filter-bar {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 12px;
+}
+
+.filter-scroll {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.filter-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-chip {
+  border-radius: 999px !important;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.avatar-chip {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1e50a2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.placa-badge-lg {
+  background: #111827;
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 6px 20px;
+  border-radius: 8px;
+  font-family: monospace;
+}
+
+.detalle-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.detalle-fila:last-child {
+  border-bottom: none;
+}
+.detalle-label {
+  font-size: 13px;
+  color: #9CA3AF;
+}
+.detalle-valor {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111827;
+  text-align: right;
+  max-width: 60%;
+}
+
+</style>

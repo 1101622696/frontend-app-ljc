@@ -1,220 +1,313 @@
 <template>
-  <q-page class="flex flex-center">
-    <q-card-section>
-      <div class="row items-center q-col-gutter-md">
-        <div class="col-12 col-md-auto">
-          <q-btn-group spread>
-            <q-btn
-              v-for="(config, tipo) in filtrosConfig"
-              :key="tipo"
-              :label="tipo === 'todos' ? 'Todos' : `Por ${config.titulo.split(' ').pop()}`"
-              :icon="config.icono"
-              :color="config.color"
-              @click="cargarListaPor(tipo)"
-              :outline="tipoLista !== tipo"
-            />
-          </q-btn-group>
-        </div>
-
-        <div class="col-12 col-md-auto" v-if="tipoLista !== 'todos' && !filtroActual.esFiltroTexto">
-          <q-btn-toggle
-            v-model="ordenActual"
-            toggle-color="primary"
-            :options="opcionesOrdenamiento"
-            @update:model-value="cargarCombustibles"
-          />
-        </div>
-
-        <div class="col-12 col-md-auto" v-if="filtroActual.esFiltroTexto">
-          <q-select
-            v-model="valorFiltroTexto"
-            :options="opcionesFiltroTexto"
-            option-value="valor"
-            option-label="etiqueta"
-            dense
-            outlined
-            emit-value
-            map-options
-            @update:model-value="actualizarValorFiltro"
-          />
-        </div>
+  <q-page padding class="bg-grey-2">
+    <div class="filter-bar q-mb-md">
+      <div class="filter-scroll row no-wrap q-gutter-x-sm q-pb-xs">
+        <q-chip
+          v-for="(config, tipo) in filtrosConfig"
+          :key="tipo"
+          clickable
+          :icon="config.icono"
+          :color="tipoLista === tipo ? 'primary' : 'grey-2'"
+          :text-color="tipoLista === tipo ? 'white' : 'grey-8'"
+          class="filter-chip"
+          @click="cargarListaPor(tipo)"
+        >
+          {{ tipo === 'todos' ? 'Todos' : config.titulo.split(' ').pop() }}
+        </q-chip>
       </div>
-    </q-card-section>
 
-    <q-card-section>
-      <div class="text-h6 q-mb-md">
-        <q-icon :name="filtroActual.icono" :color="filtroActual.color" />
+      <div
+        v-if="tipoLista !== 'todos' && !filtroActual.esFiltroTexto"
+        class="row no-wrap q-gutter-x-sm q-mt-sm"
+      >
+        <q-chip
+          v-for="op in opcionesOrdenamiento"
+          :key="op.value"
+          clickable
+          size="sm"
+          :color="ordenActual === op.value ? 'secondary' : 'transparent'"
+          :text-color="ordenActual === op.value ? 'white' : 'grey-7'"
+          :outline="ordenActual !== op.value"
+          @click="ordenActual = op.value;cargarCombustibles();"
+        >
+          {{ op.label }}
+        </q-chip>
+      </div>
+
+      <div v-if="filtroActual.esFiltroTexto" class="q-mt-sm">
+        <q-select
+          v-model="valorFiltroTexto"
+          :options="opcionesFiltroTexto"
+          option-value="valor"
+          option-label="etiqueta"
+          dense
+          outlined
+          rounded
+          emit-value
+          map-options
+          @update:model-value="actualizarValorFiltro"
+        />
+      </div>
+    </div>
+
+    <!-- Encabezado -->
+    <div class="row items-center q-mb-sm">
+      <q-icon :name="filtroActual.icono" :color="filtroActual.color" size="20px" />
+      <span class="text-subtitle1 text-weight-medium q-ml-xs">
         {{ filtroActual.titulo }}
         <span v-if="filtroActual.esFiltroTexto && valorFiltroTexto">
-          - {{ obtenerEtiquetaFiltroTexto(valorFiltroTexto) }}
+          · {{ obtenerEtiquetaFiltroTexto(valorFiltroTexto) }}
         </span>
-      </div>
+      </span>
+      <q-badge color="blue-1" text-color="blue-9" class="q-ml-auto" rounded>
+        {{ combustibles.length }}
+      </q-badge>
+    </div>
 
-      <q-list bordered separator>
-        <q-item
-          v-for="combustible in combustibles"
-          :key="combustible.consecutivo"
-          clickable
-          @click="verDetalles(combustible.consecutivo)"
-        >
-          <q-item-section>
-            <q-item-label>{{ combustible.consecutivo }} - {{ combustible.placa }}</q-item-label>
-            <q-item-label caption v-if="combustible.valorFiltro !== undefined">
-              {{ obtenerEtiquetaValor(combustible.valorFiltro, combustible) }}
-            </q-item-label>
-          </q-item-section>
-        </q-item>
-      </q-list>
-    </q-card-section>
+    <!-- Cards de combustible -->
+    <div class="q-gutter-y-sm">
+      <q-card
+        v-for="c in combustibles"
+        :key="c.consecutivo"
+        flat
+        bordered
+        class="combustible-card cursor-pointer"
+        @click="verDetalles(c.consecutivo)"
+      >
+        <q-card-section class="q-pa-md">
+          <!-- Fila superior: placa + alerta + fecha -->
+          <div class="row items-center q-mb-sm">
+            <div class="placa-badge q-mr-sm">{{ c.placa }}</div>
+            <span class="text-caption text-grey-6">#{{ c.consecutivo }}</span>
+            <q-space />
+            <q-badge v-if="c.alerta === 'si'" color="negative" text-color="white" rounded>
+              <q-icon name="warning" size="11px" class="q-mr-xs" />
+              Alerta
+            </q-badge>
+            <q-badge v-else color="green-1" text-color="green-9" rounded>OK</q-badge>
+          </div>
+
+          <!-- Fila de métricas principales -->
+          <div class="row q-gutter-x-sm q-mb-sm">
+            <div class="metrica-chip col">
+              <div class="metrica-label">Galones</div>
+              <div class="metrica-valor">{{ c.galones_cargados }}</div>
+            </div>
+            <div class="metrica-chip col">
+              <div class="metrica-label">Valor pagado</div>
+              <div class="metrica-valor">{{ formatPeso(c.valor_pagado) }}</div>
+            </div>
+            <div class="metrica-chip col">
+              <div class="metrica-label">$/Galón</div>
+              <div class="metrica-valor">{{ formatPeso(c.precio_por_galon) }}</div>
+            </div>
+          </div>
+
+          <!-- Fila de rendimiento -->
+          <div class="row q-gutter-x-sm">
+            <div class="metrica-chip col" :class="claseRendimiento(c.diferencia_rendimiento)">
+              <div class="metrica-label">Rendimiento real</div>
+              <div class="metrica-valor">{{ c.rendimiento_real }} km/gl</div>
+            </div>
+            <div class="metrica-chip col">
+              <div class="metrica-label">Esperado</div>
+              <div class="metrica-valor">8 km/gl</div>
+            </div>
+            <div class="metrica-chip col">
+              <div class="metrica-label">Km recorridos</div>
+              <div class="metrica-valor">{{ c.km_recorridos }}</div>
+            </div>
+          </div>
+
+          <!-- Footer: odómetro + fecha -->
+          <div
+            class="row items-center q-mt-sm"
+            style="border-top: 1px solid rgba(0, 0, 0, 0.06); padding-top: 8px"
+          >
+            <q-icon name="speed" size="14px" color="grey-5" class="q-mr-xs" />
+            <span class="text-caption text-grey-6">Odómetro: {{ c.odometro_actual }}</span>
+            <q-space />
+            <span class="text-caption text-grey-5">{{ formatFecha(c.fecha_registro) }}</span>
+          </div>
+        </q-card-section>
+      </q-card>
+    </div>
 
     <div>
-      <q-dialog v-model="mostrarDetalles" persistent>
-        <q-card style="min-width: 350px">
-          <q-card-section>
-            <div class="text-h6">Detalles del Combustible</div>
-          </q-card-section>
 
-          <q-card-section class="q-pt-none" v-if="detallesCombustible">
-            <div class="q-pa-md">
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Consecutivo:</div>
-                <div class="col-8">{{ detallesCombustible.consecutivo }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Fecha de registro:</div>
-                <div class="col-8">{{ detallesCombustible.fecha_registro }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Placa:</div>
-                <div class="col-8">{{ detallesCombustible.placa }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Odómetro actual:</div>
-                <div class="col-8">{{ detallesCombustible.odometro_actual }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Galones cargados:</div>
-                <div class="col-8">{{ detallesCombustible.galones_cargados }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Valor pagado:</div>
-                <div class="col-8">{{ detallesCombustible.valor_pagado }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Precio por galón:</div>
-                <div class="col-8">{{ detallesCombustible.precio_por_galon }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Kilómetros recorridos:</div>
-                <div class="col-8">{{ detallesCombustible.km_recorridos }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Rendimiento real:</div>
-                <div class="col-8">{{ detallesCombustible.rendimiento_real }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Rendimiento esperado:</div>
-                <div class="col-8">{{ detallesCombustible.rendimiento_esperado }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Diferencia de rendimiento:</div>
-                <div class="col-8">{{ detallesCombustible.diferencia_rendimiento }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Alerta:</div>
-                <div class="col-8">{{ detallesCombustible.alerta }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Correo usuario:</div>
-                <div class="col-8">{{ detallesCombustible.correo_usuario }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Usuario:</div>
-                <div class="col-8">{{ detallesCombustible.usuario }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Estado de la factura:</div>
-                <div class="col-8">{{ detallesCombustible.estado_factura }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Número de factura:</div>
-                <div class="col-8">{{ detallesCombustible.numero_factura }}</div>
-              </div>
+<q-dialog v-model="mostrarDetalles" persistent>
+  <q-card style="min-width: 350px; max-width: 95vw; border-radius: 16px !important;">
 
-              <q-btn
-                outline
-                color="orange"
-                icon="folder"
-                label="Ver archivos"
-                size="sm"
-                @click="abrirVisor(detallesCombustible.link_factura, 'Documentos')"
-              />
-            </div>
-
-            <div class="row q-mb-md">
-              <div class="col-4 text-weight-bold">Legalización:</div>
-              <div class="col-8">
-                <q-toggle
-                  :model-value="
-                    detallesCombustible.estado_factura?.toLowerCase().trim() === 'legalizado'
-                  "
-                  :disable="
-                    detallesCombustible.estado_factura?.toLowerCase().trim() !== 'pendiente'
-                  "
-                  color="primary"
-                  @click="cambiarEstado"
-                />
-              </div>
-            </div>
-
-            <q-input
-              v-if="detallesCombustible.estado_factura === 'pendiente'"
-              v-model="numeroFactura"
-              label="Número de factura"
-              dense
-            />
-
-            <q-card-actions align="right">
-              <q-btn
-                class="option-button"
-                :disable="
-                  ['legalizado'].includes(
-                    detallesCombustible?.estado_factura,
-                  )
-                "
-                @click="editar(detallesCombustible)"
-              >
-                ✏️
-
-                <q-tooltip
-                  v-if="
-                    ['legalizado'].includes(
-                      detallesCombustible?.estado_factura,
-                    )
-                  "
-                >
-                  Este combustible no puede ser editado
-                </q-tooltip>
-              </q-btn>
-            </q-card-actions>
-          </q-card-section>
-
-          <DriveVisor
-            v-model="dialogAbierto"
-            :titulo="tituloVisor"
-            :archivos="archivos"
-            :cargando="cargandoVisor"
-            :error="errorVisor"
-            :url-archivo="urlArchivo"
-            :es-imagen="esImagen"
-            :es-pdf="esPdf"
+    <!-- Header -->
+    <q-card-section class="q-pb-sm">
+      <div class="row items-center">
+        <div>
+          <div class="text-subtitle1 text-weight-medium">Detalles del Combustible</div>
+          <div class="text-caption text-grey-6" v-if="detallesCombustible">
+            #{{ detallesCombustible.consecutivo }} · {{ formatFecha(detallesCombustible.fecha_registro) }}
+          </div>
+        </div>
+        <q-space />
+        <q-badge
+          v-if="detallesCombustible"
+          :color="detallesCombustible.alerta === 'si' ? 'negative' : 'green-1'"
+          :text-color="detallesCombustible.alerta === 'si' ? 'white' : 'green-9'"
+          rounded
+        >
+          <q-icon
+            :name="detallesCombustible.alerta === 'si' ? 'warning' : 'check_circle'"
+            size="11px"
+            class="q-mr-xs"
           />
+          {{ detallesCombustible.alerta === 'si' ? 'Alerta' : 'OK' }}
+        </q-badge>
+      </div>
+    </q-card-section>
 
-          <q-card-actions align="right">
-            <q-btn flat label="Cerrar" color="primary" v-close-popup />
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
+    <q-separator />
+
+    <q-card-section class="q-pt-md" v-if="detallesCombustible">
+
+      <!-- Placa destacada -->
+      <div class="row justify-center q-mb-md">
+        <div class="placa-badge-lg">{{ detallesCombustible.placa }}</div>
+      </div>
+
+      <!-- Métricas principales -->
+      <div class="row q-gutter-sm q-mb-md">
+        <div class="metrica-chip col">
+          <div class="metrica-label">Galones</div>
+          <div class="metrica-valor">{{ detallesCombustible.galones_cargados }}</div>
+        </div>
+        <div class="metrica-chip col">
+          <div class="metrica-label">Valor pagado</div>
+          <div class="metrica-valor">{{ formatPeso(detallesCombustible.valor_pagado) }}</div>
+        </div>
+        <div class="metrica-chip col">
+          <div class="metrica-label">$/Galón</div>
+          <div class="metrica-valor">{{ formatPeso(detallesCombustible.precio_por_galon) }}</div>
+        </div>
+      </div>
+
+      <!-- Rendimiento -->
+      <div class="row q-gutter-sm q-mb-md">
+        <div class="metrica-chip col" :class="claseRendimiento(detallesCombustible.diferencia_rendimiento)">
+          <div class="metrica-label">Rendimiento real</div>
+          <div class="metrica-valor">{{ detallesCombustible.rendimiento_real }} km/gl</div>
+        </div>
+        <div class="metrica-chip col">
+          <div class="metrica-label">Esperado</div>
+          <div class="metrica-valor">{{ detallesCombustible.rendimiento_esperado }} km/gl</div>
+        </div>
+        <div class="metrica-chip col" :class="claseRendimiento(detallesCombustible.diferencia_rendimiento)">
+          <div class="metrica-label">Diferencia</div>
+          <div class="metrica-valor">{{ detallesCombustible.diferencia_rendimiento }}</div>
+        </div>
+      </div>
+
+      <!-- Odómetro y km -->
+      <div class="row q-gutter-sm q-mb-md">
+        <div class="metrica-chip col">
+          <div class="metrica-label">Odómetro</div>
+          <div class="metrica-valor">{{ detallesCombustible.odometro_actual }} km</div>
+        </div>
+        <div class="metrica-chip col">
+          <div class="metrica-label">Km recorridos</div>
+          <div class="metrica-valor">{{ detallesCombustible.km_recorridos }} km</div>
+        </div>
+      </div>
+
+      <q-separator class="q-mb-md" />
+
+      <!-- Info de factura -->
+      <div class="detalle-fila">
+        <span class="detalle-label">Estado factura</span>
+        <q-badge
+          :color="detallesCombustible.estado_factura === 'legalizado' ? 'green-1' : 'orange-1'"
+          :text-color="detallesCombustible.estado_factura === 'legalizado' ? 'green-9' : 'orange-9'"
+          rounded
+        >
+          {{ detallesCombustible.estado_factura }}
+        </q-badge>
+      </div>
+      <div class="detalle-fila" v-if="detallesCombustible.numero_factura">
+        <span class="detalle-label">N° factura</span>
+        <span class="detalle-valor">{{ detallesCombustible.numero_factura }}</span>
+      </div>
+      <div class="detalle-fila">
+        <span class="detalle-label">Usuario</span>
+        <span class="detalle-valor">{{ detallesCombustible.usuario }}</span>
+      </div>
+      <div class="detalle-fila">
+        <span class="detalle-label">Correo</span>
+        <span class="detalle-valor text-caption">{{ detallesCombustible.correo_usuario }}</span>
+      </div>
+
+      <q-separator class="q-my-md" />
+
+      <!-- Legalización -->
+      <div class="detalle-fila">
+        <span class="detalle-label">Legalización</span>
+        <q-toggle
+          :model-value="detallesCombustible.estado_factura?.toLowerCase().trim() === 'legalizado'"
+          :disable="detallesCombustible.estado_factura?.toLowerCase().trim() !== 'pendiente'"
+          color="primary"
+          @click="cambiarEstado"
+        />
+      </div>
+
+      <q-input
+        v-if="detallesCombustible.estado_factura === 'pendiente'"
+        v-model="numeroFactura"
+        label="Número de factura"
+        dense
+        outlined
+        rounded
+        class="q-mt-sm q-mb-md"
+      />
+
+    </q-card-section>
+
+    <DriveVisor
+      v-model="dialogAbierto"
+      :titulo="tituloVisor"
+      :archivos="archivos"
+      :cargando="cargandoVisor"
+      :error="errorVisor"
+      :url-archivo="urlArchivo"
+      :es-imagen="esImagen"
+      :es-pdf="esPdf"
+    />
+
+    <!-- Acciones -->
+    <q-separator />
+    <q-card-actions class="q-pa-md">
+      <q-btn
+        outline
+        color="secondary"
+        icon="folder"
+        label="Ver archivos"
+        size="sm"
+        @click="abrirVisor(detallesCombustible.link_factura, 'Documentos')"
+      />
+      <q-space />
+      <q-btn
+        flat
+        round
+        icon="edit"
+        color="grey-7"
+        :disable="['legalizado'].includes(detallesCombustible?.estado_factura)"
+        @click="editar(detallesCombustible)"
+      >
+        <q-tooltip v-if="['legalizado'].includes(detallesCombustible?.estado_factura)">
+          Este combustible no puede ser editado
+        </q-tooltip>
+      </q-btn>
+      <q-btn flat label="Cerrar" color="primary" v-close-popup />
+    </q-card-actions>
+
+  </q-card>
+</q-dialog>
 
       <q-dialog v-model="alert" persistent>
         <q-card class="" style="width: 700px">
@@ -331,16 +424,14 @@
       </q-dialog>
     </div>
 
-    <q-btn color="primary" :label="'Registrar nuevo'" class="q-mt-md" @click="abrir" />
-<div class="text-center q-mt-md" v-if="hayMas">
-  <q-btn
-    flat
-    color="primary"
-    label="Cargar más"
-    :loading="cargando"
-    @click="cargarMas"
-  />
-</div>
+    <!-- <q-btn color="primary" :label="'Registrar nuevo'" class="q-mt-md" @click="abrir" /> -->
+    <q-page-sticky position="bottom-right" :offset="[18, 18]">
+      <q-btn fab icon="add" color="primary" @click="abrir" />
+    </q-page-sticky>
+
+    <div class="text-center q-mt-md" v-if="hayMas">
+      <q-btn flat color="primary" label="Cargar más" :loading="cargando" @click="cargarMas" />
+    </div>
   </q-page>
 </template>
 
@@ -461,46 +552,6 @@ function cerrar() {
   resetearFormulario()
 }
 
-// async function guardar() {
-//   cargando.value = true
-
-//   if (!validar()) {
-//     cargando.value = false
-//     return
-//   }
-
-//   try {
-//     const formData = new FormData()
-
-//     Object.entries(formulario.value).forEach(([key, value]) => {
-//       if (key === 'archivos') {
-//         value.forEach((file) => formData.append('archivos', file))
-//       } else if (value !== null && value !== undefined && value !== '') {
-//         formData.append(key, value)
-//       }
-//     })
-//     let response
-
-//     if (props.esEdicion) {
-//       response = await useCombustible.putCombustible(formulario.value.placa, formData)
-//     } else {
-//       response = await useCombustible.postCombustible(formData)
-//     }
-
-//     console.log('Respuesta exitosa:', response)
-
-//     cargarCombustibles()
-//     cerrar()
-//     alert.value = false
-//     resetearFormulario()
-//   } catch (error) {
-//     console.error('Error al guardar:', error)
-//     mostrarMensajeError('Error al guardar el combustible')
-//   } finally {
-//     cargando.value = false
-//   }
-// }
-
 async function guardar() {
   cargando.value = true
 
@@ -553,13 +604,9 @@ function editar(combustible) {
     ...combustible,
   }
 
-    valorpagadoFormatted.value = formatearNumero(
-    combustible.valor_pagado || 0
-  )
+  valorpagadoFormatted.value = formatearNumero(combustible.valor_pagado || 0)
 
-    odometroactualFormatted.value = formatearNumero(
-    combustible.odometro_actual || 0
-  )
+  odometroactualFormatted.value = formatearNumero(combustible.odometro_actual || 0)
 
   alert.value = true
 }
@@ -588,7 +635,7 @@ async function validar() {
 async function verDetalles(consecutivo) {
   try {
     const detalle = await useCombustible.obtenerdatosdecombustible(consecutivo)
-    console.log('Detalles obtenidos:', detalle)
+    // console.log('Detalles obtenidos:', detalle)
 
     if (detalle) {
       detallesCombustible.value = {
@@ -651,41 +698,35 @@ function cargarListaPor(tipo) {
   tipoLista.value = tipo
   ordenActual.value = 'desc'
 
-  // Obtener el filtro actual basado en el tipo
   const filtro = CONFIG_FILTROS[tipo]
 
-  // Asegurarnos de que hay un valor por defecto válido
   if (filtro.esFiltroTexto && filtro.opcionesFiltro?.length > 0) {
-    // Usar el primer valor como valor por defecto
     valorFiltroTexto.value = filtro.opcionesFiltro[0].valor
-    // console.log(`Tipo cambiado a ${tipo}, valor por defecto: ${valorFiltroTexto.value}`);
   } else {
     valorFiltroTexto.value = null
-    // console.log(`Tipo cambiado a ${tipo}, sin valor por defecto`);
   }
 
   cargarCombustibles()
 }
 
 function actualizarValorFiltro(nuevoValor) {
-  // console.log(`Cambiando valor del filtro a: ${nuevoValor}`);
   valorFiltroTexto.value = nuevoValor
   cargarCombustibles()
 }
 
-function obtenerEtiquetaValor(valor, item) {
-  if (tipoLista.value === TIPOS_FILTRO.MES) {
-    return `${Number(item.valor_pagado).toLocaleString('es-CO')} COP`
-  }
+// function obtenerEtiquetaValor(valor, item) {
+//   if (tipoLista.value === TIPOS_FILTRO.MES) {
+//     return `${Number(item.valor_pagado).toLocaleString('es-CO')} COP`
+//   }
 
-  if (tipoLista.value === TIPOS_FILTRO.VALOR_PAGADO) {
-    return `${valor} COP`
-  } else if (tipoLista.value === TIPOS_FILTRO.PRECIO_POR_GALON) {
-    return `${valor} COP`
-  }
+//   if (tipoLista.value === TIPOS_FILTRO.VALOR_PAGADO) {
+//     return `${valor} COP`
+//   } else if (tipoLista.value === TIPOS_FILTRO.PRECIO_POR_GALON) {
+//     return `${valor} COP`
+//   }
 
-  return valor
-}
+//   return valor
+// }
 
 function obtenerEtiquetaFiltroTexto(valor) {
   if (filtroActual.value.esFiltroTexto && filtroActual.value.opcionesFiltro) {
@@ -701,80 +742,6 @@ const opcionesFiltroTexto = computed(() => {
   }
   return []
 })
-
-// async function cargarCombustibles() {
-//   try {
-//     let response = []
-//     // ADMINISTRADOR
-//     if (perfilUsuario.value === 'administrador') {
-//       if (tipoLista.value === TIPOS_FILTRO.TODOS) {
-//         response = await useCombustible.obtenerCombustible()
-//       } else if (filtroActual.value.esFiltroTexto) {
-//         response = await useCombustible.obtenerCombustiblesFiltrados(
-//           filtroActual.value.campoDatos,
-//           valorFiltroTexto.value,
-//         )
-//       } else {
-//         response = await useCombustible.obtenerCombustiblesOrdenados(
-//           filtroActual.value.campoOrden,
-//           ordenActual.value,
-//         )
-//       }
-//     }
-//     // PROPIETARIO Y CONDUCTOR
-//     else {
-//       const placasUsuario = useUsuario.user?.placa_asignada?.split(',').map((p) => p.trim()) || []
-//       let todosLosCombustibles = []
-//       for (const placa of placasUsuario) {
-//         const data = await useCombustible.obtenerResumenPorPlaca(placa)
-//         const lista = data?.resumen?.total?.consecutivos || []
-//         todosLosCombustibles.push(...lista)
-//       }
-//       response = todosLosCombustibles
-//       // FILTROS TEXTO
-//       if (filtroActual.value?.esFiltroTexto) {
-//         response = response.filter((item) => {
-//           const valor = item[filtroActual.value.campoDatos]
-
-//           return String(valor).toLowerCase().includes(String(valorFiltroTexto.value).toLowerCase())
-//         })
-//       }
-//       // ORDENAMIENTOS
-//       else if (tipoLista.value !== TIPOS_FILTRO.TODOS) {
-//         const campo = filtroActual.value.campoOrden
-
-//         response.sort((a, b) => {
-//           const valorA = parseFloat(a[campo]) || 0
-//           const valorB = parseFloat(b[campo]) || 0
-//           return ordenActual.value === 'desc' ? valorB - valorA : valorA - valorB
-//         })
-//       }
-//     }
-//     if (Array.isArray(response)) {
-//       combustibles.value = response.map((item) => {
-//         const result = {
-//           consecutivo: item.consecutivo || '',
-//           placa: item.placa || '',
-//           valor_pagado: item.valor_pagado || 0,
-//         }
-//         const campoDatos = filtroActual.value?.campoDatos
-//         if (campoDatos && item[campoDatos] !== undefined) {
-//           result.valorFiltro = item[campoDatos]
-//         }
-//         if (tipoLista.value === TIPOS_FILTRO.MES) {
-//           result.valorFiltro = item.valor_pagado
-//         }
-//         return result
-//       })
-//     } else {
-//       console.error('Error en formato de respuesta:', response)
-//       combustibles.value = []
-//     }
-//   } catch (error) {
-//     console.error(`Error al cargar combustibles por ${tipoLista.value}:`, error)
-//     combustibles.value = []
-//   }
-// }
 
 async function cargarCombustibles() {
   try {
@@ -829,6 +796,14 @@ async function cargarCombustibles() {
           consecutivo: item.consecutivo || '',
           placa: item.placa || '',
           valor_pagado: item.valor_pagado || 0,
+          galones_cargados: item.galones_cargados || 0,
+          alerta: item.alerta || 0,
+          precio_por_galon: item.precio_por_galon || 0,
+          diferencia_rendimiento: item.diferencia_rendimiento || 0,
+          rendimiento_real: item.rendimiento_real || 0,
+          km_recorridos: item.km_recorridos || 0,
+          odometro_actual: item.odometro_actual || 0,
+          fecha_registro: item.fecha_registro || 0,
         }
         const campoDatos = filtroActual.value?.campoDatos
         if (campoDatos && item[campoDatos] !== undefined) {
@@ -875,11 +850,6 @@ const cambiarEstado = async () => {
       })
 
       detallesCombustible.value.estado_factura = 'legalizado'
-
-      // $q.notify({
-      //   type: 'positive',
-      //   message: 'Combustible legalizado correctamente',
-      // })
     }
   } catch (error) {
     console.error('Error:', error)
@@ -938,15 +908,150 @@ function mostrarMensajeError(mensaje) {
   })
 }
 
-// function mostrarMensajeExito(mensaje) {
-//   $q.notify({
-//     type: 'positive',
-//     message: mensaje,
-//     position: 'bottom-right',
-//   })
-// }
+function formatPeso(valor) {
+  if (!valor) return '-'
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    maximumFractionDigits: 0,
+  }).format(valor)
+}
+
+function formatFecha(fecha) {
+  if (!fecha) return ''
+  return new Date(fecha).toLocaleDateString('es-CO', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+function claseRendimiento(diferencia) {
+  if (!diferencia) return ''
+  return Number(diferencia) < 0 ? 'rendimiento-malo' : 'rendimiento-bueno'
+}
 
 defineOptions({
   name: 'CombustiblePage',
 })
 </script>
+
+<style scoped>
+.combustible-card {
+  border-radius: 12px !important;
+  transition: border-color 0.15s;
+}
+.combustible-card:active {
+  opacity: 0.85;
+}
+
+.placa-badge {
+  background: #111827;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-family: monospace;
+}
+
+.metrica-chip {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  min-width: 0;
+}
+.metrica-chip.rendimiento-malo {
+  background: #fef2f2;
+}
+.metrica-chip.rendimiento-bueno {
+  background: #f0fdf4;
+}
+.metrica-label {
+  font-size: 10px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+.metrica-valor {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.filter-bar {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 12px;
+}
+
+.filter-scroll {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.filter-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-chip {
+  border-radius: 999px !important;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.avatar-chip {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1e50a2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.placa-badge-lg {
+  background: #111827;
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 6px 20px;
+  border-radius: 8px;
+  font-family: monospace;
+}
+
+.detalle-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.detalle-fila:last-child {
+  border-bottom: none;
+}
+.detalle-label {
+  font-size: 13px;
+  color: #9CA3AF;
+}
+.detalle-valor {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111827;
+  text-align: right;
+  max-width: 60%;
+}
+</style>

@@ -1,6 +1,6 @@
 <template>
   <q-page class="flex flex-center">
-    <q-card-section>
+    <!-- <q-card-section>
       <div class="row items-center q-col-gutter-md">
         <div class="col-12 col-md-auto">
           <q-btn-group spread>
@@ -65,96 +65,357 @@
           </q-item-section>
         </q-item>
       </q-list>
+    </q-card-section> -->
+
+  <!-- Barra de filtros -->
+    <div class="filter-bar q-mb-md">
+      <div class="filter-scroll row no-wrap q-gutter-x-sm q-pb-xs">
+        <q-chip
+          v-for="(config, tipo) in filtrosConfig"
+          :key="tipo"
+          clickable
+          :icon="config.icono"
+          :color="tipoLista === tipo ? 'primary' : 'grey-2'"
+          :text-color="tipoLista === tipo ? 'white' : 'grey-8'"
+          :outline="false"
+          class="filter-chip"
+          @click="cargarListaPor(tipo)"
+        >
+          {{ tipo === 'todos' ? 'Todos' : config.titulo.split(' ').pop() }}
+        </q-chip>
+      </div>
+
+      <!-- Ordenamiento (solo si aplica) -->
+      <div
+        v-if="tipoLista !== 'todos' && !filtroActual.esFiltroTexto"
+        class="row no-wrap q-gutter-x-sm q-mt-sm"
+      >
+        <q-chip
+          v-for="op in opcionesOrdenamiento"
+          :key="op.value"
+          clickable
+          size="sm"
+          :color="ordenActual === op.value ? 'secondary' : 'transparent'"
+          :text-color="ordenActual === op.value ? 'white' : 'grey-7'"
+          :outline="ordenActual !== op.value"
+          @click="ordenActual = op.value; cargarClientes()"
+        >
+          {{ op.label }}
+        </q-chip>
+      </div>
+
+      <!-- Select de filtro texto -->
+      <div v-if="filtroActual.esFiltroTexto" class="q-mt-sm">
+        <q-select
+          v-model="valorFiltroTexto"
+          :options="opcionesFiltroTexto"
+          option-value="valor"
+          option-label="etiqueta"
+          dense
+          outlined
+          rounded
+          emit-value
+          map-options
+          @update:model-value="actualizarValorFiltro"
+        />
+      </div>
+    </div>
+
+    <!-- Encabezado de sección -->
+    <div class="row items-center q-mb-sm">
+      <q-icon :name="filtroActual.icono" :color="filtroActual.color" size="20px" />
+      <span class="text-subtitle1 text-weight-medium q-ml-xs">
+        {{ filtroActual.titulo }}
+        <span v-if="filtroActual.esFiltroTexto && valorFiltroTexto">
+          · {{ obtenerEtiquetaFiltroTexto(valorFiltroTexto) }}
+        </span>
+      </span>
+      <q-badge
+        color="blue-1"
+        text-color="blue-9"
+        class="q-ml-auto"
+        rounded
+      >
+        {{ clientes.length }}
+      </q-badge>
+    </div>
+
+    <!-- Lista de clientes -->
+    <div class="q-gutter-y-sm">
+      <q-card
+        v-for="cliente in clientes"
+        :key="cliente.codigo"
+        flat
+        bordered
+        class="cliente-card cursor-pointer"
+        @click="verDetalles(cliente.codigo)"
+      >
+        <q-card-section horizontal class="items-center q-pa-md">
+
+          <!-- Avatar con iniciales -->
+          <div class="avatar-chip q-mr-md">
+            {{ iniciales(cliente.empresa) }}
+          </div>
+
+          <!-- Info principal -->
+          <div class="col">
+            <div class="text-body2 text-weight-medium ellipsis">
+              {{ cliente.empresa }}
+            </div>
+            <div class="text-caption text-grey-6 q-mt-xs" style="font-family: monospace">
+              {{ cliente.codigo }}
+            </div>
+            <div class="row items-center q-gutter-x-sm q-mt-xs" v-if="cliente.valorFiltro !== undefined">
+              <q-badge
+                :color="colorEstado(cliente)"
+                text-color="white"
+                rounded
+                class="text-caption"
+              >
+                {{ obtenerEtiquetaValor(cliente.valorFiltro) }}
+              </q-badge>
+            </div>
+          </div>
+
+          <q-icon name="chevron_right" color="grey-4" />
+        </q-card-section>
+      </q-card>
+    </div>
+    
+    <div>
+<q-dialog v-model="mostrarDetalles" persistent>
+  <q-card
+    style="min-width:350px; max-width:95vw; width:500px; border-radius:16px !important;"
+  >
+
+    <!-- Header -->
+    <q-card-section class="q-pb-sm">
+      <div
+        class="row items-center"
+        v-if="detallesCliente"
+      >
+        <div class="avatar-chip q-mr-md">
+          {{ detallesCliente.empresa?.substring(0,2).toUpperCase() }}
+        </div>
+
+        <div class="col">
+          <div class="text-subtitle1 text-weight-medium">
+            {{ detallesCliente.empresa }}
+          </div>
+
+          <div class="text-caption text-grey-6">
+            {{ detallesCliente.nit }}
+          </div>
+        </div>
+
+        <q-badge
+          :color="detallesCliente.estado === 'activo' ? 'green-1' : 'red-1'"
+          :text-color="detallesCliente.estado === 'activo' ? 'green-8' : 'red-8'"
+          rounded
+        >
+          {{ detallesCliente.estado }}
+        </q-badge>
+      </div>
     </q-card-section>
 
-    <div>
-      <q-dialog v-model="mostrarDetalles" persistent>
-        <q-card style="min-width: 350px">
-          <q-card-section>
-            <div class="text-h6">Detalles del Cliente</div>
-          </q-card-section>
+    <q-separator />
 
-          <q-card-section class="q-pt-none" v-if="detallesCliente">
-            <div class="q-pa-md">
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Código:</div>
-                <div class="col-8">{{ detallesCliente.codigo }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Nombre de la empresa:</div>
-                <div class="col-8">{{ detallesCliente.empresa }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">NIT:</div>
-                <div class="col-8">{{ detallesCliente.nit }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Estado:</div>
-                <div class="col-8">{{ detallesCliente.estado }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Viajes:</div>
-                <div class="col-8">{{ detallesCliente.viajes }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Teléfono:</div>
-                <div class="col-8">{{ detallesCliente.telefono }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Email:</div>
-                <div class="col-8">{{ detallesCliente.email }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Frecuencia de pago:</div>
-                <div class="col-8">{{ detallesCliente.tipo_pago }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Rete fuente:</div>
-                <div class="col-8">{{ detallesCliente.rete_fuente }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Rete ICA:</div>
-                <div class="col-8">{{ detallesCliente.rete_ica }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Fecha de creación:</div>
-                <div class="col-8">{{ detallesCliente.fecha_creacion }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Valor total del viaje estimado:</div>
-                <div class="col-8">{{ detallesCliente.total_valor_viaje_estimado }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Valor total del viaje real:</div>
-                <div class="col-8">{{ detallesCliente.total_valor_viaje_real }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Ganancia total del viaje:</div>
-                <div class="col-8">{{ detallesCliente.total_ganancia_viaje }}</div>
-              </div>
-            </div>
+    <q-card-section
+      v-if="detallesCliente"
+      class="q-pt-md"
+      style="max-height:65vh; overflow-y:auto"
+    >
 
-            <div class="row q-mb-md">
-              <div class="col-4 text-weight-bold">Activación:</div>
-              <div class="col-8">
-                <q-toggle
-                  v-model="isActive"
-                  :color="detallesCliente.estado === 'activo' ? 'grey' : 'primary'"
-                  @update:model-value="cambiarEstado"
-                />
-              </div>
-            </div>
-            <q-card-actions align="right">
-              <q-btn class="option-button" @click="editar(detallesCliente)"> ✏️ </q-btn>
-            </q-card-actions>
-          </q-card-section>
+      <!-- Banner -->
+      <div class="ganancia-banner ganancia-positiva q-mb-md">
+        <div
+          class="text-caption"
+          style="opacity:.7"
+        >
+          Cliente registrado
+        </div>
 
-          <q-card-actions align="right">
-            <q-btn flat label="Cerrar" color="primary" v-close-popup />
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
+        <div class="text-h6 text-weight-bold">
+          {{ detallesCliente.empresa }}
+        </div>
+      </div>
 
+      <!-- Información General -->
+      <div class="seccion-titulo">
+        Información general
+      </div>
+
+      <div class="detalle-fila">
+        <span class="detalle-label">Código</span>
+        <span class="detalle-valor">
+          {{ detallesCliente.codigo }}
+        </span>
+      </div>
+
+      <div class="detalle-fila">
+        <span class="detalle-label">Empresa</span>
+        <span class="detalle-valor">
+          {{ detallesCliente.empresa }}
+        </span>
+      </div>
+
+      <div class="detalle-fila">
+        <span class="detalle-label">NIT</span>
+        <span class="detalle-valor">
+          {{ detallesCliente.nit }}
+        </span>
+      </div>
+
+      <div class="detalle-fila">
+        <span class="detalle-label">Estado</span>
+        <span class="detalle-valor">
+          {{ detallesCliente.estado }}
+        </span>
+      </div>
+
+      <div class="detalle-fila">
+        <span class="detalle-label">Fecha creación</span>
+        <span class="detalle-valor">
+          {{ formatFecha(detallesCliente.fecha_creacion) }}
+        </span>
+      </div>
+
+      <!-- Contacto -->
+      <div class="seccion-titulo q-mt-md">
+        Contacto
+      </div>
+
+      <div class="detalle-fila">
+        <span class="detalle-label">Teléfono</span>
+        <span class="detalle-valor">
+          {{ detallesCliente.telefono }}
+        </span>
+      </div>
+
+      <div class="detalle-fila">
+        <span class="detalle-label">Email</span>
+        <span class="detalle-valor">
+          {{ detallesCliente.email }}
+        </span>
+      </div>
+
+      <!-- Facturación -->
+      <div class="seccion-titulo q-mt-md">
+        Facturación
+      </div>
+
+      <div class="detalle-fila">
+        <span class="detalle-label">Frecuencia pago</span>
+        <span class="detalle-valor">
+          {{ detallesCliente.tipo_pago }}
+        </span>
+      </div>
+
+      <div class="detalle-fila">
+        <span class="detalle-label">Rete fuente</span>
+        <span class="detalle-valor">
+          {{ detallesCliente.rete_fuente }}
+        </span>
+      </div>
+
+      <div class="detalle-fila">
+        <span class="detalle-label">Rete ICA</span>
+        <span class="detalle-valor">
+          {{ detallesCliente.rete_ica }}
+        </span>
+      </div>
+
+      <!-- Indicadores -->
+      <div class="seccion-titulo q-mt-md">
+        Indicadores
+      </div>
+
+      <div class="row q-gutter-sm q-mb-sm">
+
+        <div class="metrica-chip col">
+          <div class="metrica-label">Viajes</div>
+          <div class="metrica-valor">
+            {{ detallesCliente.viajes }}
+          </div>
+        </div>
+
+        <div class="metrica-chip col">
+          <div class="metrica-label">Estado</div>
+          <div class="metrica-valor">
+            {{ detallesCliente.estado }}
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Resumen financiero -->
+      <div class="seccion-titulo q-mt-md">
+        Resumen financiero
+      </div>
+
+      <div class="detalle-fila">
+        <span class="detalle-label">Valor estimado</span>
+        <span class="detalle-valor">
+          {{ formatPeso(detallesCliente.total_valor_viaje_estimado) }}
+        </span>
+      </div>
+
+      <div class="detalle-fila">
+        <span class="detalle-label">Valor real</span>
+        <span class="detalle-valor">
+          {{ formatPeso(detallesCliente.total_valor_viaje_real) }}
+        </span>
+      </div>
+
+      <div class="detalle-fila">
+        <span class="detalle-label">Ganancia total</span>
+        <span class="detalle-valor text-positive">
+          {{ formatPeso(detallesCliente.total_ganancia_viaje) }}
+        </span>
+      </div>
+
+      <!-- Configuración -->
+      <div class="seccion-titulo q-mt-md">
+        Configuración
+      </div>
+
+      <div class="detalle-fila">
+        <span class="detalle-label">Activación</span>
+
+        <q-toggle
+          v-model="isActive"
+          :color="detallesCliente.estado === 'activo' ? 'grey' : 'primary'"
+          @update:model-value="cambiarEstado"
+        />
+      </div>
+
+    </q-card-section>
+
+    <q-separator />
+
+    <q-card-actions class="q-pa-md">
+
+      <q-btn
+        flat
+        round
+        icon="edit"
+        color="grey-7"
+        @click="editar(detallesCliente)"
+      />
+
+      <q-space />
+
+      <q-btn
+        flat
+        label="Cerrar"
+        color="primary"
+        v-close-popup
+      />
+
+    </q-card-actions>
+
+  </q-card>
+</q-dialog>
       <q-dialog v-model="alert" persistent>
         <q-card class="bg-grey-2">
           <q-card-section class="bg-primary text-white">
@@ -204,35 +465,34 @@
               </div>
 
               <div class="col-12">
-              <q-select
-                outlined
-                rounded
-                v-model="formulario.tipo_pago"
-                label="Frecuencia de pago:"
-                :options="tipoPagoOptions"
-              />
+                <q-select
+                  outlined
+                  rounded
+                  v-model="formulario.tipo_pago"
+                  label="Frecuencia de pago:"
+                  :options="tipoPagoOptions"
+                />
               </div>
 
               <div class="col-12">
-              <q-select
-                outlined
-                rounded
-                v-model="formulario.rete_fuente"
-                label="Rete Fuente:"
-                :options="reteFuenteOptions"
-              />
+                <q-select
+                  outlined
+                  rounded
+                  v-model="formulario.rete_fuente"
+                  label="Rete Fuente:"
+                  :options="reteFuenteOptions"
+                />
               </div>
 
               <div class="col-12">
-              <q-input
-                outlined
-                rounded
-                v-model.trim="formulario.rete_ica"
-                label="Rete ICA"
-                :dense="dense"
-              />
+                <q-input
+                  outlined
+                  rounded
+                  v-model.trim="formulario.rete_ica"
+                  label="Rete ICA"
+                  :dense="dense"
+                />
               </div>
-
             </div>
           </q-card-section>
 
@@ -249,7 +509,11 @@
       </q-dialog>
     </div>
 
-    <q-btn color="primary" :label="'Registrar nuevo'" class="q-mt-md" @click="abrir" />
+    <!-- <q-btn color="primary" :label="'Registrar nuevo'" class="q-mt-md" @click="abrir" /> -->
+  
+      <q-page-sticky position="bottom-right" :offset="[18, 18]">
+      <q-btn fab icon="add" color="primary" @click="abrir" />
+    </q-page-sticky>
   </q-page>
 </template>
 
@@ -297,45 +561,6 @@ function cerrar() {
   alert.value = false
   resetearFormulario()
 }
-
-// async function guardar() {
-//   cargando.value = true
-
-//   if (!validar()) {
-//     cargando.value = false
-//     return
-//   }
-
-//   try {
-//     const formData = new FormData()
-
-//     Object.entries(formulario.value).forEach(([key, value]) => {
-//       if (value !== null && value !== undefined && value !== '') {
-//         formData.append(key, value)
-//       }
-//     })
-
-//     let response
-
-//     if (props.esEdicion) {
-//       response = await useCliente.putCliente(formulario.value.codigo, formulario.value)
-//     } else {
-//       response = await useCliente.postCliente(formulario.value)
-//     }
-
-//     console.log('Respuesta exitosa:', response)
-
-//     cerrar()
-//     cargarClientes()
-//     alert.value = false
-//     resetearFormulario()
-//   } catch (error) {
-//     console.error('Error al guardar:', error)
-//     mostrarMensajeError('Error al guardar el cliente')
-//   } finally {
-//     cargando.value = false
-//   }
-// }
 
 async function guardar() {
   cargando.value = true
@@ -405,7 +630,7 @@ async function validar() {
 async function verDetalles(codigo) {
   try {
     const detalle = await useCliente.obtenerdatoscliente(codigo)
-    console.log('Detalles obtenidos:', detalle)
+    // console.log('Detalles obtenidos:', detalle)
 
     if (detalle) {
       detallesCliente.value = {
@@ -458,31 +683,23 @@ watch(tipoLista, (newValue) => {
 function cargarListaPor(tipo) {
   tipoLista.value = tipo
   ordenActual.value = 'desc'
-
-  // Obtener el filtro actual basado en el tipo
   const filtro = CONFIG_FILTROS[tipo]
 
-  // Asegurarnos de que hay un valor por defecto válido
   if (filtro.esFiltroTexto && filtro.opcionesFiltro?.length > 0) {
-    // Usar el primer valor como valor por defecto
     valorFiltroTexto.value = filtro.opcionesFiltro[0].valor
-    // console.log(`Tipo cambiado a ${tipo}, valor por defecto: ${valorFiltroTexto.value}`);
   } else {
     valorFiltroTexto.value = null
-    // console.log(`Tipo cambiado a ${tipo}, sin valor por defecto`);
   }
 
   cargarClientes()
 }
 
 function actualizarValorFiltro(nuevoValor) {
-  // console.log(`Cambiando valor del filtro a: ${nuevoValor}`);
   valorFiltroTexto.value = nuevoValor
   cargarClientes()
 }
 
 function obtenerEtiquetaValor(valor) {
-  // Implementa la lógica para formatear el valor según el tipo de filtro
   if (tipoLista.value === TIPOS_FILTRO.VIAJES) {
     return `${valor}`
   } else if (tipoLista.value === TIPOS_FILTRO.ESTADO) {
@@ -582,15 +799,164 @@ function mostrarMensajeError(mensaje) {
   })
 }
 
-// function mostrarMensajeExito(mensaje) {
-//   $q.notify({
-//     type: 'positive',
-//     message: mensaje,
-//     position: 'bottom-right',
-//   })
-// }
+function iniciales(empresa) {
+  return empresa
+    .split(' ')
+    .slice(0, 2)
+    .map(w => w[0])
+    .join('')
+    .toUpperCase()
+}
+
+function colorEstado(cliente) {
+  // Ajusta esto según tu lógica de negocio
+  if (!cliente.valorFiltro) return 'grey'
+  if (cliente.valorFiltro < 0) return 'negative'
+  if (cliente.valorFiltro < 30) return 'warning'
+  return 'positive'
+}
+
+
+function formatPeso(valor) {
+  if (!valor) return '-'
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    maximumFractionDigits: 0,
+  }).format(valor)
+}
+
+function formatFecha(fecha) {
+  if (!fecha) return ''
+  return new Date(fecha).toLocaleDateString('es-CO', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
 
 defineOptions({
   name: 'ClientesPage',
 })
+
 </script>
+
+<style scoped>
+.cliente-card {
+  border-radius: 12px !important;
+  transition: border-color 0.15s;
+}
+.cliente-card:active {
+  opacity: 0.85;
+}
+
+.placa-badge {
+  background: #111827;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-family: monospace;
+}
+
+.metrica-chip {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  min-width: 0;
+}
+.metrica-chip.rendimiento-malo {
+  background: #fef2f2;
+}
+.metrica-chip.rendimiento-bueno {
+  background: #f0fdf4;
+}
+.metrica-label {
+  font-size: 10px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+.metrica-valor {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.filter-bar {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 12px;
+}
+
+.filter-scroll {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.filter-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-chip {
+  border-radius: 999px !important;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.avatar-chip {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1e50a2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.placa-badge-lg {
+  background: #111827;
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 6px 20px;
+  border-radius: 8px;
+  font-family: monospace;
+}
+
+.detalle-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.detalle-fila:last-child {
+  border-bottom: none;
+}
+.detalle-label {
+  font-size: 13px;
+  color: #9CA3AF;
+}
+.detalle-valor {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111827;
+  text-align: right;
+  max-width: 60%;
+}
+</style>

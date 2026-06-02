@@ -1,5 +1,5 @@
 <template>
-  <q-page class="flex flex-center">
+  <!-- <q-page class="flex flex-center">
     <q-card-section>
       <div class="row items-center q-col-gutter-md">
         <div class="col-12 col-md-auto">
@@ -191,7 +191,6 @@
             <q-card-actions align="right">
               <q-btn class="option-button" @click="editar(detallesUsuario)">✏️</q-btn>
 
-              <!-- Solo si el usuario logueado es admin o propietario, y el detalle es de un conductor -->
               <template
                 v-if="
                   (perfilUsuario === 'administrador' || perfilUsuario === 'propietario') &&
@@ -213,420 +212,721 @@
             <q-btn flat label="Cerrar" color="primary" v-close-popup />
           </q-card-actions>
         </q-card>
-      </q-dialog>
+      </q-dialog> -->
 
-      <q-dialog v-model="dialogNomina" persistent>
-        <q-card style="min-width: 320px">
-          <q-card-section>
-            <div class="text-h6">Nómina — {{ detallesUsuario?.nombre }}</div>
-          </q-card-section>
+  <q-page padding class="bg-grey-2">
+    <!-- Filtros -->
+    <div class="filter-bar q-mb-md">
+      <div class="filter-scroll row no-wrap q-gutter-x-sm q-pb-xs">
+        <q-chip
+          v-for="(config, tipo) in filtrosConfig"
+          :key="tipo"
+          clickable
+          :icon="config.icono"
+          :color="tipoLista === tipo ? 'primary' : 'grey-2'"
+          :text-color="tipoLista === tipo ? 'white' : 'grey-8'"
+          class="filter-chip"
+          @click="cargarListaPor(tipo)"
+        >
+          {{ tipo === 'todos' ? 'Todos' : config.titulo.split(' ').pop() }}
+        </q-chip>
+      </div>
 
-          <q-card-section class="q-pt-none">
-            <q-input filled v-model="mesNomina" type="month" label="Mes" :dense="dense" />
-            <q-btn
-              color="teal"
-              label="Calcular"
-              class="q-mt-md full-width"
-              @click="calcularNomina"
-              :loading="cargandoNomina"
-            />
-          </q-card-section>
+      <div
+        v-if="tipoLista !== 'todos' && !filtroActual.esFiltroTexto"
+        class="row no-wrap q-gutter-x-sm q-mt-sm"
+      >
+        <q-chip
+          v-for="op in opcionesOrdenamiento"
+          :key="op.value"
+          clickable
+          size="sm"
+          :color="ordenActual === op.value ? 'secondary' : 'transparent'"
+          :text-color="ordenActual === op.value ? 'white' : 'grey-7'"
+          :outline="ordenActual !== op.value"
+          @click="ordenActual = op.value; cargarUsuarios()"
+        >
+          {{ op.label }}
+        </q-chip>
+      </div>
 
-          <!-- Resultado del cálculo -->
-          <q-card-section v-if="calculoNomina" class="q-pt-none">
-            <q-separator class="q-mb-md" />
-            <div class="text-subtitle2 q-mb-sm">Resumen</div>
-            <div class="row q-mb-xs">
-              <div class="col-7 text-caption text-weight-bold">Viajes del mes:</div>
-              <div class="col-5 text-caption">{{ calculoNomina.total_viajes_mes }}</div>
-            </div>
-            <div class="row q-mb-xs">
-              <div class="col-7 text-caption text-weight-bold">10% total:</div>
-              <div class="col-5 text-caption">
-                {{ formatearPesos(calculoNomina.diez_pcto_total_mes) }}
-              </div>
-            </div>
-            <div class="row q-mb-xs">
-              <div class="col-7 text-caption text-weight-bold">Saldo anticipo:</div>
-              <div class="col-5 text-caption">
-                {{ formatearPesos(calculoNomina.saldo_anticipo_total_mes) }}
-              </div>
-            </div>
-            <div class="row q-mb-xs">
-              <div class="col-7 text-caption text-weight-bold">Préstamos pendientes:</div>
-              <div class="col-5 text-caption">
-                {{ formatearPesos(calculoNomina.total_prestamos_pendientes) }}
-              </div>
-            </div>
-            <q-separator class="q-my-sm" />
-            <div class="row">
-              <div class="col-7 text-weight-bold">Total a pagar:</div>
-              <div
-                class="col-5 text-weight-bold"
-                :class="calculoNomina.total_nomina >= 0 ? 'text-green' : 'text-red'"
-              >
-                {{ formatearPesos(calculoNomina.total_nomina) }}
-              </div>
-            </div>
-
-            <q-btn
-              color="green"
-              label="Aprobar y pagar nómina"
-              class="q-mt-md full-width"
-              @click="aprobarNomina"
-              :loading="cargandoNomina"
-            />
-          </q-card-section>
-
-          <q-card-actions align="right">
-            <q-btn flat label="Cerrar" color="primary" @click="dialogNomina = false" />
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
-
-      <!-- <q-dialog v-model="alert" persistent maximized> -->
-      <q-dialog v-model="alert" persistent>
-        <q-card class="bg-grey-2">
-          <!-- HEADER -->
-          <q-card-section class="bg-primary text-white">
-            <div class="text-h6 text-weight-bold">
-              {{ accion == 1 ? 'Agregar Usuario' : 'Editar Usuario' }}
-            </div>
-            <div class="text-caption">Complete la información del usuario</div>
-          </q-card-section>
-
-          <q-card-section class="q-pa-md">
-            <!-- ================= DATOS PRINCIPALES ================= -->
-            <q-card flat bordered class="rounded-borders q-mb-md">
-              <q-card-section>
-                <div class="text-subtitle1 text-primary text-weight-bold q-mb-md">
-                  Datos principales
-                </div>
-
-                <div class="row q-col-gutter-md">
-                  <div class="col-12">
-                    <q-input
-                      outlined
-                      rounded
-                      v-model.trim="formulario.nombre"
-                      label="Nombre completo"
-                      dense
-                    />
-                  </div>
-
-                  <div class="col-12">
-                    <q-input
-                      outlined
-                      rounded
-                      type="email"
-                      v-model.trim="formulario.email"
-                      label="Correo electrónico"
-                      dense
-                    />
-                  </div>
-
-                  <div class="col-12">
-                    <q-input
-                      outlined
-                      rounded
-                      type="password"
-                      v-model.trim="formulario.password"
-                      label="Contraseña"
-                      dense
-                    />
-                  </div>
-
-                  <div class="col-12">
-                    <q-select
-                      outlined
-                      rounded
-                      v-model="formulario.perfil"
-                      label="Perfil"
-                      :options="perfilOptions"
-                      dense
-                    />
-                  </div>
-
-                  <div class="col-12">
-                    <q-select
-                      outlined
-                      rounded
-                      v-model="formulario.placa_asignada"
-                      label="Placas asignadas"
-                      :options="placasOptions"
-                      multiple
-                      use-chips
-                      dense
-                    />
-                  </div>
-                </div>
-              </q-card-section>
-            </q-card>
-
-            <!-- ================= DOCUMENTO ================= -->
-            <q-card flat bordered class="rounded-borders q-mb-md">
-              <q-card-section>
-                <div class="text-subtitle1 text-primary text-weight-bold q-mb-md">
-                  Documento de identidad
-                </div>
-
-                <div class="row q-col-gutter-md">
-                  <div class="col-12">
-                    <q-select
-                      outlined
-                      rounded
-                      v-model="formulario.tipo_documento"
-                      label="Tipo de documento"
-                      :options="tipodocOptions"
-                      dense
-                    />
-                  </div>
-
-                  <div class="col-12">
-                    <q-input
-                      outlined
-                      rounded
-                      v-model.trim="formulario.documento"
-                      label="Número de documento"
-                      dense
-                    />
-                  </div>
-
-                  <div class="col-12">
-                    <q-input
-                      outlined
-                      rounded
-                      v-model.trim="formulario.ciudad_expedicion"
-                      label="Ciudad de expedición"
-                      dense
-                    />
-                  </div>
-
-                  <div class="col-12">
-                    <div class="text-caption text-grey-7 q-mb-xs">Fecha de expedición</div>
-
-                    <q-date
-                      v-model="formulario.fecha_expedicion"
-                      minimal
-                      bordered
-                      class="rounded-borders full-width"
-                    />
-                  </div>
-                </div>
-              </q-card-section>
-            </q-card>
-
-            <!-- ================= INFORMACIÓN PERSONAL ================= -->
-            <q-card flat bordered class="rounded-borders q-mb-md">
-              <q-card-section>
-                <div class="text-subtitle1 text-primary text-weight-bold q-mb-md">
-                  Información personal
-                </div>
-
-                <div class="row q-col-gutter-md">
-                  <div class="col-12">
-                    <q-select
-                      outlined
-                      rounded
-                      v-model="formulario.pais_nacimiento"
-                      label="País de nacimiento"
-                      :options="paisOptions"
-                      dense
-                    />
-                  </div>
-
-                  <div class="col-12">
-                    <q-input
-                      outlined
-                      rounded
-                      v-model.trim="formulario.ciudad_nacimiento"
-                      label="Ciudad de nacimiento"
-                      dense
-                    />
-                  </div>
-
-                  <div class="col-12">
-                    <div class="text-caption text-grey-7 q-mb-xs">Fecha de nacimiento</div>
-
-                    <q-date
-                      v-model="formulario.fecha_nacimiento"
-                      minimal
-                      bordered
-                      class="rounded-borders full-width"
-                    />
-                  </div>
-
-                  <div class="col-12">
-                    <q-select
-                      outlined
-                      rounded
-                      v-model="formulario.grupo_sanguineo_rh"
-                      label="Grupo sanguíneo"
-                      :options="rhOptions"
-                      dense
-                    />
-                  </div>
-
-                  <div class="col-12">
-                    <q-select
-                      outlined
-                      rounded
-                      v-model="formulario.genero"
-                      label="Género"
-                      :options="generoOptions"
-                      dense
-                    />
-                  </div>
-
-                  <div class="col-12">
-                    <q-select
-                      outlined
-                      rounded
-                      v-model="formulario.estado_civil"
-                      label="Estado civil"
-                      :options="estadocivilOptions"
-                      dense
-                    />
-                  </div>
-
-                  <div class="col-12">
-                    <q-input
-                      outlined
-                      rounded
-                      v-model.trim="formulario.telefono"
-                      label="Teléfono"
-                      dense
-                    />
-                  </div>
-                </div>
-              </q-card-section>
-            </q-card>
-
-            <!-- ================= LICENCIA ================= -->
-            <q-card flat bordered class="rounded-borders q-mb-md">
-              <q-card-section>
-                <div class="text-subtitle1 text-primary text-weight-bold q-mb-md">
-                  Información de licencia
-                </div>
-
-                <div class="row q-col-gutter-md">
-                  <div class="col-12">
-                    <q-select
-                      outlined
-                      rounded
-                      v-model="formulario.tipo_licencia"
-                      label="Tipo de licencia"
-                      :options="tipolicenciaOptions"
-                      dense
-                    />
-                  </div>
-
-                  <div class="col-12">
-                    <q-input
-                      outlined
-                      rounded
-                      v-model.trim="formulario.num_licencia"
-                      label="Número de licencia"
-                      dense
-                    />
-                  </div>
-
-                  <div class="col-12">
-                    <div class="text-caption text-grey-7 q-mb-xs">Fecha expedición licencia</div>
-
-                    <q-date
-                      v-model="formulario.fecha_expedicion_licencia"
-                      minimal
-                      bordered
-                      class="rounded-borders full-width"
-                    />
-                  </div>
-                </div>
-              </q-card-section>
-            </q-card>
-
-            <!-- ================= INFORMACIÓN BANCARIA ================= -->
-            <q-card flat bordered class="rounded-borders q-mb-md">
-              <q-card-section>
-                <div class="text-subtitle1 text-primary text-weight-bold q-mb-md">
-                  Información bancaria
-                </div>
-
-                <div class="row q-col-gutter-md">
-                  <div class="col-12">
-                    <q-select
-                      outlined
-                      rounded
-                      v-model="formulario.banco"
-                      label="Banco"
-                      :options="bancoOptions"
-                      dense
-                    />
-                  </div>
-
-                  <div class="col-12">
-                    <q-input
-                      outlined
-                      rounded
-                      v-model.trim="formulario.num_cuenta"
-                      label="Número de cuenta"
-                      dense
-                    />
-                  </div>
-
-                  <div class="col-12">
-                    <q-input
-                      outlined
-                      rounded
-                      v-model="salariobaseFormatted"
-                      label="Salario base"
-                      dense
-                      prefix="$"
-                      @update:model-value="formatearSalarioBase"
-                    />
-                  </div>
-
-                  <div class="col-12">
-                    <q-input
-                      outlined
-                      rounded
-                      v-model="ssoFormatted"
-                      label="Seguridad social"
-                      prefix="$"
-                      dense
-                      @update:model-value="formatearSSO"
-                    />
-                  </div>
-                </div>
-              </q-card-section>
-            </q-card>
-          </q-card-section>
-
-          <!-- BOTONES -->
-          <q-card-actions class="bg-white q-pa-md" align="between">
-            <q-btn flat color="grey-8" label="Cerrar" icon="close" @click="cerrar()" />
-
-            <q-btn
-              unelevated
-              rounded
-              color="primary"
-              :loading="useUsuario.loading"
-              @click="guardar"
-            >
-              <q-icon :name="accion === 1 ? 'person_add' : 'edit'" class="q-mr-sm" />
-
-              {{ accion === 1 ? 'Agregar usuario' : 'Actualizar usuario' }}
-
-              <template v-slot:loading>
-                <q-spinner color="white" size="1em" />
-              </template>
-            </q-btn>
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
+      <div v-if="filtroActual.esFiltroTexto" class="q-mt-sm">
+        <q-select
+          v-model="valorFiltroTexto"
+          :options="opcionesFiltroTexto"
+          option-value="valor"
+          option-label="etiqueta"
+          dense
+          outlined
+          rounded
+          emit-value
+          map-options
+          @update:model-value="actualizarValorFiltro"
+        />
+      </div>
     </div>
 
-    <q-btn color="primary" :label="'Registrar Usuario'" class="q-mt-md" @click="abrir" />
+    <!-- Encabezado -->
+    <div class="row items-center q-mb-sm">
+      <q-icon :name="filtroActual.icono" :color="filtroActual.color" size="20px" />
+      <span class="text-subtitle1 text-weight-medium q-ml-xs">
+        {{ filtroActual.titulo }}
+        <span v-if="filtroActual.esFiltroTexto && valorFiltroTexto">
+          · {{ obtenerEtiquetaFiltroTexto(valorFiltroTexto) }}
+        </span>
+      </span>
+      <q-badge color="blue-1" text-color="blue-9" class="q-ml-auto" rounded>
+        {{ usuarios.length }}
+      </q-badge>
+    </div>
+
+    <!-- Cards -->
+    <div class="q-gutter-y-sm">
+      <q-card
+        v-for="usuario in usuarios"
+        :key="usuario.email"
+        flat
+        bordered
+        class="usuario-card cursor-pointer"
+        @click="verDetalles(usuario.email)"
+      >
+        <q-card-section class="q-pa-md">
+          <div class="row items-center">
+            <div class="avatar-chip q-mr-md">{{ iniciales(usuario.nombre) }}</div>
+            <div class="col">
+              <div class="text-body2 text-weight-medium ellipsis">{{ usuario.nombre }}</div>
+              <div class="text-caption text-grey-6 ellipsis">{{ usuario.email }}</div>
+              <div class="row items-center q-gutter-x-sm q-mt-xs">
+                <q-badge
+                  :color="colorPerfil(usuario.perfil)"
+                  text-color="white"
+                  rounded
+                  class="text-caption"
+                >
+                  {{ usuario.perfil }}
+                </q-badge>
+                <q-badge
+                  :color="usuario.estado === 'activo' ? 'green-1' : 'grey-3'"
+                  :text-color="usuario.estado === 'activo' ? 'green-9' : 'grey-7'"
+                  rounded
+                  class="text-caption"
+                >
+                  {{ usuario.estado || 'sin estado' }}
+                </q-badge>
+              </div>
+            </div>
+            <q-icon name="chevron_right" color="grey-4" size="16px" />
+          </div>
+        </q-card-section>
+      </q-card>
+    </div>
+
+    <!-- Dialog detalles -->
+    <q-dialog v-model="mostrarDetalles" persistent>
+      <q-card
+        style="min-width: 350px; max-width: 95vw; width: 500px; border-radius: 16px !important"
+      >
+        <!-- Header -->
+        <q-card-section class="q-pb-sm">
+          <div class="row items-center" v-if="detallesUsuario">
+            <div class="avatar-chip q-mr-md">{{ iniciales(detallesUsuario.nombre) }}</div>
+            <div class="col">
+              <div class="text-subtitle1 text-weight-medium">{{ detallesUsuario.nombre }}</div>
+              <div class="text-caption text-grey-6">{{ detallesUsuario.email }}</div>
+            </div>
+            <q-badge :color="colorPerfil(detallesUsuario.perfil)" text-color="white" rounded>
+              {{ detallesUsuario.perfil }}
+            </q-badge>
+          </div>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-section
+          class="q-pt-md"
+          v-if="detallesUsuario"
+          style="max-height: 65vh; overflow-y: auto"
+        >
+          <!-- Métricas rápidas -->
+          <div class="row q-gutter-sm q-mb-md">
+            <div class="metrica-chip col">
+              <div class="metrica-label">Viajes realizados</div>
+              <div class="metrica-valor">{{ detallesUsuario.viajes_realizados || '0' }}</div>
+            </div>
+            <div class="metrica-chip col">
+              <div class="metrica-label">Salario base</div>
+              <div class="metrica-valor">{{ formatPeso(detallesUsuario.salario_base) }}</div>
+            </div>
+            <div class="metrica-chip col">
+              <div class="metrica-label">Estado</div>
+              <div class="metrica-valor">{{ detallesUsuario.estado || '—' }}</div>
+            </div>
+          </div>
+
+          <!-- Sección: Contacto -->
+          <div class="seccion-titulo">Contacto</div>
+          <div class="detalle-fila">
+            <span class="detalle-label">Teléfono</span>
+            <span class="detalle-valor">{{ detallesUsuario.telefono || '—' }}</span>
+          </div>
+          <div class="detalle-fila" v-if="detallesUsuario.placa_asignada">
+            <span class="detalle-label">Placa asignada</span>
+            <div class="placa-badge" style="font-size: 12px; padding: 2px 8px">
+              {{ detallesUsuario.placa_asignada }}
+            </div>
+          </div>
+
+          <!-- Sección: Documento -->
+          <div class="seccion-titulo q-mt-md">Documento de identidad</div>
+          <div class="detalle-fila">
+            <span class="detalle-label">Tipo</span>
+            <span class="detalle-valor">{{ detallesUsuario.tipo_documento || '—' }}</span>
+          </div>
+          <div class="detalle-fila">
+            <span class="detalle-label">Número</span>
+            <span class="detalle-valor" style="font-family: monospace">{{
+              detallesUsuario.documento || '—'
+            }}</span>
+          </div>
+          <div class="detalle-fila">
+            <span class="detalle-label">Ciudad expedición</span>
+            <span class="detalle-valor">{{ detallesUsuario.ciudad_expedicion || '—' }}</span>
+          </div>
+          <div class="detalle-fila">
+            <span class="detalle-label">Fecha expedición</span>
+            <span class="detalle-valor">{{ formatFecha(detallesUsuario.fecha_expedicion) }}</span>
+          </div>
+
+          <!-- Sección: Datos personales -->
+          <div class="seccion-titulo q-mt-md">Datos personales</div>
+          <div class="detalle-fila">
+            <span class="detalle-label">Fecha nacimiento</span>
+            <span class="detalle-valor">{{ formatFecha(detallesUsuario.fecha_nacimiento) }}</span>
+          </div>
+          <div class="detalle-fila">
+            <span class="detalle-label">Ciudad nacimiento</span>
+            <span class="detalle-valor">{{ detallesUsuario.ciudad_nacimiento || '—' }}</span>
+          </div>
+          <div class="detalle-fila">
+            <span class="detalle-label">País nacimiento</span>
+            <span class="detalle-valor">{{ detallesUsuario.pais_nacimiento || '—' }}</span>
+          </div>
+          <div class="detalle-fila">
+            <span class="detalle-label">Género</span>
+            <span class="detalle-valor">{{ detallesUsuario.genero || '—' }}</span>
+          </div>
+          <div class="detalle-fila">
+            <span class="detalle-label">Estado civil</span>
+            <span class="detalle-valor">{{ detallesUsuario.estado_civil || '—' }}</span>
+          </div>
+          <div class="detalle-fila">
+            <span class="detalle-label">Grupo sanguíneo</span>
+            <span class="detalle-valor">{{ detallesUsuario.grupo_sanguineo_rh || '—' }}</span>
+          </div>
+
+          <!-- Sección: Licencia (solo si aplica) -->
+          <template v-if="detallesUsuario.tipo_licencia || detallesUsuario.num_licencia">
+            <div class="seccion-titulo q-mt-md">Licencia de conducción</div>
+            <div class="doc-legal-card">
+              <div class="row items-center q-mb-xs">
+                <span class="text-body2 text-weight-medium">
+                  {{ detallesUsuario.tipo_licencia || '—' }}
+                </span>
+                <q-space />
+                <span class="text-caption text-grey-6" style="font-family: monospace">
+                  {{ detallesUsuario.num_licencia || '—' }}
+                </span>
+              </div>
+              <div class="row">
+                <div class="col">
+                  <div class="metrica-label">Expedición</div>
+                  <div style="font-size: 12px">
+                    {{ formatFecha(detallesUsuario.fecha_expedicion_licencia) }}
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="metrica-label">Vencimiento</div>
+                  <div style="font-size: 12px">
+                    {{ formatFecha(detallesUsuario.fecha_vencimiento_licencia) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- Sección: Banco -->
+          <div class="seccion-titulo q-mt-md">Información bancaria</div>
+          <div class="detalle-fila">
+            <span class="detalle-label">Banco</span>
+            <span class="detalle-valor">{{ detallesUsuario.banco || '—' }}</span>
+          </div>
+          <div class="detalle-fila">
+            <span class="detalle-label">N° cuenta</span>
+            <span class="detalle-valor" style="font-family: monospace">{{
+              detallesUsuario.num_cuenta || '—'
+            }}</span>
+          </div>
+          <div class="detalle-fila">
+            <span class="detalle-label">Seguridad social</span>
+            <span class="detalle-valor">{{ detallesUsuario.sso || '—' }}</span>
+          </div>
+
+          <q-separator class="q-my-md" />
+
+          <!-- Activación -->
+          <div class="detalle-fila">
+            <span class="detalle-label">Activación</span>
+            <q-toggle
+              v-model="isActive"
+              :color="detallesUsuario.estado === 'activo' ? 'grey' : 'primary'"
+              @update:model-value="cambiarEstado"
+            />
+          </div>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-actions class="q-pa-md">
+          <template
+            v-if="
+              (perfilUsuario === 'administrador' || perfilUsuario === 'propietario') &&
+              detallesUsuario?.perfil === 'conductor'
+            "
+          >
+            <q-btn
+              outline
+              color="teal"
+              label="Nómina"
+              icon="calculate"
+              size="sm"
+              @click="abrirCalcularNomina"
+            />
+            <q-btn
+              outline
+              color="blue"
+              label="Pagar base"
+              icon="payments"
+              size="sm"
+              @click="pagarSalario"
+            />
+          </template>
+          <q-space />
+          <q-btn flat round icon="edit" color="grey-7" @click="editar(detallesUsuario)" />
+          <q-btn flat label="Cerrar" color="primary" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="dialogNomina" persistent>
+      <q-card style="min-width: 320px">
+        <q-card-section>
+          <div class="text-h6">Nómina — {{ detallesUsuario?.nombre }}</div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <q-input filled v-model="mesNomina" type="month" label="Mes" :dense="dense" />
+          <q-btn
+            color="teal"
+            label="Calcular"
+            class="q-mt-md full-width"
+            @click="calcularNomina"
+            :loading="cargandoNomina"
+          />
+        </q-card-section>
+
+        <!-- Resultado del cálculo -->
+        <q-card-section v-if="calculoNomina" class="q-pt-none">
+          <q-separator class="q-mb-md" />
+          <div class="text-subtitle2 q-mb-sm">Resumen</div>
+          <div class="row q-mb-xs">
+            <div class="col-7 text-caption text-weight-bold">Viajes del mes:</div>
+            <div class="col-5 text-caption">{{ calculoNomina.total_viajes_mes }}</div>
+          </div>
+          <div class="row q-mb-xs">
+            <div class="col-7 text-caption text-weight-bold">10% total:</div>
+            <div class="col-5 text-caption">
+              {{ formatearPesos(calculoNomina.diez_pcto_total_mes) }}
+            </div>
+          </div>
+          <div class="row q-mb-xs">
+            <div class="col-7 text-caption text-weight-bold">Saldo anticipo:</div>
+            <div class="col-5 text-caption">
+              {{ formatearPesos(calculoNomina.saldo_anticipo_total_mes) }}
+            </div>
+          </div>
+          <div class="row q-mb-xs">
+            <div class="col-7 text-caption text-weight-bold">Préstamos pendientes:</div>
+            <div class="col-5 text-caption">
+              {{ formatearPesos(calculoNomina.total_prestamos_pendientes) }}
+            </div>
+          </div>
+          <q-separator class="q-my-sm" />
+          <div class="row">
+            <div class="col-7 text-weight-bold">Total a pagar:</div>
+            <div
+              class="col-5 text-weight-bold"
+              :class="calculoNomina.total_nomina >= 0 ? 'text-green' : 'text-red'"
+            >
+              {{ formatearPesos(calculoNomina.total_nomina) }}
+            </div>
+          </div>
+
+          <q-btn
+            color="green"
+            label="Aprobar y pagar nómina"
+            class="q-mt-md full-width"
+            @click="aprobarNomina"
+            :loading="cargandoNomina"
+          />
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cerrar" color="primary" @click="dialogNomina = false" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- <q-dialog v-model="alert" persistent maximized> -->
+    <q-dialog v-model="alert" persistent>
+      <q-card class="bg-grey-2">
+        <!-- HEADER -->
+        <q-card-section class="bg-primary text-white">
+          <div class="text-h6 text-weight-bold">
+            {{ accion == 1 ? 'Agregar Usuario' : 'Editar Usuario' }}
+          </div>
+          <div class="text-caption">Complete la información del usuario</div>
+        </q-card-section>
+
+        <q-card-section class="q-pa-md">
+          <!-- ================= DATOS PRINCIPALES ================= -->
+          <q-card flat bordered class="rounded-borders q-mb-md">
+            <q-card-section>
+              <div class="text-subtitle1 text-primary text-weight-bold q-mb-md">
+                Datos principales
+              </div>
+
+              <div class="row q-col-gutter-md">
+                <div class="col-12">
+                  <q-input
+                    outlined
+                    rounded
+                    v-model.trim="formulario.nombre"
+                    label="Nombre completo"
+                    dense
+                  />
+                </div>
+
+                <div class="col-12">
+                  <q-input
+                    outlined
+                    rounded
+                    type="email"
+                    v-model.trim="formulario.email"
+                    label="Correo electrónico"
+                    dense
+                  />
+                </div>
+
+                <div class="col-12">
+                  <q-input
+                    outlined
+                    rounded
+                    type="password"
+                    v-model.trim="formulario.password"
+                    label="Contraseña"
+                    dense
+                  />
+                </div>
+
+                <div class="col-12">
+                  <q-select
+                    outlined
+                    rounded
+                    v-model="formulario.perfil"
+                    label="Perfil"
+                    :options="perfilOptions"
+                    dense
+                  />
+                </div>
+
+                <div class="col-12">
+                  <q-select
+                    outlined
+                    rounded
+                    v-model="formulario.placa_asignada"
+                    label="Placas asignadas"
+                    :options="placasOptions"
+                    multiple
+                    use-chips
+                    dense
+                  />
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+
+          <!-- ================= DOCUMENTO ================= -->
+          <q-card flat bordered class="rounded-borders q-mb-md">
+            <q-card-section>
+              <div class="text-subtitle1 text-primary text-weight-bold q-mb-md">
+                Documento de identidad
+              </div>
+
+              <div class="row q-col-gutter-md">
+                <div class="col-12">
+                  <q-select
+                    outlined
+                    rounded
+                    v-model="formulario.tipo_documento"
+                    label="Tipo de documento"
+                    :options="tipodocOptions"
+                    dense
+                  />
+                </div>
+
+                <div class="col-12">
+                  <q-input
+                    outlined
+                    rounded
+                    v-model.trim="formulario.documento"
+                    label="Número de documento"
+                    dense
+                  />
+                </div>
+
+                <div class="col-12">
+                  <q-input
+                    outlined
+                    rounded
+                    v-model.trim="formulario.ciudad_expedicion"
+                    label="Ciudad de expedición"
+                    dense
+                  />
+                </div>
+
+                <div class="col-12">
+                  <div class="text-caption text-grey-7 q-mb-xs">Fecha de expedición</div>
+
+                  <q-date
+                    v-model="formulario.fecha_expedicion"
+                    minimal
+                    bordered
+                    class="rounded-borders full-width"
+                  />
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+
+          <!-- ================= INFORMACIÓN PERSONAL ================= -->
+          <q-card flat bordered class="rounded-borders q-mb-md">
+            <q-card-section>
+              <div class="text-subtitle1 text-primary text-weight-bold q-mb-md">
+                Información personal
+              </div>
+
+              <div class="row q-col-gutter-md">
+                <div class="col-12">
+                  <q-select
+                    outlined
+                    rounded
+                    v-model="formulario.pais_nacimiento"
+                    label="País de nacimiento"
+                    :options="paisOptions"
+                    dense
+                  />
+                </div>
+
+                <div class="col-12">
+                  <q-input
+                    outlined
+                    rounded
+                    v-model.trim="formulario.ciudad_nacimiento"
+                    label="Ciudad de nacimiento"
+                    dense
+                  />
+                </div>
+
+                <div class="col-12">
+                  <div class="text-caption text-grey-7 q-mb-xs">Fecha de nacimiento</div>
+
+                  <q-date
+                    v-model="formulario.fecha_nacimiento"
+                    minimal
+                    bordered
+                    class="rounded-borders full-width"
+                  />
+                </div>
+
+                <div class="col-12">
+                  <q-select
+                    outlined
+                    rounded
+                    v-model="formulario.grupo_sanguineo_rh"
+                    label="Grupo sanguíneo"
+                    :options="rhOptions"
+                    dense
+                  />
+                </div>
+
+                <div class="col-12">
+                  <q-select
+                    outlined
+                    rounded
+                    v-model="formulario.genero"
+                    label="Género"
+                    :options="generoOptions"
+                    dense
+                  />
+                </div>
+
+                <div class="col-12">
+                  <q-select
+                    outlined
+                    rounded
+                    v-model="formulario.estado_civil"
+                    label="Estado civil"
+                    :options="estadocivilOptions"
+                    dense
+                  />
+                </div>
+
+                <div class="col-12">
+                  <q-input
+                    outlined
+                    rounded
+                    v-model.trim="formulario.telefono"
+                    label="Teléfono"
+                    dense
+                  />
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+
+          <!-- ================= LICENCIA ================= -->
+          <q-card flat bordered class="rounded-borders q-mb-md">
+            <q-card-section>
+              <div class="text-subtitle1 text-primary text-weight-bold q-mb-md">
+                Información de licencia
+              </div>
+
+              <div class="row q-col-gutter-md">
+                <div class="col-12">
+                  <q-select
+                    outlined
+                    rounded
+                    v-model="formulario.tipo_licencia"
+                    label="Tipo de licencia"
+                    :options="tipolicenciaOptions"
+                    dense
+                  />
+                </div>
+
+                <div class="col-12">
+                  <q-input
+                    outlined
+                    rounded
+                    v-model.trim="formulario.num_licencia"
+                    label="Número de licencia"
+                    dense
+                  />
+                </div>
+
+                <div class="col-12">
+                  <div class="text-caption text-grey-7 q-mb-xs">Fecha expedición licencia</div>
+
+                  <q-date
+                    v-model="formulario.fecha_expedicion_licencia"
+                    minimal
+                    bordered
+                    class="rounded-borders full-width"
+                  />
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+
+          <!-- ================= INFORMACIÓN BANCARIA ================= -->
+          <q-card flat bordered class="rounded-borders q-mb-md">
+            <q-card-section>
+              <div class="text-subtitle1 text-primary text-weight-bold q-mb-md">
+                Información bancaria
+              </div>
+
+              <div class="row q-col-gutter-md">
+                <div class="col-12">
+                  <q-select
+                    outlined
+                    rounded
+                    v-model="formulario.banco"
+                    label="Banco"
+                    :options="bancoOptions"
+                    dense
+                  />
+                </div>
+
+                <div class="col-12">
+                  <q-input
+                    outlined
+                    rounded
+                    v-model.trim="formulario.num_cuenta"
+                    label="Número de cuenta"
+                    dense
+                  />
+                </div>
+
+                <div class="col-12">
+                  <q-input
+                    outlined
+                    rounded
+                    v-model="salariobaseFormatted"
+                    label="Salario base"
+                    dense
+                    prefix="$"
+                    @update:model-value="formatearSalarioBase"
+                  />
+                </div>
+
+                <div class="col-12">
+                  <q-input
+                    outlined
+                    rounded
+                    v-model="ssoFormatted"
+                    label="Seguridad social"
+                    prefix="$"
+                    dense
+                    @update:model-value="formatearSSO"
+                  />
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+        </q-card-section>
+
+        <!-- BOTONES -->
+        <q-card-actions class="bg-white q-pa-md" align="between">
+          <q-btn flat color="grey-8" label="Cerrar" icon="close" @click="cerrar()" />
+
+          <q-btn unelevated rounded color="primary" :loading="useUsuario.loading" @click="guardar">
+            <q-icon :name="accion === 1 ? 'person_add' : 'edit'" class="q-mr-sm" />
+
+            {{ accion === 1 ? 'Agregar usuario' : 'Actualizar usuario' }}
+
+            <template v-slot:loading>
+              <q-spinner color="white" size="1em" />
+            </template>
+          </q-btn>
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+    <!-- </div> -->
+
+    <!-- <q-btn color="primary" :label="'Registrar Usuario'" class="q-mt-md" @click="abrir" /> -->
+
+    <q-page-sticky position="bottom-right" :offset="[18, 18]">
+      <q-btn fab icon="add" color="primary" @click="abrir" />
+    </q-page-sticky>
   </q-page>
 </template>
 
@@ -798,20 +1098,12 @@ function editar(usuario) {
 
   formulario.value = {
     ...estadoInicial,
-
     ...usuario,
-
-    // convertir string -> array
     placa_asignada: usuario.placa_asignada ? usuario.placa_asignada.split(',') : [],
   }
 
-    salariobaseFormatted.value = formatearNumero(
-    usuario.salario_base || 0
-  )
-
-    ssoFormatted.value = formatearNumero(
-    usuario.sso || 0
-  )
+  salariobaseFormatted.value = formatearNumero(usuario.salario_base || 0)
+  ssoFormatted.value = formatearNumero(usuario.sso || 0)
 
   alert.value = true
 }
@@ -826,7 +1118,6 @@ function validar() {
     verificado = false
   }
 
-  // SOLO exigir password al crear
   if (accion.value === 1 && !password) {
     mostrarMensajeError('Diligencie una contraseña')
     verificado = false
@@ -863,18 +1154,10 @@ function mostrarMensajeError(mensaje) {
   })
 }
 
-// function mostrarMensajeExito(mensaje) {
-//     $q.notify({
-//         type: "positive",
-//         message: mensaje,
-//         position: "bottom-right",
-//     });
-// }
-
 async function verDetalles(email) {
   try {
     const detalle = await useUsuario.listardatosUsuario(email)
-    console.log('Detalles obtenidos:', detalle)
+    // console.log('Detalles obtenidos:', detalle)
 
     if (detalle) {
       detallesUsuario.value = {
@@ -939,37 +1222,30 @@ function cargarListaPor(tipo) {
   tipoLista.value = tipo
   ordenActual.value = 'desc'
 
-  // Obtener el filtro actual basado en el tipo
   const filtro = CONFIG_FILTROS[tipo]
 
-  // Asegurarnos de que hay un valor por defecto válido
   if (filtro.esFiltroTexto && filtro.opcionesFiltro?.length > 0) {
-    // Usar el primer valor como valor por defecto
     valorFiltroTexto.value = filtro.opcionesFiltro[0].valor
-    // console.log(`Tipo cambiado a ${tipo}, valor por defecto: ${valorFiltroTexto.value}`);
   } else {
     valorFiltroTexto.value = null
-    // console.log(`Tipo cambiado a ${tipo}, sin valor por defecto`);
   }
 
   cargarUsuarios()
 }
 
 function actualizarValorFiltro(nuevoValor) {
-  // console.log(`Cambiando valor del filtro a: ${nuevoValor}`);
   valorFiltroTexto.value = nuevoValor
   cargarUsuarios()
 }
 
-function obtenerEtiquetaValor(valor) {
-  // Implementa la lógica para formatear el valor según el tipo de filtro
-  if (tipoLista.value === TIPOS_FILTRO.PERFIL) {
-    return `${valor}`
-  } else if (tipoLista.value === TIPOS_FILTRO.ESTADO) {
-    return `${valor}`
-  }
-  return valor
-}
+// function obtenerEtiquetaValor(valor) {
+//   if (tipoLista.value === TIPOS_FILTRO.PERFIL) {
+//     return `${valor}`
+//   } else if (tipoLista.value === TIPOS_FILTRO.ESTADO) {
+//     return `${valor}`
+//   }
+//   return valor
+// }
 
 function obtenerEtiquetaFiltroTexto(valor) {
   if (filtroActual.value.esFiltroTexto && filtroActual.value.opcionesFiltro) {
@@ -1026,6 +1302,8 @@ async function cargarUsuarios() {
         const result = {
           nombre: item['nombre'] || '',
           email: item['email'] || '',
+          perfil: item['perfil'] || '',
+          estado: item['estado'] || '',
         }
 
         const campoDatos = filtroActual.value?.campoDatos
@@ -1054,6 +1332,7 @@ const isActive = computed({
   get: () => detallesUsuario.value && detallesUsuario.value.estado === 'activo',
   set: () => {},
 })
+
 const cambiarEstado = async () => {
   try {
     if (detallesUsuario.value.estado === 'activo') {
@@ -1102,7 +1381,6 @@ async function aprobarNomina() {
   cargandoNomina.value = true
   try {
     await useNomina.postAprobarNomina(detallesUsuario.value.email, { mes: mesNomina.value })
-    // mostrarMensajeExito('Nómina aprobada correctamente')
     dialogNomina.value = false
     calculoNomina.value = null
   } catch (e) {
@@ -1121,7 +1399,6 @@ async function pagarSalario() {
   cargandoNomina.value = true
   try {
     await useNomina.postPagarSalario(detallesUsuario.value.email, { mes: mesNomina.value })
-    // mostrarMensajeExito('Salario pagado correctamente')
   } catch (e) {
     mostrarMensajeError('Error al pagar salario')
     console.error('Error al pagar salario:', e)
@@ -1139,7 +1416,173 @@ function formatearPesos(valor) {
   })
 }
 
+function formatFecha(fecha) {
+  if (!fecha) return ''
+  return new Date(fecha).toLocaleDateString('es-CO', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+function iniciales(nombre) {
+  if (!nombre) return '?'
+  return nombre
+    .split(' ')
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+}
+
+function colorPerfil(perfil) {
+  const map = {
+    administrador: 'primary',
+    propietario: 'purple',
+    conductor: 'teal',
+  }
+  return map[perfil] || 'grey'
+}
+
+function formatPeso(valor) {
+  if (!valor) return '-'
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    maximumFractionDigits: 0,
+  }).format(valor)
+}
+
 defineOptions({
   name: 'UsuariosPage',
 })
 </script>
+
+<style scoped>
+.placa-badge {
+  background: #111827;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-family: monospace;
+}
+
+.metrica-chip {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  min-width: 0;
+}
+.metrica-chip.rendimiento-malo {
+  background: #fef2f2;
+}
+.metrica-chip.rendimiento-bueno {
+  background: #f0fdf4;
+}
+.metrica-label {
+  font-size: 10px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+.metrica-valor {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.filter-bar {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 12px;
+}
+
+.filter-scroll {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.filter-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-chip {
+  border-radius: 999px !important;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.cliente-card {
+  border-radius: 12px !important;
+  transition: border-color 0.15s;
+}
+.cliente-card:active {
+  opacity: 0.85;
+}
+
+.avatar-chip {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1e50a2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.placa-badge-lg {
+  background: #111827;
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 6px 20px;
+  border-radius: 8px;
+  font-family: monospace;
+}
+
+.detalle-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+.detalle-fila:last-child {
+  border-bottom: none;
+}
+.detalle-label {
+  font-size: 13px;
+  color: #9ca3af;
+}
+.detalle-valor {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111827;
+  text-align: right;
+  max-width: 60%;
+}
+
+.usuario-card {
+  border: 1px solid #e5e7eb !important;
+  border-radius: 12px !important;
+  transition: border-color 0.15s;
+}
+.usuario-card:active {
+  opacity: 0.85;
+}
+</style>

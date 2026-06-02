@@ -9,44 +9,23 @@ export const useStoreCombustible = defineStore(
   () => {
     let loading = ref(false)
     let combustible = ref([])
-    // const useUsuario = useStoreUsuarios()
-
-    // const obtenerCombustible = async () => {
-    //   const useUsuario = useStoreUsuarios()
-    //   loading.value = true
-    //   try {
-    //     let response = await axios.get(`api/combustible`, {
-    //       headers: {
-    //         // "x-token": localStorage.getItem('x-token')
-    //         'x-token': useUsuario.token,
-    //       },
-    //     })
-    //     console.log('Respuesta combustible:', response.data)
-    //     return response.data
-    //   } catch (error) {
-    //     console.error('No se pudo obtener el combustible', error)
-    //     return { resumen: null }
-    //   } finally {
-    //     loading.value = false
-    //   }
-    // }
 
     const obtenerCombustible = async (pagina = 1) => {
-  const useUsuario = useStoreUsuarios()
-  loading.value = true
-  try {
-    const response = await axios.get(`api/combustible`, {
-      params: { pagina, limite: 50 },
-      headers: { 'x-token': useUsuario.token },
-    })
-    return response.data
-  } catch (error) {
-    console.error('No se pudo obtener el combustible', error)
-    return { datos: [], hayMas: false }
-  } finally {
-    loading.value = false
-  }
-}
+      const useUsuario = useStoreUsuarios()
+      loading.value = true
+      try {
+        const response = await axios.get(`api/combustible`, {
+          params: { pagina, limite: 50 },
+          headers: { 'x-token': useUsuario.token },
+        })
+        return response.data
+      } catch (error) {
+        console.error('No se pudo obtener el combustible', error)
+        return { datos: [], hayMas: false }
+      } finally {
+        loading.value = false
+      }
+    }
 
     const obtenerdatosdecombustible = async (consecutivo) => {
       const useUsuario = useStoreUsuarios()
@@ -54,11 +33,9 @@ export const useStoreCombustible = defineStore(
       try {
         let response = await axios.get(`api/combustible/obtenerdatoscombustible/${consecutivo}`, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta desde store:', response.data)
         return response.data
       } catch (error) {
         console.error('No se pudo obtener los datos del combustible', error)
@@ -74,11 +51,9 @@ export const useStoreCombustible = defineStore(
       try {
         let response = await axios.get(`api/combustible/resumen-solicitante/placa/${placa}`, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta resumen por placa:', response.data)
         return response.data
       } catch (error) {
         console.error('No se pudo obtener el resumen por placa', error)
@@ -96,7 +71,6 @@ export const useStoreCombustible = defineStore(
         const response = await axios.get(`api/combustible/ordenados`, {
           params: { tipo, orden },
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
@@ -114,18 +88,15 @@ export const useStoreCombustible = defineStore(
       const useUsuario = useStoreUsuarios()
 
       loading.value = true
-      // console.log(`Enviando petición: tipo=${tipo}, valor=${valor}`);
 
       try {
         const response = await axios.get(`api/combustible/filtrados`, {
-          params: { tipo, valor }, // Asegúrate de que estos nombres coincidan con el backend
+          params: { tipo, valor }, 
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
 
-        // console.log("Respuesta del servidor:", response.data);
         return response.data
       } catch (err) {
         console.error(`No se pudo obtener combustible filtrados por ${tipo}:`, err)
@@ -141,15 +112,11 @@ export const useStoreCombustible = defineStore(
 
       try {
         loading.value = true
-        console.log('Enviando datos al servidor...')
         const response = await axios.post('api/combustible/crear', formData, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta recibida:', response)
-
         Notify.create({
           message: 'Combustible creado correctamente',
           color: 'positive',
@@ -177,7 +144,6 @@ export const useStoreCombustible = defineStore(
 
         const response = await axios.put(`api/combustible/legalizar/${consecutivo}`, data, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
@@ -204,14 +170,11 @@ export const useStoreCombustible = defineStore(
       const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
-        console.log('Enviando datos al servidor...')
         const response = await axios.put(`api/combustible/editar/${consecutivo}`, formData, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta recibida:', response)
 
         Notify.create({
           message: 'combustible editado correctamente',
@@ -244,7 +207,6 @@ export const useStoreCombustible = defineStore(
       putCombustible,
       loading,
       combustible,
-      // useUsuario,
     }
   },
   { persist: true },

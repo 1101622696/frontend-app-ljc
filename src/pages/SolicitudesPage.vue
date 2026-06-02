@@ -1,78 +1,263 @@
 <template>
-  <q-page class="flex flex-center">
-    <q-card-section>
-      <div class="text-h6 q-mb-md">Solicitudes de mantenimiento</div>
+  <q-page padding class="bg-grey-2">
 
-      <q-list bordered separator>
-        <q-item
-          v-for="solicitud in solicitudes"
-          :key="solicitud.consecutivo"
-          clickable
-          @click="verDetalles(solicitud.consecutivo)"
-        >
-          <q-item-section>
-            <q-item-label> {{ solicitud.consecutivo }} - {{ solicitud.placa }} </q-item-label>
-          </q-item-section>
-        </q-item>
-      </q-list>
-    </q-card-section>
+    <!-- Encabezado -->
+    <div class="row items-center q-mb-sm">
+      <q-icon
+        name="build_circle"
+        color="orange"
+        size="20px"
+      />
 
-    <div>
-      <q-dialog v-model="mostrarDetalles" persistent>
-        <q-card style="min-width: 350px">
-          <q-card-section>
-            <div class="text-h6">Detalles de la solicitud</div>
-          </q-card-section>
+      <span class="text-subtitle1 text-weight-medium q-ml-xs">
+        Solicitudes de mantenimiento
+      </span>
 
-          <q-card-section class="q-pt-none" v-if="detallesSolicitud">
-            <div class="q-pa-md">
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Consecutivo:</div>
-                <div class="col-8">{{ detallesSolicitud.consecutivo }}</div>
+      <q-badge
+        color="blue-1"
+        text-color="blue-9"
+        class="q-ml-auto"
+        rounded
+      >
+        {{ solicitudes.length }}
+      </q-badge>
+    </div>
+
+    <!-- Cards -->
+    <div class="q-gutter-y-sm">
+      <q-card
+        v-for="solicitud in solicitudes"
+        :key="solicitud.consecutivo"
+        flat
+        bordered
+        class="nomina-card cursor-pointer"
+        @click="verDetalles(solicitud.consecutivo)"
+      >
+        <q-card-section class="q-pa-md">
+
+          <div class="row items-center q-mb-sm">
+            <div class="avatar-chip q-mr-md">
+              {{ solicitud.placa?.substring(0, 2) }}
+            </div>
+
+            <div class="col">
+              <div class="text-body2 text-weight-medium">
+                {{ solicitud.placa }}
               </div>
 
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Placa:</div>
-                <div class="col-8">{{ detallesSolicitud.placa }}</div>
-              </div>
-
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Tipo de mantenimiento:</div>
-                <div class="col-8">{{ detallesSolicitud.tipo_mantenimiento }}</div>
-              </div>
-
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Descripción:</div>
-                <div class="col-8">{{ detallesSolicitud.descripcion }}</div>
-              </div>
-
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Odómetro:</div>
-                <div class="col-8">{{ detallesSolicitud.odometro }}</div>
-              </div>
-
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Correo usuario:</div>
-                <div class="col-8">{{ detallesSolicitud.correo_usuario }}</div>
-              </div>
-
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Usuario:</div>
-                <div class="col-8">{{ detallesSolicitud.usuario }}</div>
-              </div>
-
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Fecha creación:</div>
-                <div class="col-8">{{ detallesSolicitud.fecha_creacion }}</div>
+              <div class="text-caption text-grey-6">
+                #{{ solicitud.consecutivo }}
               </div>
             </div>
-          </q-card-section>
 
-          <q-card-actions align="right">
-            <q-btn flat label="Cerrar" color="primary" v-close-popup />
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
+            <q-space />
+
+            <q-badge
+              color="orange-1"
+              text-color="orange-9"
+              rounded
+            >
+              {{ solicitud.tipo_mantenimiento }}
+            </q-badge>
+          </div>
+
+          <div class="row q-gutter-sm">
+
+            <div class="metrica-chip col">
+              <div class="metrica-label">Odómetro</div>
+              <div class="metrica-valor">
+                {{ solicitud.odometro }}
+              </div>
+            </div>
+
+            <div class="metrica-chip col">
+              <div class="metrica-label">Descripción</div>
+              <div class="metrica-valor">
+                {{ solicitud.descripcion }}
+              </div>
+            </div>
+
+          </div>
+
+          <div
+            class="row items-center q-mt-sm"
+            style="border-top: 1px solid rgba(0,0,0,.06); padding-top:8px"
+          >
+            <q-icon
+              name="event"
+              size="13px"
+              color="grey-5"
+              class="q-mr-xs"
+            />
+
+            <span class="text-caption text-grey-5">
+              {{ formatFecha(solicitud.fecha_creacion) }}
+            </span>
+
+            <q-space />
+
+            <q-icon
+              name="chevron_right"
+              color="grey-4"
+              size="16px"
+            />
+          </div>
+
+        </q-card-section>
+      </q-card>
+    </div>
+
+    <!-- Dialog -->
+    <q-dialog v-model="mostrarDetalles" persistent>
+      <q-card
+        style="min-width:350px; max-width:95vw; width:500px; border-radius:16px !important;"
+      >
+
+        <!-- Header -->
+        <q-card-section class="q-pb-sm">
+          <div
+            class="row items-center"
+            v-if="detallesSolicitud"
+          >
+            <div class="avatar-chip q-mr-md">
+              {{ detallesSolicitud.placa?.substring(0, 2) }}
+            </div>
+
+            <div class="col">
+              <div class="text-subtitle1 text-weight-medium">
+                {{ detallesSolicitud.placa }}
+              </div>
+
+              <div class="text-caption text-grey-6">
+                #{{ detallesSolicitud.consecutivo }}
+              </div>
+            </div>
+
+            <q-badge
+              color="orange-1"
+              text-color="orange-9"
+              rounded
+            >
+              {{ detallesSolicitud.tipo_mantenimiento }}
+            </q-badge>
+          </div>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-section
+          v-if="detallesSolicitud"
+          class="q-pt-md"
+          style="max-height:65vh; overflow-y:auto"
+        >
+
+          <!-- Banner -->
+          <div class="ganancia-banner ganancia-positiva q-mb-md">
+            <div
+              class="text-caption"
+              style="opacity:.7"
+            >
+              Solicitud registrada
+            </div>
+
+            <div class="text-h6 text-weight-bold">
+              {{ detallesSolicitud.tipo_mantenimiento }}
+            </div>
+          </div>
+
+          <!-- Información general -->
+          <div class="seccion-titulo">
+            Información general
+          </div>
+
+          <div class="detalle-fila">
+            <span class="detalle-label">Consecutivo</span>
+            <span
+              class="detalle-valor"
+              style="font-family: monospace"
+            >
+              #{{ detallesSolicitud.consecutivo }}
+            </span>
+          </div>
+
+          <div class="detalle-fila">
+            <span class="detalle-label">Placa</span>
+            <span class="detalle-valor">
+              {{ detallesSolicitud.placa }}
+            </span>
+          </div>
+
+          <div class="detalle-fila">
+            <span class="detalle-label">Tipo</span>
+            <span class="detalle-valor">
+              {{ detallesSolicitud.tipo_mantenimiento }}
+            </span>
+          </div>
+
+          <div class="detalle-fila">
+            <span class="detalle-label">Descripción</span>
+            <span class="detalle-valor">
+              {{ detallesSolicitud.descripcion }}
+            </span>
+          </div>
+
+          <!-- Datos técnicos -->
+          <div class="seccion-titulo q-mt-md">
+            Datos técnicos
+          </div>
+
+          <div class="row q-gutter-sm q-mb-sm">
+            <div class="metrica-chip col">
+              <div class="metrica-label">Odómetro</div>
+              <div class="metrica-valor">
+                {{ detallesSolicitud.odometro }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Registro -->
+          <div class="seccion-titulo q-mt-md">
+            Registro
+          </div>
+
+          <div class="detalle-fila">
+            <span class="detalle-label">Usuario</span>
+            <span class="detalle-valor">
+              {{ detallesSolicitud.usuario }}
+            </span>
+          </div>
+
+          <div class="detalle-fila">
+            <span class="detalle-label">Correo</span>
+            <span class="detalle-valor">
+              {{ detallesSolicitud.correo_usuario }}
+            </span>
+          </div>
+
+          <div class="detalle-fila">
+            <span class="detalle-label">Fecha creación</span>
+            <span class="detalle-valor">
+              {{ formatFecha(detallesSolicitud.fecha_creacion) }}
+            </span>
+          </div>
+
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-actions class="q-pa-md">
+          <q-space />
+
+          <q-btn
+            flat
+            label="Cerrar"
+            color="primary"
+            v-close-popup
+          />
+        </q-card-actions>
+
+      </q-card>
+    </q-dialog>
 
       <q-dialog v-model="alert" persistent>
         <q-card class="bg-grey-2">
@@ -155,9 +340,14 @@
           </q-card-actions>
         </q-card>
       </q-dialog>
-    </div>
+    <!-- </div> -->
 
-    <q-btn color="primary" label="Registrar nuevo" class="q-mt-md" @click="abrir" />
+    <!-- <q-btn color="primary" label="Registrar nuevo" class="q-mt-md" @click="abrir" /> -->
+ 
+     <q-page-sticky position="bottom-right" :offset="[18, 18]">
+      <q-btn fab icon="add" color="primary" @click="abrir" />
+    </q-page-sticky>
+
   </q-page>
 </template>
 
@@ -325,6 +515,10 @@ async function cargarSolicitudes() {
       solicitudes.value = response.map((item) => ({
         consecutivo: item.consecutivo || '',
         placa: item.placa || '',
+        odometro: item.odometro || '',
+        tipo_mantenimiento: item.tipo_mantenimiento || '',
+        fecha_creacion: item.fecha_creacion || '',
+        descripcion: item.descripcion || '',
       }))
     } else {
       console.error('Error en formato de respuesta:', response)
@@ -361,6 +555,15 @@ async function verDetalles(consecutivo) {
   }
 }
 
+function formatFecha(fecha) {
+  if (!fecha) return ''
+  return new Date(fecha).toLocaleDateString('es-CO', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
 onMounted(() => {
   cargarSolicitudes()
   cargarPlacas()
@@ -370,3 +573,102 @@ defineOptions({
   name: 'SolicitudesPage',
 })
 </script>
+
+<style scoped>
+
+.metrica-chip {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  min-width: 0;
+}
+.metrica-chip.rendimiento-malo {
+  background: #fef2f2;
+}
+.metrica-chip.rendimiento-bueno {
+  background: #f0fdf4;
+}
+.metrica-label {
+  font-size: 10px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+.metrica-valor {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.filter-bar {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 12px;
+}
+
+.filter-scroll {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.filter-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-chip {
+  border-radius: 999px !important;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.solicitudes-card {
+  border-radius: 12px !important;
+  transition: border-color 0.15s;
+}
+.solicitudes-card:active {
+  opacity: 0.85;
+}
+
+.avatar-chip {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1e50a2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.detalle-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.detalle-fila:last-child {
+  border-bottom: none;
+}
+.detalle-label {
+  font-size: 13px;
+  color: #9CA3AF;
+}
+.detalle-valor {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111827;
+  text-align: right;
+  max-width: 60%;
+}
+</style>

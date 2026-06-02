@@ -9,7 +9,6 @@ export const useStorePreoperacionales = defineStore(
   () => {
     let loading = ref(false)
     let preoperacionales = ref([])
-    // const useUsuario = useStoreUsuarios()
 
     const obtenerPreoperacionales = async () => {
       const useUsuario = useStoreUsuarios()
@@ -17,11 +16,9 @@ export const useStorePreoperacionales = defineStore(
       try {
         let response = await axios.get(`api/preoperacionales/`, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta preoperacional:', response.data)
         return response.data
       } catch (error) {
         console.error('No se pudo obtener el preoperacional', error)
@@ -37,11 +34,9 @@ export const useStorePreoperacionales = defineStore(
       try {
         let response = await axios.get(`api/preoperacionales/resumen-solicitante/placa/${placa}`, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta resumen por placa:', response.data)
         return response.data
       } catch (error) {
         console.error('No se pudo obtener el resumen por placa', error)
@@ -58,12 +53,10 @@ export const useStorePreoperacionales = defineStore(
           `api/preoperacionales/obtenerdatospreoperacional/${consecutivo}`,
           {
             headers: {
-              // "x-token": localStorage.getItem('x-token')
-              'x-token': useUsuario.token,
+                'x-token': useUsuario.token,
             },
           },
         )
-        console.log('Respuesta desde store:', response.data)
         return response.data
       } catch (error) {
         console.error('No se pudo obtener los datos del preoperacional', error)
@@ -77,15 +70,11 @@ export const useStorePreoperacionales = defineStore(
       const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
-        console.log('Enviando datos al servidor...')
         const response = await axios.post('api/preoperacionales/crear', formData, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta recibida:', response)
-
         Notify.create({
           message: 'preoperacional creado correctamente',
           color: 'positive',
@@ -110,15 +99,11 @@ export const useStorePreoperacionales = defineStore(
       const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
-        console.log('Enviando datos al servidor...')
         const response = await axios.put(`api/preoperacionales/editar/${consecutivo}`, formData, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta recibida:', response)
-
         Notify.create({
           message: 'Preoperacional editado correctamente',
           color: 'positive',
@@ -147,7 +132,6 @@ export const useStorePreoperacionales = defineStore(
       putPreoperacional,
       loading,
       preoperacionales,
-      // useUsuario,
     }
   },
   { persist: true },

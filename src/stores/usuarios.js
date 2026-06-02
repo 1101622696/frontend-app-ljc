@@ -7,7 +7,6 @@ import useNotifications from '../composables/useNotifications'
 export const useStoreUsuarios = defineStore(
   'Usuarios',
   () => {
-    // const token = ref(localStorage.getItem('x-token') || "");
 
     const token = ref('')
 
@@ -22,12 +21,9 @@ export const useStoreUsuarios = defineStore(
       try {
         let response = await axios.get(`api/usuarios`, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': token.value,
           },
         })
-        console.log('Respuesta desde store:', response.data)
-        // Return just the data array
         return Array.isArray(response.data) ? response.data : response.data.usuarios || []
       } catch (error) {
         console.error('No se pudo obtener los usuarios', error)
@@ -42,11 +38,9 @@ export const useStoreUsuarios = defineStore(
       try {
         let response = await axios.get(`api/usuarios/poremail/${email}`, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': token.value,
           },
         })
-        console.log('Respuesta usuarios por email:', response.data)
         return response.data
       } catch (error) {
         console.error('No se pudo obtener los usuarios por email', error)
@@ -61,11 +55,9 @@ export const useStoreUsuarios = defineStore(
       try {
         let response = await axios.get(`api/usuarios/porpropietario/${email}`, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': token.value,
           },
         })
-        console.log('Respuesta usuarios por propietario:', response.data)
         return response.data
       } catch (error) {
         console.error('No se pudo obtener los usuarios por propietario', error)
@@ -80,11 +72,9 @@ export const useStoreUsuarios = defineStore(
       try {
         let response = await axios.get(`api/usuarios/poremail/${email}`, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': token.value,
           },
         })
-        console.log('Respuesta desde store:', response.data)
         return response.data
       } catch (error) {
         console.error('No se pudo obtener los usuarios', error)
@@ -102,7 +92,6 @@ export const useStoreUsuarios = defineStore(
         const response = await axios.get(`api/usuarios/ordenados`, {
           params: { tipo, orden },
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
@@ -118,18 +107,14 @@ export const useStoreUsuarios = defineStore(
 
     const obtenerUsuariosFiltrados = async (tipo, valor) => {
       loading.value = true
-      // console.log(`Enviando petición: tipo=${tipo}, valor=${valor}`);
-
       try {
         const response = await axios.get(`api/usuarios/filtrados`, {
           params: { tipo, valor },
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': token.value,
           },
         })
 
-        // console.log("Respuesta del servidor:", response.data);
         return response.data
       } catch (err) {
         console.error(`No se pudo obtener los usuarios filtrados por ${tipo}:`, err)
@@ -146,7 +131,6 @@ export const useStoreUsuarios = defineStore(
         console.log(localStorage.getItem('x-token'))
         const response = await axios.post('api/usuarios/crear', data, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': token.value,
           },
         })
@@ -222,7 +206,6 @@ export const useStoreUsuarios = defineStore(
         console.log(localStorage.getItem('x-token'))
         const response = await axios.put(`api/usuarios/editar/${email}`, data, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': token.value,
           },
         })
@@ -246,17 +229,17 @@ export const useStoreUsuarios = defineStore(
         loading.value = false
       }
     }
+
     const eliminarToken = () => {
       token.value = ''
       localStorage.removeItem('x-token')
-      localStorage.removeItem('usuarios-store') // Elimina también el store persistido
+      localStorage.removeItem('usuarios-store') 
       user.value = {}
       perfile.value = ''
       correo.value = ''
       console.log('Token cleared')
     }
 
-    // Update token setter
     const setToken = (newToken) => {
       token.value = newToken
       localStorage.setItem('x-token', newToken)
@@ -413,13 +396,11 @@ export const useStoreUsuarios = defineStore(
     const putActivarUsuario = async (email) => {
       try {
         loading.value = true
-        console.log('Enviando datos al servidor...')
         const response = await axios.put(
           `api/usuarios/activar/${email}`,
           {},
           {
             headers: {
-              // "x-token": localStorage.getItem('x-token')
               'x-token': token.value,
             },
           },
@@ -449,19 +430,15 @@ export const useStoreUsuarios = defineStore(
     const putInactivarUsuario = async (email) => {
       try {
         loading.value = true
-        console.log('Enviando datos al servidor...')
         const response = await axios.put(
           `api/usuarios/inactivar/${email}`,
           {},
           {
             headers: {
-              // "x-token": localStorage.getItem('x-token')
               'x-token': token.value,
             },
           },
         )
-        console.log('Respuesta recibida:', response)
-
         Notify.create({
           message: 'usuario inactivado',
           color: 'positive',
@@ -509,20 +486,11 @@ export const useStoreUsuarios = defineStore(
       eliminarToken,
     }
   },
-  // { persist: true });
-  // {
-  //   persist: {
-  //     key: 'usuarios-store',
-  //     storage: localStorage,
-  //     paths: ['token', 'user', 'perfile', 'correo']
-  //   }
-  // }
   {
     persist: {
       key: 'usuarios-store',
       storage: localStorage,
       paths: ['token', 'user', 'perfile', 'correo'],
-      // Agrega esto para que rehidrate de forma síncrona antes del router
       afterRestore: (ctx) => {
         console.log('Store rehidratado:', ctx.store.perfile)
       },

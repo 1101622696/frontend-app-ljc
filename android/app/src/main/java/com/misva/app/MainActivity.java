@@ -1,4 +1,4 @@
-package com.misva.app;
+package com.miljc.app;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -9,8 +9,6 @@ import com.getcapacitor.Plugin;
 import java.util.ArrayList;
 
 import com.capacitorjs.plugins.filesystem.FilesystemPlugin;
-import com.capacitorjs.plugins.share.SharePlugin;
-import com.capacitorjs.plugins.toast.ToastPlugin;
 import com.capacitorjs.plugins.device.DevicePlugin;
 import io.capawesome.capacitorjs.plugins.firebase.messaging.FirebaseMessagingPlugin;
 
@@ -20,9 +18,7 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         
         // Registra los plugins manualmente
-        registerPlugin(FilesystemPlugin.class);
-        registerPlugin(SharePlugin.class);
-        registerPlugin(ToastPlugin.class);  
+        registerPlugin(FilesystemPlugin.class);  
         registerPlugin(DevicePlugin.class);
         registerPlugin(FirebaseMessagingPlugin.class);
     }

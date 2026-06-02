@@ -9,7 +9,6 @@ export const useStoreMantenimiento = defineStore(
   () => {
     let loading = ref(false)
     let mantenimientos = ref([])
-    // const useUsuario = useStoreUsuarios();
 
     const obtenerMantenimientos = async () => {
       const useUsuario = useStoreUsuarios()
@@ -17,11 +16,9 @@ export const useStoreMantenimiento = defineStore(
       try {
         let response = await axios.get(`api/mantenimientos`, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta desde store:', response.data)
         return Array.isArray(response.data) ? response.data : response.data.mantenimientos || []
       } catch (error) {
         console.error('No se pudo obtener los mantenimientos', error)
@@ -39,12 +36,10 @@ export const useStoreMantenimiento = defineStore(
           `api/mantenimientos/obtenerdatosmantenimiento/${consecutivo}`,
           {
             headers: {
-              // "x-token": localStorage.getItem('x-token')
-              'x-token': useUsuario.token,
+                'x-token': useUsuario.token,
             },
           },
         )
-        console.log('Respuesta desde store:', response.data)
         return response.data
       } catch (error) {
         console.error('No se pudo obtener los datos del mantenimiento', error)
@@ -60,11 +55,9 @@ export const useStoreMantenimiento = defineStore(
       try {
         let response = await axios.get(`api/mantenimientos/resumen-solicitante/placa/${placa}`, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta resumen por placa:', response.data)
         return response.data
       } catch (error) {
         console.error('No se pudo obtener el resumen por placa', error)
@@ -82,7 +75,6 @@ export const useStoreMantenimiento = defineStore(
         const response = await axios.get(`api/mantenimientos/ordenados`, {
           params: { tipo, orden },
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
@@ -100,18 +92,15 @@ export const useStoreMantenimiento = defineStore(
       const useUsuario = useStoreUsuarios()
 
       loading.value = true
-      // console.log(`Enviando petición: tipo=${tipo}, valor=${valor}`);
 
       try {
         const response = await axios.get(`api/mantenimientos/filtrados`, {
-          params: { tipo, valor }, // Asegúrate de que estos nombres coincidan con el backend
+          params: { tipo, valor }, 
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
 
-        // console.log("Respuesta del servidor:", response.data);
         return response.data
       } catch (err) {
         console.error(`No se pudo obtener los mantenimientos filtrados por ${tipo}:`, err)
@@ -126,10 +115,8 @@ export const useStoreMantenimiento = defineStore(
       const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
-        console.log(localStorage.getItem('x-token'))
         const response = await axios.post('api/mantenimientos/crear', formData, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
@@ -157,15 +144,11 @@ export const useStoreMantenimiento = defineStore(
       const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
-        console.log('Enviando datos al servidor...')
         const response = await axios.put(`api/mantenimientos/editar/${consecutivo}`, formData, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta recibida:', response)
-
         Notify.create({
           message: 'mantenimiento editado correctamente',
           color: 'positive',
@@ -196,7 +179,6 @@ export const useStoreMantenimiento = defineStore(
       putMantenimiento,
       loading,
       mantenimientos,
-      // useUsuario,
     }
   },
   { persist: true },

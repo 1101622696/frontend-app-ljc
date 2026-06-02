@@ -9,7 +9,6 @@ export const useStoreVehiculos = defineStore(
   () => {
     let loading = ref(false)
     let vehiculos = ref([])
-    // const useUsuario = useStoreUsuarios()
 
     const obtenerVehiculos = async () => {
       const useUsuario = useStoreUsuarios()
@@ -17,11 +16,9 @@ export const useStoreVehiculos = defineStore(
       try {
         let response = await axios.get(`api/vehiculos/`, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta vehiculo:', response.data)
         return response.data
       } catch (error) {
         console.error('No se pudo obtener el vehiculo', error)
@@ -37,11 +34,9 @@ export const useStoreVehiculos = defineStore(
       try {
         let response = await axios.get(`api/vehiculos/resumen-solicitante/placa/${placa}`, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta resumen por placa:', response.data)
         return response.data
       } catch (error) {
         console.error('No se pudo obtener el resumen por placa', error)
@@ -59,7 +54,6 @@ export const useStoreVehiculos = defineStore(
         const response = await axios.get(`api/vehiculos/ordenados`, {
           params: { tipo, orden },
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
@@ -75,20 +69,14 @@ export const useStoreVehiculos = defineStore(
 
     const obtenerVehiculosFiltrados = async (tipo, valor) => {
       const useUsuario = useStoreUsuarios()
-
       loading.value = true
-      // console.log(`Enviando petición: tipo=${tipo}, valor=${valor}`);
-
       try {
         const response = await axios.get(`api/vehiculos/filtrados`, {
-          params: { tipo, valor }, // Asegúrate de que estos nombres coincidan con el backend
+          params: { tipo, valor },
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-
-        // console.log("Respuesta del servidor:", response.data);
         return response.data
       } catch (err) {
         console.error(`No se pudo obtener los vehiculos filtrados por ${tipo}:`, err)
@@ -104,11 +92,9 @@ export const useStoreVehiculos = defineStore(
       try {
         let response = await axios.get(`api/vehiculos/obtenerdatosvehiculo/${placa}`, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta desde store:', response.data)
         return response.data
       } catch (error) {
         console.error('No se pudo obtener los datos del vehiculo', error)
@@ -123,11 +109,9 @@ export const useStoreVehiculos = defineStore(
       try {
         let response = await axios.get(`api/resumenvehiculo/resumen-vehiculo/${placa}/${anio}`, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta desde store:', response.data)
         return response.data
       } catch (error) {
         console.error('No se pudo obtener los datos del vehiculo', error)
@@ -141,15 +125,11 @@ export const useStoreVehiculos = defineStore(
       const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
-        console.log('Enviando datos al servidor...')
         const response = await axios.post('api/vehiculos/crear', formData, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta recibida:', response)
-
         Notify.create({
           message: 'vehiculo creado correctamente',
           color: 'positive',
@@ -174,19 +154,15 @@ export const useStoreVehiculos = defineStore(
       const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
-        console.log('Enviando datos al servidor...')
         const response = await axios.post(
           'api/resumenvehiculo/resumen-vehiculo/mensual',
           formData,
           {
             headers: {
-              // "x-token": localStorage.getItem('x-token')
-              'x-token': useUsuario.token,
+                'x-token': useUsuario.token,
             },
           },
         )
-        console.log('Respuesta recibida:', response)
-
         Notify.create({
           message: 'Resumen mensual creado correctamente',
           color: 'positive',
@@ -211,14 +187,11 @@ export const useStoreVehiculos = defineStore(
       const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
-        console.log('Enviando datos al servidor...')
         const response = await axios.post('api/resumenvehiculo/resumen-vehiculo/anual', formData, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta recibida:', response)
 
         Notify.create({
           message: 'Resumen anual creado correctamente',
@@ -244,14 +217,11 @@ export const useStoreVehiculos = defineStore(
       const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
-        console.log('Enviando datos al servidor...')
         const response = await axios.put(`api/vehiculos/editar/${placa}`, formData, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta recibida:', response)
 
         Notify.create({
           message: 'Vehiculo editado correctamente',
@@ -277,14 +247,11 @@ export const useStoreVehiculos = defineStore(
       const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
-        console.log('Enviando datos al servidor...')
         const response = await axios.put(`api/vehiculos/activar/${placa}`, formData, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta recibida:', response)
 
         Notify.create({
           message: 'Vehiculo activado correctamente',
@@ -310,14 +277,11 @@ export const useStoreVehiculos = defineStore(
       const useUsuario = useStoreUsuarios()
       try {
         loading.value = true
-        console.log('Enviando datos al servidor...')
         const response = await axios.put(`api/vehiculos/desactivar/${placa}`, formData, {
           headers: {
-            // "x-token": localStorage.getItem('x-token')
             'x-token': useUsuario.token,
           },
         })
-        console.log('Respuesta recibida:', response)
 
         Notify.create({
           message: 'Vehiculo desactivado correctamente',
@@ -354,7 +318,6 @@ export const useStoreVehiculos = defineStore(
       putDesactivarVehiculo,
       loading,
       vehiculos,
-      // useUsuario,
     }
   },
   { persist: true },
