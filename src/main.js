@@ -13,8 +13,8 @@ import paquete from '../package.json'
 // El backend la recibe en x-app-version y, si MIN_APP_VERSION es mayor, pide actualizar.
 export const VERSION_APP = paquete.version
 
-axios.defaults.baseURL = "http://localhost:4000/";
-// axios.defaults.baseURL = "https://backend-app-ljc.onrender.com";
+// axios.defaults.baseURL = "http://localhost:4000/";
+axios.defaults.baseURL = "https://backend-app-ljc.onrender.com";
 axios.defaults.headers.common['x-app-version'] = VERSION_APP;
 
 let requestsPending = 0;
