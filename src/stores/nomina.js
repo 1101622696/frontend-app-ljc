@@ -3,201 +3,86 @@ import axios from 'axios'
 import { ref } from 'vue'
 import { Notify } from 'quasar'
 import { useStoreUsuarios } from './usuarios'
+import { mensajeDeError } from '../utils/formato'
 
-export const useStoreNominas = defineStore(
-  'Nomina',
-  () => {
-    let loading = ref(false)
-    let nominas = ref([])
+// Consultas: devuelven datos o vacío. Liquidar/pagar: lanzan Error con el mensaje del backend.
 
-    const obtenerNominas = async () => {
-      const useUsuario = useStoreUsuarios()
-      loading.value = true
-      try {
-        let response = await axios.get(`api/nomina/`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener el nomina', error)
-        return { resumen: null }
-      } finally {
-        loading.value = false
-      }
+export const useStoreNominas = defineStore('Nomina', () => {
+  const loading = ref(false)
+  const headers = () => ({ 'x-token': useStoreUsuarios().token })
+
+  const fallo = (error, porDefecto) =>
+    Notify.create({ type: 'negative', message: mensajeDeError(error, porDefecto), position: 'bottom' })
+
+  /** Por liquidar, por conductor */
+  const obtenerPendientes = async () => {
+    loading.value = true
+    try {
+      const { data } = await axios.get('api/nomina/pendientes', { headers: headers() })
+      return Array.isArray(data) ? data : []
+    } catch (error) {
+      fallo(error, 'No se pudo cargar lo pendiente')
+      return []
+    } finally {
+      loading.value = false
     }
+  }
 
-    const obtenerResumenNominaPorEmail = async () => {
-      const useUsuario = useStoreUsuarios()
-      loading.value = true
-      try {
-        let response = await axios.get(`api/nomina/resumen-nomina-solicitante`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener el nomina', error)
-        return { resumen: null }
-      } finally {
-        loading.value = false
-      }
+  /** Historial (cada perfil recibe lo suyo) */
+  const obtenerNominas = async ({ tipo = '', email = '' } = {}) => {
+    loading.value = true
+    try {
+      const { data } = await axios.get('api/nomina/', { params: { tipo, email }, headers: headers() })
+      return Array.isArray(data) ? data : []
+    } catch (error) {
+      fallo(error, 'No se pudo cargar el historial')
+      return []
+    } finally {
+      loading.value = false
     }
+  }
 
-    const obtenerNominaOrdenados = async (tipo = 'fecha', orden = 'desc') => {
-      const useUsuario = useStoreUsuarios()
-
-      loading.value = true
-      try {
-        const response = await axios.get(`api/nomina/ordenados`, {
-          params: { tipo, orden },
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-
-        return response.data
-      } catch (err) {
-        console.error(`No se pudo obtener las nominas ordenadas por ${tipo}:`, err)
-        throw err
-      } finally {
-        loading.value = false
-      }
+  /** Vista previa. tipo: 'viajes' | 'salario' */
+  const calcularNomina = async (email, { tipo = 'viajes', mes = '', viajes = [] } = {}) => {
+    try {
+      const { data } = await axios.get(`api/nomina/calcular-nomina/${encodeURIComponent(email)}`, {
+        params: { tipo, mes, viajes: viajes.join(',') },
+        headers: headers(),
+      })
+      return data
+    } catch (error) {
+      throw new Error(mensajeDeError(error, 'No se pudo calcular la nómina'))
     }
+  }
 
-    const obtenerNominaFiltrados = async (tipo, valor) => {
-      const useUsuario = useStoreUsuarios()
-
-      loading.value = true
-
-      try {
-        const response = await axios.get(`api/nomina/filtrados`, {
-          params: { tipo, valor },
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-
-        return response.data
-      } catch (err) {
-        console.error(`No se pudo obtener las nominas filtradas por ${tipo}:`, err)
-        console.error('Detalles del error:', err.response?.data || err.message)
-        throw err
-      } finally {
-        loading.value = false
-      }
+  const accion = async (url, formData, porDefecto) => {
+    loading.value = true
+    try {
+      const { data } = await axios.post(url, formData, { headers: headers() })
+      Notify.create({ type: 'positive', message: data.mensaje, position: 'bottom', timeout: 5000 })
+      return data
+    } catch (error) {
+      throw new Error(mensajeDeError(error, porDefecto))
+    } finally {
+      loading.value = false
     }
+  }
 
-    const calcularNomina = async (email) => {
-      const useUsuario = useStoreUsuarios()
-      loading.value = true
-      try {
-        let response = await axios.get(`api/nomina/calcular-nomina/${email}`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener la nomina calculada', error)
-        return { resumen: null }
-      } finally {
-        loading.value = false
-      }
+  const liquidarViajes = (email, formData) =>
+    accion(`api/nomina/liquidar-viajes/${encodeURIComponent(email)}`, formData, 'No se pudo liquidar')
+
+  const pagarSalario = (email, formData) =>
+    accion(`api/nomina/pagar-salario/${encodeURIComponent(email)}`, formData, 'No se pudo registrar el salario')
+
+  const obtenerdatodenomina = async (consecutivo) => {
+    try {
+      const { data } = await axios.get(`api/nomina/obtenerdatosnomina/${encodeURIComponent(consecutivo)}`, { headers: headers() })
+      return data
+    } catch (error) {
+      fallo(error, 'No se pudo abrir la nómina')
+      return null
     }
+  }
 
-    const obtenerdatodenomina = async (consecutivo) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        let response = await axios.get(`api/nomina/obtenerdatosnomina/${consecutivo}`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener los datos de la nomina', error)
-        return null
-      } finally {
-        loading.value = false
-      }
-    }
-
-    const postAprobarNomina = async (email, formData) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        loading.value = true
-        const response = await axios.post(`api/nomina/aprobar-nomina/${email}`, formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-
-        Notify.create({
-          message: 'Nomina aprobada correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
-
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al aprobar nomina',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
-
-    const postPagarSalario = async (email, formData) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        loading.value = true
-        const response = await axios.post(`api/nomina/pagar-salario/${email}`, formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-
-        Notify.create({
-          message: 'Salario pagado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
-
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al pagar salario',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
-
-    return {
-      obtenerdatodenomina,
-      obtenerNominas,
-      obtenerNominaFiltrados,
-      obtenerNominaOrdenados,
-      calcularNomina,
-      obtenerResumenNominaPorEmail,
-      postAprobarNomina,
-      postPagarSalario,
-      loading,
-      nominas,
-      // useUsuario,
-    }
-  },
-  { persist: true },
-)
+  return { loading, obtenerPendientes, obtenerNominas, calcularNomina, liquidarViajes, pagarSalario, obtenerdatodenomina }
+})

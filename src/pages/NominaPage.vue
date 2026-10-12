@@ -1,497 +1,492 @@
 <template>
   <q-page padding class="bg-grey-2">
-    <!-- Filtros -->
-    <div class="filter-bar q-mb-md">
-      <div class="filter-scroll row no-wrap q-gutter-x-sm q-pb-xs">
-        <q-chip
-          v-for="(config, tipo) in filtrosConfig"
-          :key="tipo"
-          clickable
-          :icon="config.icono"
-          :color="tipoLista === tipo ? 'primary' : 'grey-2'"
-          :text-color="tipoLista === tipo ? 'white' : 'grey-8'"
-          class="filter-chip"
-          @click="cargarListaPor(tipo)"
-        >
-          {{ tipo === 'todos' ? 'Todos' : config.titulo.split(' ').pop() }}
-        </q-chip>
-      </div>
+    <q-tabs v-if="esGestion" v-model="pestana" dense align="justify" class="bg-white rounded-borders q-mb-md" active-color="primary" indicator-color="primary">
+      <q-tab name="pendientes" icon="pending_actions" label="Por liquidar" />
+      <q-tab name="historial" icon="history" label="Historial" />
+    </q-tabs>
 
-      <div
-        v-if="tipoLista !== 'todos' && !filtroActual.esFiltroTexto"
-        class="row no-wrap q-gutter-x-sm q-mt-sm"
-      >
-        <q-chip
-          v-for="op in opcionesOrdenamiento"
-          :key="op.value"
-          clickable
-          size="sm"
-          :color="ordenActual === op.value ? 'secondary' : 'transparent'"
-          :text-color="ordenActual === op.value ? 'white' : 'grey-7'"
-          :outline="ordenActual !== op.value"
-          @click="ordenActual = op.value; cargarNomina()"
-          >
-          {{ op.label }}
-        </q-chip>
-      </div>
+    <!-- ───────────── POR LIQUIDAR (o "lo que llevo" del conductor) ───────────── -->
+    <template v-if="pestana === 'pendientes' || !esGestion">
+      <div v-if="!pendientes.length && !cargando" class="text-center text-grey-6 q-py-lg">No hay conductores para mostrar</div>
 
-      <div v-if="filtroActual.esFiltroTexto" class="q-mt-sm">
-        <q-select
-          v-model="valorFiltroTexto"
-          :options="opcionesFiltroTexto"
-          option-value="valor"
-          option-label="etiqueta"
-          dense
-          outlined
-          rounded
-          emit-value
-          map-options
-          @update:model-value="actualizarValorFiltro"
-        />
-      </div>
-    </div>
-
-    <!-- Encabezado -->
-    <div class="row items-center q-mb-sm">
-      <q-icon :name="filtroActual.icono" :color="filtroActual.color" size="20px" />
-      <span class="text-subtitle1 text-weight-medium q-ml-xs">
-        {{ filtroActual.titulo }}
-        <span v-if="filtroActual.esFiltroTexto && valorFiltroTexto">
-          · {{ obtenerEtiquetaFiltroTexto(valorFiltroTexto) }}
-        </span>
-      </span>
-      <q-badge color="blue-1" text-color="blue-9" class="q-ml-auto" rounded>
-        {{ nominas.length }}
-      </q-badge>
-    </div>
-
-    <!-- Cards -->
-    <div class="q-gutter-y-sm">
-      <q-card
-        v-for="nomina in nominas"
-        :key="nomina.consecutivo_nomina"
-        flat
-        bordered
-        class="nomina-card cursor-pointer"
-        @click="verDetalles(nomina.consecutivo_nomina)"
-      >
-        <q-card-section class="q-pa-md">
-          <div class="row items-center q-mb-sm">
-            <div class="avatar-chip q-mr-md">{{ iniciales(nomina.nombre) }}</div>
+      <q-card v-for="c in pendientes" :key="c.email" flat class="tarjeta q-mb-sm">
+        <q-card-section class="q-pb-sm">
+          <div class="row items-center no-wrap">
+            <div class="avatar-chip q-mr-sm">{{ iniciales(c.nombre) }}</div>
             <div class="col">
-              <div class="text-body2 text-weight-medium ellipsis">{{ nomina.nombre }}</div>
-              <div class="text-caption text-grey-6">
-                #{{ nomina.consecutivo_nomina }} · {{ nomina.mes }}
+              <div class="text-body1 text-weight-medium">{{ esGestion ? c.nombre : 'Lo que llevo' }}</div>
+              <div class="text-caption text-grey-7">{{ c.placas || 'Sin placa' }}</div>
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <div class="row q-col-gutter-sm">
+            <div class="col-6">
+              <div class="metrica-chip">
+                <div class="metrica-label">Viajes por liquidar</div>
+                <div class="metrica-valor">{{ c.viajes_por_liquidar }} · {{ formatoPeso(c.saldo_viajes) }}</div>
               </div>
             </div>
-            <q-space />
-            <q-badge color="blue-1" text-color="blue-9" rounded class="text-caption">
-              {{ nomina.tipo }}
-            </q-badge>
+            <div class="col-6">
+              <div class="metrica-chip">
+                <div class="metrica-label">Salario {{ c.mes }}</div>
+                <div class="metrica-valor" :class="c.salario_mes_pagado ? 'text-positive' : 'text-orange-9'">
+                  {{ c.salario_mes_pagado ? 'Pagado' : 'Pendiente' }}
+                </div>
+              </div>
+            </div>
+            <div v-if="c.ajustes_diez_pcto" class="col-6">
+              <div class="metrica-chip">
+                <div class="metrica-label">Ajustes 10 % (facturación)</div>
+                <div class="metrica-valor">{{ formatoPeso(c.ajustes_diez_pcto) }}</div>
+              </div>
+            </div>
+            <div v-if="c.prestamos_por_descontar" class="col-6">
+              <div class="metrica-chip">
+                <div class="metrica-label">Préstamos por descontar</div>
+                <div class="metrica-valor text-negative">{{ formatoPeso(c.prestamos_por_descontar) }}</div>
+              </div>
+            </div>
+            <div v-if="c.arrastre_anterior" class="col-6">
+              <div class="metrica-chip">
+                <div class="metrica-label">Deuda de la nómina anterior</div>
+                <div class="metrica-valor text-negative">{{ formatoPeso(c.arrastre_anterior) }}</div>
+              </div>
+            </div>
           </div>
+        </q-card-section>
 
-          <div class="row q-gutter-sm">
-            <div class="metrica-chip col">
-              <div class="metrica-label">Total nómina</div>
-              <div class="metrica-valor">{{ formatearCOP(nomina.total_nomina) }}</div>
-            </div>
-            <div class="metrica-chip col">
-              <div class="metrica-label">10% viajes</div>
-              <div class="metrica-valor">{{ formatearCOP(nomina.diez_pcto_total_mes) }}</div>
-            </div>
-            <div class="metrica-chip col">
-              <div class="metrica-label">Viajes</div>
-              <div class="metrica-valor">{{ nomina.total_viajes_mes || '0' }}</div>
-            </div>
-          </div>
+        <q-card-actions v-if="esGestion" align="right" class="q-pt-none">
+          <q-btn
+            unelevated
+            color="teal"
+            icon="local_shipping"
+            label="Liquidar viajes"
+            size="sm"
+            :disable="!c.viajes_por_liquidar && !c.ajustes_diez_pcto"
+            @click="abrirLiquidar(c)"
+          />
+          <q-btn unelevated color="blue" icon="payments" label="Pagar salario" size="sm" @click="abrirSalario(c)" />
+        </q-card-actions>
+        <q-card-actions v-else align="right" class="q-pt-none">
+          <q-btn flat color="primary" icon="visibility" label="Ver detalle de viajes" size="sm" @click="abrirVistaConductor(c)" />
+        </q-card-actions>
+      </q-card>
+    </template>
 
-          <div
-            class="row items-center q-mt-sm"
-            style="border-top: 1px solid rgba(0, 0, 0, 0.06); padding-top: 8px"
-          >
-            <q-icon name="event" size="13px" color="grey-5" class="q-mr-xs" />
-            <span class="text-caption text-grey-5">Pago: {{ formatFecha(nomina.fecha_pago) }}</span>
+    <!-- ───────────── HISTORIAL ───────────── -->
+    <template v-if="pestana === 'historial' || !esGestion">
+      <div class="row items-center q-mt-md q-mb-sm">
+        <div class="text-subtitle1 text-weight-medium">{{ esGestion ? 'Nóminas registradas' : 'Mis nóminas' }}</div>
+        <q-space />
+        <q-btn-toggle
+          v-model="filtroTipo"
+          dense
+          no-caps
+          unelevated
+          toggle-color="primary"
+          color="white"
+          text-color="grey-8"
+          :options="[
+            { label: 'Todas', value: '' },
+            { label: 'Viajes', value: 'viajes' },
+            { label: 'Salario', value: 'salario' },
+          ]"
+          @update:model-value="cargarHistorial"
+        />
+      </div>
+
+      <div v-if="!historial.length && !cargando" class="text-center text-grey-6 q-py-lg">Sin nóminas registradas</div>
+
+      <q-card
+        v-for="n in historial"
+        :key="n.consecutivo_nomina"
+        flat
+        class="tarjeta q-mb-sm cursor-pointer"
+        @click="verDetalle(n)"
+      >
+        <q-card-section class="q-py-sm">
+          <div class="row items-center no-wrap">
+            <q-badge :color="n.tipo === 'salario' ? 'blue' : 'teal'" :label="n.tipo === 'salario' ? 'Salario' : 'Viajes'" />
+            <span class="text-weight-medium q-ml-sm ellipsis">{{ n.nombre }}</span>
             <q-space />
-            <q-icon name="chevron_right" color="grey-4" size="16px" />
+            <span class="text-caption text-grey-6">{{ n.consecutivo_nomina }}</span>
+          </div>
+          <div class="row items-center q-mt-xs">
+            <span class="text-caption text-grey-7">
+              {{ n.tipo === 'salario' ? `Mes ${n.mes}` : `${n.total_viajes_mes || 0} viaje(s)` }} · {{ formatoFecha(n.fecha_pago) }}
+            </span>
+            <q-space />
+            <span class="text-body2 text-weight-bold">{{ formatoPeso(n.valor_pagado) }}</span>
+          </div>
+          <div v-if="Number(n.saldo_siguiente) < 0" class="text-caption text-negative text-right">
+            Pasa a la siguiente: {{ formatoPeso(n.saldo_siguiente) }}
           </div>
         </q-card-section>
       </q-card>
-    </div>
+    </template>
 
-    <!-- Dialog detalles -->
-    <q-dialog v-model="mostrarDetalles" persistent>
-      <q-card
-        style="min-width: 350px; max-width: 95vw; width: 500px; border-radius: 16px !important"
-      >
-        <!-- Header -->
-        <q-card-section class="q-pb-sm">
-          <div class="row items-center" v-if="detallesNomina">
-            <div class="avatar-chip q-mr-md">{{ iniciales(detallesNomina.nombre) }}</div>
-            <div class="col">
-              <div class="text-subtitle1 text-weight-medium">{{ detallesNomina.nombre }}</div>
-              <div class="text-caption text-grey-6">{{ detallesNomina.id_conductor }}</div>
-            </div>
-            <q-badge color="blue-1" text-color="blue-9" rounded>
-              {{ detallesNomina.tipo }}
-            </q-badge>
+    <!-- ───────────── LIQUIDAR VIAJES / VISTA DEL CONDUCTOR ───────────── -->
+    <q-dialog v-model="dialogLiquidar" :persistent="esGestion" :maximized="$q.screen.lt.md">
+      <q-card style="width: 600px; max-width: 100vw">
+        <q-card-section class="bg-grey-1 row items-center">
+          <div>
+            <div class="text-h6">{{ esGestion ? 'Liquidar viajes' : 'Mis viajes por liquidar' }}</div>
+            <div class="text-caption">{{ conductorActual?.nombre }}</div>
           </div>
+          <q-space />
+          <q-btn flat round icon="close" v-close-popup />
         </q-card-section>
 
-        <q-separator />
-
-        <q-card-section
-          class="q-pt-md"
-          v-if="detallesNomina"
-          style="max-height: 65vh; overflow-y: auto"
-        >
-          <!-- Banner total nómina -->
-          <div class="ganancia-banner ganancia-positiva q-mb-md">
-            <div class="text-caption" style="opacity: 0.7">Nómina pagada</div>
-            <div class="text-h6 text-weight-bold">
-              {{ formatearCOP(detallesNomina.total_nomina) }}
-            </div>
+        <q-card-section v-if="calculo">
+          <div v-if="!calculo.viajes_disponibles.length && !calculo.ajustes.length" class="text-grey-6">
+            No hay viajes aprobados pendientes de liquidar.
           </div>
 
-          <!-- Info general -->
-          <div class="seccion-titulo">General</div>
-          <div class="detalle-fila">
-            <span class="detalle-label">Consecutivo</span>
-            <span class="detalle-valor" style="font-family: monospace"
-              >#{{ detallesNomina.consecutivo_nomina }}</span
-            >
-          </div>
-          <div class="detalle-fila">
-            <span class="detalle-label">Mes</span>
-            <span class="detalle-valor">{{ detallesNomina.mes }}</span>
-          </div>
-          <div class="detalle-fila">
-            <span class="detalle-label">Fecha de pago</span>
-            <span class="detalle-valor">{{ formatFecha(detallesNomina.fecha_pago) }}</span>
-          </div>
-          <div class="detalle-fila">
-            <span class="detalle-label">Tipo</span>
-            <span class="detalle-valor">{{ detallesNomina.tipo }}</span>
-          </div>
-
-          <!-- Valores -->
-          <div class="seccion-titulo q-mt-md">Desglose</div>
-          <div class="row q-gutter-sm q-mb-sm">
-            <div class="metrica-chip col">
-              <div class="metrica-label">Salario base</div>
-              <div class="metrica-valor">{{ formatearCOP(detallesNomina.salario_base) }}</div>
-            </div>
-            <div class="metrica-chip col">
-              <div class="metrica-label">Seg. social</div>
-              <div class="metrica-valor">{{ formatearCOP(detallesNomina.sso) }}</div>
-            </div>
-          </div>
-          <div class="row q-gutter-sm q-mb-sm">
-            <div class="metrica-chip col">
-              <div class="metrica-label">Viajes del mes</div>
-              <div class="metrica-valor">{{ detallesNomina.total_viajes_mes || '0' }}</div>
-            </div>
-            <div class="metrica-chip col">
-              <div class="metrica-label">10% viajes</div>
-              <div class="metrica-valor">
-                {{ formatearCOP(detallesNomina.diez_pcto_total_mes) }}
+          <div v-if="calculo.viajes_disponibles.length" class="seccion-titulo">Viajes</div>
+          <div v-for="v in viajesDetalle" :key="v.consecutivo" class="row items-center no-wrap q-py-xs borde-abajo">
+            <q-checkbox
+              v-if="esGestion"
+              :model-value="seleccion.includes(v.consecutivo)"
+              dense
+              class="q-mr-sm"
+              @update:model-value="(m) => alternarViaje(v.consecutivo, m)"
+            />
+            <div class="col">
+              <div class="text-body2">{{ v.consecutivo }} · {{ v.placa }} · {{ v.destino }}</div>
+              <div class="text-caption text-grey-7">
+                10 %: {{ formatoPeso(v.diez_pcto) }} · saldo anticipo: {{ formatoPeso(v.saldo_anticipo_conductor) }}
               </div>
             </div>
+            <div class="text-body2 text-weight-medium" :class="v.saldo_pendiente_conductor < 0 ? 'text-negative' : ''">
+              {{ formatoPeso(v.saldo_pendiente_conductor) }}
+            </div>
           </div>
-          <div class="detalle-fila">
-            <span class="detalle-label">Saldo anticipo del mes</span>
-            <span class="detalle-valor">{{
-              formatearCOP(detallesNomina.saldo_anticipo_total_mes)
-            }}</span>
-          </div>
-          <div class="detalle-fila">
-            <span class="detalle-label">Total préstamos</span>
-            <span
-              class="detalle-valor"
-              :class="Number(detallesNomina.total_prestamos) > 0 ? 'text-negative' : ''"
-            >
-              {{ formatearCOP(detallesNomina.total_prestamos) }}
-            </span>
-          </div>
+
+          <template v-if="calculo.ajustes.length">
+            <div class="seccion-titulo q-mt-md">Ajustes del 10 % (viajes facturados después de liquidar)</div>
+            <div v-for="a in calculo.ajustes" :key="a.consecutivo" class="row q-py-xs borde-abajo">
+              <span class="col text-body2">{{ a.consecutivo }} · {{ a.placa }}</span>
+              <span class="text-body2">{{ formatoPeso(a.ajuste) }}</span>
+            </div>
+          </template>
+
+          <div class="seccion-titulo q-mt-md">Resumen</div>
+          <Fila etiqueta="10 % de los viajes" :valor="formatoPeso(calculo.diez_pcto_total_mes)" />
+          <Fila etiqueta="Saldo de los anticipos (se resta)" :valor="formatoPeso(calculo.saldo_anticipo_total_mes)" />
+          <Fila v-if="calculo.ajustes_diez_pcto" etiqueta="Ajustes del 10 %" :valor="formatoPeso(calculo.ajustes_diez_pcto)" />
+          <Fila v-if="calculo.arrastre_anterior" etiqueta="Deuda de la nómina anterior" :valor="formatoPeso(calculo.arrastre_anterior)" clase="text-negative" />
+          <Total :calculo="calculo" />
+
+          <template v-if="esGestion">
+            <q-input v-model="notas" label="Notas (opcional)" outlined dense class="q-mt-md" />
+            <CampoArchivos v-model="comprobante" class="q-mt-sm" label="Comprobante del pago (opcional)" multiple accept="image/*, application/pdf" />
+          </template>
         </q-card-section>
+        <q-card-section v-else class="flex flex-center q-py-xl"><q-spinner size="32px" color="primary" /></q-card-section>
 
-        <q-separator />
-
-        <q-card-actions class="q-pa-md" align="right">
-          <q-btn flat label="Cerrar" color="primary" v-close-popup />
+        <q-card-actions v-if="esGestion" align="right">
+          <q-btn flat label="Cancelar" color="grey-8" v-close-popup />
+          <q-btn
+            unelevated
+            color="teal"
+            label="Registrar liquidación"
+            :loading="guardando"
+            :disable="!calculo || (!calculo.viajes.length && !calculo.ajustes.length) || (calculo.viajes_disponibles.length > 0 && !seleccion.length)"
+            @click="guardarLiquidar"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- ───────────── PAGAR SALARIO ───────────── -->
+    <q-dialog v-model="dialogSalario" persistent :maximized="$q.screen.lt.md">
+      <q-card style="width: 520px; max-width: 100vw">
+        <q-card-section class="bg-grey-1 row items-center">
+          <div>
+            <div class="text-h6">Pagar salario</div>
+            <div class="text-caption">{{ conductorActual?.nombre }}</div>
+          </div>
+          <q-space />
+          <q-btn flat round icon="close" v-close-popup />
+        </q-card-section>
+        <q-card-section>
+          <q-input v-model="mesSalario" type="month" label="Mes" outlined dense stack-label @update:model-value="calcularSalario" />
+
+          <div v-if="errorCalculo" class="text-negative q-mt-md">{{ errorCalculo }}</div>
+          <template v-else-if="calculo">
+            <q-banner v-if="calculo.ya_pagada" dense rounded class="bg-orange-1 text-orange-10 q-mt-md">
+              El salario de {{ calculo.mes }} ya se pagó ({{ calculo.ya_pagada }}).
+            </q-banner>
+            <div class="seccion-titulo q-mt-md">Resumen</div>
+            <Fila etiqueta="Salario base" :valor="formatoPeso(calculo.salario_base)" />
+            <Fila etiqueta="Seguridad social" :valor="formatoPeso(calculo.sso)" />
+            <Fila
+              v-for="p in calculo.prestamos"
+              :key="p.consecutivo"
+              :etiqueta="`Préstamo ${p.consecutivo}`"
+              :valor="formatoPeso(-p.valor_prestado)"
+              clase="text-negative"
+            />
+            <Fila v-if="calculo.arrastre_anterior" etiqueta="Deuda de la nómina anterior" :valor="formatoPeso(calculo.arrastre_anterior)" clase="text-negative" />
+            <Total :calculo="calculo" />
+
+            <q-input v-model="notas" label="Notas (opcional)" outlined dense class="q-mt-md" />
+            <CampoArchivos v-model="comprobante" class="q-mt-sm" label="Comprobante del pago (opcional)" multiple accept="image/*, application/pdf" />
+          </template>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey-8" v-close-popup />
+          <q-btn
+            unelevated
+            color="blue"
+            label="Registrar salario"
+            :loading="guardando"
+            :disable="!calculo || Boolean(calculo.ya_pagada) || Boolean(errorCalculo)"
+            @click="guardarSalario"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- ───────────── DETALLE DE UNA NÓMINA ───────────── -->
+    <q-dialog v-model="dialogDetalle">
+      <q-card v-if="detalle" style="width: 520px; max-width: 95vw">
+        <q-card-section class="row items-center">
+          <div>
+            <div class="text-h6">{{ detalle.consecutivo_nomina }}</div>
+            <div class="text-caption">{{ detalle.nombre }} · {{ detalle.tipo === 'salario' ? `Salario ${detalle.mes}` : 'Viajes' }}</div>
+          </div>
+          <q-space />
+          <q-btn flat round icon="close" v-close-popup />
+        </q-card-section>
+        <q-separator />
+        <q-card-section>
+          <template v-if="detalle.tipo === 'viajes'">
+            <Fila etiqueta="Viajes" :valor="detalle.viajes_liquidados || '—'" />
+            <Fila etiqueta="10 % de los viajes" :valor="formatoPeso(detalle.diez_pcto_total_mes)" />
+            <Fila etiqueta="Saldo de los anticipos" :valor="formatoPeso(detalle.saldo_anticipo_total_mes)" />
+            <Fila v-if="Number(detalle.ajustes_diez_pcto)" etiqueta="Ajustes del 10 %" :valor="formatoPeso(detalle.ajustes_diez_pcto)" />
+          </template>
+          <template v-else>
+            <Fila etiqueta="Salario base" :valor="formatoPeso(detalle.salario_base)" />
+            <Fila etiqueta="Seguridad social" :valor="formatoPeso(detalle.sso)" />
+            <Fila v-if="Number(detalle.total_prestamos)" :etiqueta="`Préstamos (${detalle.prestamos_descontados})`" :valor="formatoPeso(-detalle.total_prestamos)" clase="text-negative" />
+          </template>
+          <Fila v-if="Number(detalle.arrastre_anterior)" etiqueta="Deuda anterior" :valor="formatoPeso(detalle.arrastre_anterior)" clase="text-negative" />
+          <Fila etiqueta="Total" :valor="formatoPeso(detalle.total_nomina)" />
+          <Fila etiqueta="Pagado" :valor="formatoPeso(detalle.valor_pagado)" clase="text-weight-bold" />
+          <Fila v-if="Number(detalle.saldo_siguiente) < 0" etiqueta="Pasa a la siguiente" :valor="formatoPeso(detalle.saldo_siguiente)" clase="text-negative" />
+          <Fila etiqueta="Fecha" :valor="formatoFecha(detalle.fecha_pago)" />
+          <Fila v-if="detalle.notas" etiqueta="Notas" :valor="detalle.notas" />
+        </q-card-section>
+        <q-card-actions v-if="detalle.link_comprobante">
+          <q-btn outline size="sm" icon="receipt" label="Comprobante" @click="abrirVisor(detalle.link_comprobante, 'Comprobante de pago')" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
   </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
-import { useStoreUsuarios } from '../stores/usuarios'
+import { ref, computed, onMounted, h } from 'vue'
+import { useQuasar } from 'quasar'
 import { useStoreNominas } from '../stores/nomina'
-import { TIPOS_FILTRO, CONFIG_FILTROS } from '../composables/filtrosnomina'
+import { useStoreUsuarios } from '../stores/usuarios'
+import { useVisorArchivos } from '../composables/useVisorArchivos'
+import CampoArchivos from 'components/CampoArchivos.vue'
+import { formatoPeso, formatoFecha } from '../utils/formato'
 
+defineOptions({ name: 'NominaPage' })
+
+const $q = useQuasar()
 const useNomina = useStoreNominas()
 const useUsuario = useStoreUsuarios()
-const perfilUsuario = computed(() => useUsuario.perfile)
 
-const tipoLista = ref(TIPOS_FILTRO.TODOS)
-const ordenActual = ref('desc')
-const nominas = ref([])
-const valorFiltroTexto = ref(null)
+// Visor de archivos (con pellizco), montado una sola vez en MainLayout
+const { abrirArchivos: abrirVisor } = useVisorArchivos()
 
-const detallesNomina = ref(null)
-const mostrarDetalles = ref(false)
+// ── Piezas de vista ──
 
-function formatearCOP(valor) {
-  return `$ ${Number(valor || 0).toLocaleString('es-CO')} COP`
-}
+const Fila = (p) =>
+  h('div', { class: 'detalle-fila' }, [
+    h('span', { class: 'detalle-label' }, p.etiqueta),
+    h('span', { class: ['detalle-valor', p.clase] }, p.valor),
+  ])
+Fila.props = ['etiqueta', 'valor', 'clase']
 
-async function verDetalles(consecutivo) {
-  try {
-    const detalle = await useNomina.obtenerdatodenomina(consecutivo)
-    // console.log('Detalles obtenidos:', detalle)
+const Total = ({ calculo }) =>
+  h('div', { class: ['ganancia-banner q-mt-sm', calculo.total_nomina >= 0 ? 'ganancia-positiva' : 'ganancia-negativa'] }, [
+    h('div', { class: 'text-caption' }, calculo.total_nomina >= 0 ? 'A pagar' : 'El conductor queda debiendo'),
+    h('div', { class: 'text-h6' }, formatoPeso(calculo.total_nomina >= 0 ? calculo.valor_pagado : -calculo.saldo_siguiente)),
+    calculo.total_nomina < 0 ? h('div', { class: 'text-caption' }, 'Se paga $ 0 y la diferencia se descuenta en la siguiente nómina') : null,
+  ])
+Total.props = ['calculo']
 
-    if (detalle) {
-      detallesNomina.value = {
-        consecutivo_nomina: detalle['consecutivo_nomina'] || '',
-        mes: detalle['mes'] || '',
-        id_conductor: detalle['id_conductor'] || '',
-        nombre: detalle['nombre'] || '',
-        salario_base: detalle['salario_base'] || '',
-        sso: detalle['sso'] || '',
-        total_viajes_mes: detalle['total_viajes_mes'] || '',
-        diez_pcto_total_mes: detalle['diez_pcto_total_mes'] || '',
-        saldo_anticipo_total_mes: detalle['saldo_anticipo_total_mes'] || '',
-        total_prestamos: detalle['total_prestamos'] || '',
-        total_nomina: detalle['total_nomina'] || '',
-        fecha_pago: detalle['fecha_pago'] || '',
-        tipo: detalle['tipo'] || '',
-      }
-      mostrarDetalles.value = true
-    } else {
-      console.error('No se pudieron obtener los detalles')
-    }
-  } catch (error) {
-    console.error('Error al obtener detalles:', error)
-  }
-}
-
-const filtrosConfig = computed(() => CONFIG_FILTROS)
-
-const filtroActual = computed(() => CONFIG_FILTROS[tipoLista.value])
-
-const opcionesOrdenamiento = computed(() => {
-  if (tipoLista.value === TIPOS_FILTRO.TODOS) return []
-
-  return [
-    { label: filtroActual.value.etiquetaDesc, value: 'desc' },
-    { label: filtroActual.value.etiquetaAsc, value: 'asc' },
-  ]
-})
-
-watch(tipoLista, (newValue) => {
-  const filtro = CONFIG_FILTROS[newValue]
-  if (filtro.esFiltroTexto && filtro.opcionesFiltro?.length > 0) {
-    valorFiltroTexto.value = filtro.opcionesFiltro[0].valor
-  } else {
-    valorFiltroTexto.value = null
-  }
-})
-
-function cargarListaPor(tipo) {
-  tipoLista.value = tipo
-  ordenActual.value = 'desc'
-
-  const filtro = CONFIG_FILTROS[tipo]
-
-  if (filtro.esFiltroTexto && filtro.opcionesFiltro?.length > 0) {
-    valorFiltroTexto.value = filtro.opcionesFiltro[0].valor
-  } else {
-    valorFiltroTexto.value = null
-  }
-
-  cargarNomina()
-}
-
-function actualizarValorFiltro(nuevoValor) {
-  valorFiltroTexto.value = nuevoValor
-  cargarNomina()
-}
-
-// function obtenerEtiquetaValor(valor) {
-//   if (tipoLista.value === TIPOS_FILTRO.VALOR) {
-//     return `$ ${Number(valor).toLocaleString('es-CO')} COP`
-//   }
-
-//   return valor
-// }
-
-function obtenerEtiquetaFiltroTexto(valor) {
-  if (filtroActual.value.esFiltroTexto && filtroActual.value.opcionesFiltro) {
-    const opcion = filtroActual.value.opcionesFiltro.find((opt) => opt.valor === valor)
-    return opcion ? opcion.etiqueta : valor
-  }
-  return valor
-}
-
-const opcionesFiltroTexto = computed(() => {
-  if (tipoLista.value && filtroActual.value && filtroActual.value.esFiltroTexto) {
-    return filtroActual.value.opcionesFiltro || []
-  }
-  return []
-})
-
-async function cargarNomina() {
-  try {
-    let response
-
-    // Conductor: solo sus nóminas
-    if (perfilUsuario.value === 'conductor') {
-      const data = await useNomina.obtenerResumenNominaPorEmail()
-
-      response = data?.resumen?.total?.consecutivos || []
-    }
-
-    // Filtros de texto
-    else if (filtroActual.value?.esFiltroTexto) {
-      response = await useNomina.obtenerNominaFiltrados(tipoLista.value, valorFiltroTexto.value)
-    }
-
-    // Ordenamientos
-    else if (tipoLista.value !== TIPOS_FILTRO.TODOS) {
-      response = await useNomina.obtenerNominaOrdenados(
-        filtroActual.value.campoOrden,
-        ordenActual.value,
-      )
-    } else {
-      response = await useNomina.obtenerNominas()
-    }
-
-    if (Array.isArray(response)) {
-      nominas.value = response.map((item) => {
-        const result = {
-          consecutivo_nomina: item['consecutivo_nomina'] || '',
-          nombre: item['nombre'] || '',
-          diez_pcto_total_mes: item['diez_pcto_total_mes'] || '',
-          total_nomina: item['total_nomina'] || '',
-          fecha_pago: item['fecha_pago'] || '',
-          mes: item['mes'] || '',
-          total_viajes_mes: item['total_viajes_mes'] || '',
-        }
-
-        const campoDatos = filtroActual.value?.campoDatos
-
-        if (campoDatos && item[campoDatos] !== undefined) {
-          result.valorFiltro = item[campoDatos]
-        }
-
-        return result
-      })
-    } else {
-      console.error('Error en formato de respuesta:', response)
-      nominas.value = []
-    }
-  } catch (error) {
-    console.error(`Error al cargar nóminas por ${tipoLista.value}:`, error)
-    nominas.value = []
-  }
-}
-
-function iniciales(nombre) {
-  if (!nombre) return '?'
-  return nombre
+const iniciales = (nombre = '') =>
+  nombre
     .split(' ')
+    .filter(Boolean)
     .slice(0, 2)
-    .map((w) => w[0])
+    .map((p) => p[0].toUpperCase())
     .join('')
-    .toUpperCase()
+
+// ── Estado ──
+
+const esGestion = computed(() => ['administrador', 'propietario'].includes(useUsuario.perfile))
+const pestana = ref('pendientes')
+const cargando = ref(false)
+const pendientes = ref([])
+const historial = ref([])
+const filtroTipo = ref('')
+
+async function cargarPendientes() {
+  pendientes.value = await useNomina.obtenerPendientes()
 }
 
-function formatFecha(fecha) {
-  if (!fecha) return ''
-  return new Date(fecha).toLocaleDateString('es-CO', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
+async function cargarHistorial() {
+  historial.value = await useNomina.obtenerNominas({ tipo: filtroTipo.value })
 }
 
-onMounted(() => {
-  cargarNomina()
-})
+async function recargar() {
+  cargando.value = true
+  try {
+    await Promise.all([cargarPendientes(), cargarHistorial()])
+  } finally {
+    cargando.value = false
+  }
+}
 
-defineOptions({
-  name: 'NominaPage',
-})
+// ── Liquidar viajes ──
 
+const dialogLiquidar = ref(false)
+const conductorActual = ref(null)
+const calculo = ref(null)
+const errorCalculo = ref('')
+const seleccion = ref([])
+const viajesDetalle = ref([])
+const notas = ref('')
+const comprobante = ref([])
+const guardando = ref(false)
+
+async function cargarCalculoViajes() {
+  try {
+    calculo.value = await useNomina.calcularNomina(conductorActual.value.email, { tipo: 'viajes', viajes: seleccion.value })
+  } catch (e) {
+    $q.notify({ type: 'negative', message: e.message, position: 'bottom' })
+  }
+}
+
+async function abrirLiquidar(c) {
+  conductorActual.value = c
+  calculo.value = null
+  notas.value = ''
+  comprobante.value = []
+  dialogLiquidar.value = true
+  seleccion.value = []
+  await cargarCalculoViajes()
+  // La primera vez vienen todos: se guardan para mostrarlos aunque se desmarquen
+  viajesDetalle.value = calculo.value?.viajes || []
+  seleccion.value = viajesDetalle.value.map((v) => v.consecutivo)
+}
+
+const abrirVistaConductor = abrirLiquidar
+
+async function alternarViaje(consecutivo, marcado) {
+  seleccion.value = marcado ? [...seleccion.value, consecutivo] : seleccion.value.filter((c) => c !== consecutivo)
+  if (!seleccion.value.length) {
+    // Ninguno marcado: solo ajustes (si hay)
+    calculo.value = { ...calculo.value, viajes: [], diez_pcto_total_mes: 0, saldo_anticipo_total_mes: 0, saldo_viajes: 0 }
+    const total = calculo.value.ajustes_diez_pcto + calculo.value.arrastre_anterior
+    Object.assign(calculo.value, { total_nomina: total, valor_pagado: Math.max(0, total), saldo_siguiente: Math.min(0, total) })
+    return
+  }
+  await cargarCalculoViajes()
+}
+
+async function guardarLiquidar() {
+  const fd = new FormData()
+  fd.append('viajes', seleccion.value.join(','))
+  if (notas.value) fd.append('notas', notas.value)
+  comprobante.value.forEach((a) => fd.append('comprobante', a))
+
+  guardando.value = true
+  try {
+    await useNomina.liquidarViajes(conductorActual.value.email, fd)
+    dialogLiquidar.value = false
+    await recargar()
+  } catch (e) {
+    $q.notify({ type: 'negative', message: e.message, position: 'bottom', timeout: 5000 })
+  } finally {
+    guardando.value = false
+  }
+}
+
+// ── Salario ──
+
+const dialogSalario = ref(false)
+const mesSalario = ref('')
+
+async function calcularSalario() {
+  calculo.value = null
+  errorCalculo.value = ''
+  try {
+    calculo.value = await useNomina.calcularNomina(conductorActual.value.email, { tipo: 'salario', mes: mesSalario.value })
+  } catch (e) {
+    errorCalculo.value = e.message
+  }
+}
+
+async function abrirSalario(c) {
+  conductorActual.value = c
+  mesSalario.value = c.mes
+  notas.value = ''
+  comprobante.value = []
+  dialogSalario.value = true
+  await calcularSalario()
+}
+
+async function guardarSalario() {
+  const fd = new FormData()
+  fd.append('mes', mesSalario.value)
+  if (notas.value) fd.append('notas', notas.value)
+  comprobante.value.forEach((a) => fd.append('comprobante', a))
+
+  guardando.value = true
+  try {
+    await useNomina.pagarSalario(conductorActual.value.email, fd)
+    dialogSalario.value = false
+    await recargar()
+  } catch (e) {
+    $q.notify({ type: 'negative', message: e.message, position: 'bottom', timeout: 5000 })
+  } finally {
+    guardando.value = false
+  }
+}
+
+// ── Detalle ──
+
+const dialogDetalle = ref(false)
+const detalle = ref(null)
+
+function verDetalle(n) {
+  detalle.value = n
+  dialogDetalle.value = true
+}
+
+onMounted(recargar)
 </script>
 
 <style scoped>
-.placa-badge {
-  background: #111827;
-  color: white;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  padding: 3px 10px;
-  border-radius: 6px;
-  font-family: monospace;
+.tarjeta {
+  border: 1px solid #e5e7eb !important;
+  border-radius: 12px !important;
 }
-
-.metrica-chip {
-  background: #f9fafb;
-  border-radius: 8px;
-  padding: 8px 10px;
-  min-width: 0;
-}
-.metrica-chip.rendimiento-malo {
-  background: #fef2f2;
-}
-.metrica-chip.rendimiento-bueno {
-  background: #f0fdf4;
-}
-.metrica-label {
-  font-size: 10px;
-  color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 2px;
-}
-.metrica-valor {
-  font-size: 13px;
-  font-weight: 600;
-  color: #111827;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.filter-bar {
-  background: white;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  padding: 12px;
-}
-
-.filter-scroll {
-  overflow-x: auto;
-  flex-wrap: nowrap;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.filter-scroll::-webkit-scrollbar {
-  display: none;
-}
-
-.filter-chip {
-  border-radius: 999px !important;
-  font-size: 13px;
-  flex-shrink: 0;
-}
-
 .avatar-chip {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 10px;
   background: #eff6ff;
   color: #1e50a2;
@@ -500,50 +495,64 @@ defineOptions({
   justify-content: center;
   font-size: 13px;
   font-weight: 600;
-  flex-shrink: 0;
-  letter-spacing: 0.5px;
 }
-
-.placa-badge-lg {
-  background: #111827;
-  color: white;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  padding: 6px 20px;
+.metrica-chip {
+  background: #f9fafb;
   border-radius: 8px;
-  font-family: monospace;
+  padding: 8px 10px;
 }
+.metrica-label {
+  font-size: 11px;
+  color: #6b7280;
+}
+.metrica-valor {
+  font-size: 14px;
+  font-weight: 600;
+}
+.seccion-titulo {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #9ca3af;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+.borde-abajo {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+</style>
 
+<!-- Sin scoped: los usan los componentes funcionales Fila y Total -->
+<style>
 .detalle-fila {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 0;
+  padding: 7px 0;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-.detalle-fila:last-child {
-  border-bottom: none;
 }
 .detalle-label {
   font-size: 13px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 .detalle-valor {
   font-size: 13px;
   font-weight: 500;
-  color: #111827;
   text-align: right;
   max-width: 60%;
 }
-
-.nomina-card {
-  border: 1px solid #e5e7eb !important;
-  border-radius: 12px !important;
-  transition: border-color 0.15s;
+.ganancia-banner {
+  border-radius: 10px;
+  padding: 10px 14px;
 }
-
-.nomina-card:active {
-  opacity: 0.85;
+.ganancia-positiva {
+  background: #f0fdf4;
+  color: #166534;
+}
+.ganancia-negativa {
+  background: #fef2f2;
+  color: #991b1b;
 }
 </style>

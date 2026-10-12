@@ -1,42 +1,33 @@
 <template>
   <q-layout view="hHh LpR fFf">
-      <!-- <q-header elevated class="bg-[#003144]" style="padding-top: env(safe-area-inset-top)"> -->
-      <q-header elevated class="bg-[#00ff00]" style="padding-top: env(safe-area-inset-top)">
+    <q-header elevated class="bg-primary" style="padding-top: env(safe-area-inset-top)">
       <q-toolbar>
         <q-btn flat round dense icon="menu" @click="toggleSideMenu" />
         <q-toolbar-title>LJC</q-toolbar-title>
-        <!-- <q-btn
-          v-if="useUsuario.perfile !== 'piloto'"
-          flat
-          round
-          dense
-          icon="add_circle"
-          @click="mostrarFormulario = true"
-        /> -->
-          <q-btn
-          flat
-          round
-          dense
-          icon="logout"
-          @click="logout"
-        />
+
+        <q-btn flat round dense icon="account_circle">
+          <q-menu anchor="bottom right" self="top right">
+            <q-list style="min-width: 220px">
+              <q-item>
+                <q-item-section>
+                  <q-item-label>{{ useUsuario.user?.nombre || useUsuario.correo }}</q-item-label>
+                  <q-item-label caption class="text-capitalize">{{ useUsuario.perfile }}</q-item-label>
+                </q-item-section>
+              </q-item>
+              <q-separator />
+              <q-item clickable v-close-popup @click="dialogPassword = true">
+                <q-item-section avatar><q-icon name="lock_reset" /></q-item-section>
+                <q-item-section>Cambiar contraseña</q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup @click="confirmarSalir">
+                <q-item-section avatar><q-icon name="logout" /></q-item-section>
+                <q-item-section>Cerrar sesión</q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+        </q-btn>
       </q-toolbar>
     </q-header>
-
-    <!-- <q-dialog v-model="mostrarFormulario">
-      <q-card style="width: 700px">
-        <q-card-section>
-          <div class="text-h6">{{ esEdicion ? 'Editar' : 'Crear' }} Viaje</div>
-        </q-card-section>
-
-        <SolicitudForm
-          :datos="datosSolicitud"
-          :esEdicion="esEdicion"
-          @guardar="guardarCompletado"
-          @cancelar="mostrarFormulario = false"
-        />
-      </q-card>
-    </q-dialog> -->
 
     <q-drawer v-model="sideMenuOpen" show-if-above bordered>
       <q-list>
@@ -48,17 +39,49 @@
     <q-page-container class="bg-grey-1">
       <router-view />
     </q-page-container>
+
+    <!-- Confirmar cierre de sesión -->
+    <q-dialog v-model="dialogSalir">
+      <q-card style="width: 360px; max-width: 92vw">
+        <q-card-section>
+          <div class="text-h6">Cerrar sesión</div>
+          <div class="text-body2 text-grey-8 q-mt-sm">
+            ¿Seguro que desea salir? Tendrá que ingresar de nuevo su correo y contraseña.
+          </div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey-8" v-close-popup />
+          <q-btn unelevated label="Salir" color="negative" @click="logout" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Cambio voluntario (menú) -->
+    <CambiarPassword v-model="dialogPassword" />
+
+    <!-- Cambio obligatorio (primer ingreso o contraseña temporal) -->
+    <CambiarPassword
+      :model-value="useUsuario.debeCambiarPassword"
+      obligatorio
+      @cambiada="recargarPagina"
+      @salir="logout"
+    />
+
+    <!-- Visor de archivos (uno solo para toda la app): las páginas lo abren con useVisorArchivos() -->
+    <VisorArchivos />
   </q-layout>
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import { linksList } from '../router/link-list.js'
 import EssentialLink from 'components/EssentialLink.vue'
+import CambiarPassword from 'components/CambiarPassword.vue'
+import VisorArchivos from 'components/VisorArchivos.vue'
+import { limpiarCacheArchivos } from '../composables/useVisorArchivos'
 import useUI from '../composables/useUI'
 import { storeToRefs } from 'pinia'
 import { useStoreUsuarios } from '../stores/usuarios'
-import useNotifications from 'src/composables/useNotifications'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -68,24 +91,45 @@ const uiStore = useUI()
 const { sideMenuOpen } = storeToRefs(uiStore)
 const { toggleSideMenu } = uiStore
 
-const { inicializarNotificaciones } = useNotifications()
+const dialogPassword = ref(false)
+const dialogSalir = ref(false)
 
-const filteredLinks = computed(() => {
-  return linksList.filter((link) => {
-    if (!link.perfiles || link.perfiles.length === 0) return true
-    return link.perfiles.includes(useUsuario.perfile)
-  })
-})
+const filteredLinks = computed(() =>
+  linksList.filter((link) => !link.perfiles?.length || link.perfiles.includes(useUsuario.perfile)),
+)
+
+// El backend respondió "debe cambiar la contraseña" (403): se muestra el diálogo obligatorio
+const alDebeCambiar = () => {
+  useUsuario.debeCambiarPassword = true
+}
 
 onMounted(async () => {
-  if (useUsuario.isAuthenticated) {
-    console.log('Usuario autenticado, intentando inicializar notificaciones...')
-    const resultado = await inicializarNotificaciones()
-    console.log('Resultado inicialización:', resultado)
+  window.addEventListener('ljc:debe-cambiar-password', alDebeCambiar)
+
+  // Al abrir la app: refresca perfil y placas (por si el admin los cambió) sin pedir login
+  await useUsuario.refrescarSesion()
+
+  if (useUsuario.isAuthenticated && !useUsuario.debeCambiarPassword) {
+    useUsuario.iniciarNotificaciones()
   }
 })
 
-const logout = () => {
+onBeforeUnmount(() => {
+  window.removeEventListener('ljc:debe-cambiar-password', alDebeCambiar)
+})
+
+function recargarPagina() {
+  // Después de crear la contraseña, recarga la página actual con el token nuevo
+  router.go(0)
+}
+
+function confirmarSalir() {
+  dialogSalir.value = true
+}
+
+function logout() {
+  dialogSalir.value = false
+  limpiarCacheArchivos() // los archivos vistos no quedan para el siguiente usuario del celular
   useUsuario.eliminarToken()
   localStorage.removeItem('email')
   localStorage.removeItem('fcm-token')

@@ -30,6 +30,7 @@
     "cordova-plugin-file-opener2": "^4.0.0",
     "firebase": "^11.8.0",
     "leaflet": "^1.9.4",
+    "pdfjs-dist": "^4.10.38",
     "pinia": "^3.0.1",
     "pinia-plugin-persistedstate": "^4.2.0",
     "quasar": "^2.16.0",

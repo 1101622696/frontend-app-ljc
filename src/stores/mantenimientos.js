@@ -3,183 +3,118 @@ import axios from 'axios'
 import { ref } from 'vue'
 import { Notify } from 'quasar'
 import { useStoreUsuarios } from './usuarios'
+import { mensajeDeError } from '../utils/formato'
 
-export const useStoreMantenimiento = defineStore(
-  'Mantenimiento',
-  () => {
-    let loading = ref(false)
-    let mantenimientos = ref([])
+// Mantenimientos (solo administrador y propietario; el conductor usa Solicitudes).
+// Consultas: devuelven datos (o vacío) y no lanzan.
+// Acciones (crear/editar/legalizar): lanzan Error con el mensaje del backend, así el diálogo NO se cierra si algo falla.
 
-    const obtenerMantenimientos = async () => {
-      const useUsuario = useStoreUsuarios()
-      loading.value = true
-      try {
-        let response = await axios.get(`api/mantenimientos`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return Array.isArray(response.data) ? response.data : response.data.mantenimientos || []
-      } catch (error) {
-        console.error('No se pudo obtener los mantenimientos', error)
-        return []
-      } finally {
-        loading.value = false
+/** 'M-12' → 12, para desempatar registros del mismo día */
+const numeroConsecutivo = (c) => Number(String(c ?? '').replace(/\D/g, '')) || 0
+
+/** Más reciente primero. fecha_creacion viene 'AAAA-MM-DD' (se compara como texto); empate → consecutivo mayor */
+const ordenarRecientes = (lista) =>
+  [...lista].sort((a, b) => {
+    const fa = /^\d{4}-\d{2}-\d{2}/.test(a.fecha_creacion || '') ? a.fecha_creacion : ''
+    const fb = /^\d{4}-\d{2}-\d{2}/.test(b.fecha_creacion || '') ? b.fecha_creacion : ''
+    return fb.localeCompare(fa) || numeroConsecutivo(b.consecutivo) - numeroConsecutivo(a.consecutivo)
+  })
+
+export const useStoreMantenimiento = defineStore('Mantenimiento', () => {
+  const loading = ref(false)
+
+  const headers = () => ({ 'x-token': useStoreUsuarios().token })
+
+  const fallo = (error, porDefecto) =>
+    Notify.create({ type: 'negative', message: mensajeDeError(error, porDefecto), position: 'bottom' })
+
+  /** avisar=false cuando la página arma su propio mensaje de éxito (p. ej. al crear) */
+  async function accion(fn, porDefecto, avisar = true) {
+    loading.value = true
+    try {
+      const { data } = await fn()
+      if (avisar && data?.mensaje) Notify.create({ type: 'positive', message: data.mensaje, position: 'bottom' })
+      return data
+    } catch (error) {
+      throw new Error(mensajeDeError(error, porDefecto))
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // ── Consultas ──
+
+  /**
+   * Lista para la pantalla, más reciente primero.
+   * - Administrador: GET api/mantenimientos (todos).
+   * - Propietario: GET resumen-solicitante/placa/:placas (acepta varias placas separadas por coma,
+   *   ya normalizadas sin espacios). GET api/mantenimientos es solo para el administrador.
+   */
+  const listarMantenimientos = async ({ esAdmin = false, placas = [] } = {}) => {
+    loading.value = true
+    try {
+      if (esAdmin) {
+        const { data } = await axios.get('api/mantenimientos', { headers: headers() })
+        return ordenarRecientes(Array.isArray(data) ? data : [])
       }
+      if (!placas.length) return []
+      const { data } = await axios.get(
+        `api/mantenimientos/resumen-solicitante/placa/${encodeURIComponent(placas.join(','))}`,
+        { headers: headers() },
+      )
+      return ordenarRecientes(data?.resumen?.total?.consecutivos || [])
+    } catch (error) {
+      fallo(error, 'No se pudieron cargar los mantenimientos')
+      return []
+    } finally {
+      loading.value = false
     }
+  }
 
-    const obtenerdatodemantenimiento = async (consecutivo) => {
-      const useUsuario = useStoreUsuarios()
-      loading.value = true
-      try {
-        let response = await axios.get(
-          `api/mantenimientos/obtenerdatosmantenimiento/${consecutivo}`,
-          {
-            headers: {
-                'x-token': useUsuario.token,
-            },
-          },
-        )
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener los datos del mantenimiento', error)
-        return null
-      } finally {
-        loading.value = false
-      }
+  /** Registro completo (incluye usuario y correo de quien lo registró) */
+  const obtenerdatodemantenimiento = async (consecutivo) => {
+    try {
+      const { data } = await axios.get(
+        `api/mantenimientos/obtenerdatosmantenimiento/${encodeURIComponent(consecutivo)}`,
+        { headers: headers() },
+      )
+      return data
+    } catch (error) {
+      fallo(error, 'No se pudo abrir el mantenimiento')
+      return null
     }
+  }
 
-    const obtenerResumenPorPlaca = async (placa) => {
-      const useUsuario = useStoreUsuarios()
-      loading.value = true
-      try {
-        let response = await axios.get(`api/mantenimientos/resumen-solicitante/placa/${placa}`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener el resumen por placa', error)
-        return { resumen: null }
-      } finally {
-        loading.value = false
-      }
-    }
+  // ── Acciones (lanzan Error) ──
 
-    const obtenerMantenimientosOrdenados = async (tipo = 'fecha', orden = 'desc') => {
-      const useUsuario = useStoreUsuarios()
+  /** FormData: placa, tipo_mantenimiento, descripcion, valor_mantenimiento, odometro?, numero_factura?, archivos[] */
+  const crearMantenimiento = (formData) =>
+    accion(
+      () => axios.post('api/mantenimientos/crear', formData, { headers: headers() }),
+      'No se pudo registrar el mantenimiento',
+      false,
+    )
 
-      loading.value = true
-      try {
-        const response = await axios.get(`api/mantenimientos/ordenados`, {
-          params: { tipo, orden },
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
+  /** Solo cambia los campos que llegan con valor; archivos nuevos se suman a la carpeta */
+  const editarMantenimiento = (consecutivo, formData) =>
+    accion(
+      () => axios.put(`api/mantenimientos/editar/${encodeURIComponent(consecutivo)}`, formData, { headers: headers() }),
+      'No se pudo editar el mantenimiento',
+    )
 
-        return response.data
-      } catch (err) {
-        console.error(`No se pudo obtener los mantenimientos ordenados por ${tipo}:`, err)
-        throw err
-      } finally {
-        loading.value = false
-      }
-    }
+  /** FormData: numero_factura (obligatorio) + archivos (opcionales si el mantenimiento ya tiene soporte) */
+  const legalizarMantenimiento = (consecutivo, formData) =>
+    accion(
+      () => axios.put(`api/mantenimientos/legalizar/${encodeURIComponent(consecutivo)}`, formData, { headers: headers() }),
+      'No se pudo legalizar el mantenimiento',
+    )
 
-    const obtenerMantenimientosFiltrados = async (tipo, valor) => {
-      const useUsuario = useStoreUsuarios()
-
-      loading.value = true
-
-      try {
-        const response = await axios.get(`api/mantenimientos/filtrados`, {
-          params: { tipo, valor }, 
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-
-        return response.data
-      } catch (err) {
-        console.error(`No se pudo obtener los mantenimientos filtrados por ${tipo}:`, err)
-        console.error('Detalles del error:', err.response?.data || err.message)
-        throw err
-      } finally {
-        loading.value = false
-      }
-    }
-
-    const postMantenimiento = async (formData) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        loading.value = true
-        const response = await axios.post('api/mantenimientos/crear', formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        Notify.create({
-          message: 'mantenimiento creado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
-
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al crear mantenimiento',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
-
-    const putMantenimiento = async (consecutivo, formData) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        loading.value = true
-        const response = await axios.put(`api/mantenimientos/editar/${consecutivo}`, formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        Notify.create({
-          message: 'mantenimiento editado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
-
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al editar mantenimiento',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
-
-    return {
-      obtenerMantenimientos,
-      obtenerResumenPorPlaca,
-      obtenerdatodemantenimiento,
-      obtenerMantenimientosFiltrados,
-      obtenerMantenimientosOrdenados,
-      postMantenimiento,
-      putMantenimiento,
-      loading,
-      mantenimientos,
-    }
-  },
-  { persist: true },
-)
+  return {
+    loading,
+    listarMantenimientos,
+    obtenerdatodemantenimiento,
+    crearMantenimiento,
+    editarMantenimiento,
+    legalizarMantenimiento,
+  }
+})

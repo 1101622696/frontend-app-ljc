@@ -3,211 +3,151 @@ import axios from 'axios'
 import { ref } from 'vue'
 import { Notify } from 'quasar'
 import { useStoreUsuarios } from './usuarios'
+import { mensajeDeError } from '../utils/formato'
 
-export const useStoreCombustible = defineStore(
-  'Combustible',
-  () => {
-    let loading = ref(false)
-    let combustible = ref([])
+// Consultas: devuelven datos (o vacío) y avisan si fallan; no lanzan.
+// Acciones (crear, editar, legalizar): lanzan Error con el mensaje del backend,
+// así el diálogo NO se cierra y el usuario no pierde lo que llenó.
 
-    const obtenerCombustible = async (pagina = 1) => {
-      const useUsuario = useStoreUsuarios()
-      loading.value = true
-      try {
-        const response = await axios.get(`api/combustible`, {
-          params: { pagina, limite: 50 },
-          headers: { 'x-token': useUsuario.token },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener el combustible', error)
-        return { datos: [], hayMas: false }
-      } finally {
-        loading.value = false
-      }
+export const useStoreCombustible = defineStore('Combustible', () => {
+  const loading = ref(false)
+
+  const headers = () => ({ 'x-token': useStoreUsuarios().token })
+
+  const avisarError = (error, porDefecto) =>
+    Notify.create({ type: 'negative', message: mensajeDeError(error, porDefecto), position: 'bottom' })
+
+  /**
+   * Ejecuta una acción. `notificar`: muestra el mensaje del backend como éxito.
+   * Crear y editar no lo usan: el mensaje puede ser una alerta de rendimiento y la página
+   * muestra el resultado completo en su propio diálogo.
+   */
+  async function accion(fn, porDefecto, notificar = true) {
+    loading.value = true
+    try {
+      const { data } = await fn()
+      if (notificar && data?.mensaje) Notify.create({ type: 'positive', message: data.mensaje, position: 'bottom' })
+      return data
+    } catch (error) {
+      throw new Error(mensajeDeError(error, porDefecto))
+    } finally {
+      loading.value = false
     }
+  }
 
-    const obtenerdatosdecombustible = async (consecutivo) => {
-      const useUsuario = useStoreUsuarios()
+  // ── Consultas ──
 
-      try {
-        let response = await axios.get(`api/combustible/obtenerdatoscombustible/${consecutivo}`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener los datos del combustible', error)
-        return null
-      } finally {
-        loading.value = false
-      }
+  /** Solo admin. { datos, pagina, limite, hayMas, total }, más reciente primero */
+  const listarCombustibles = async ({ pagina = 1, limite = 25 } = {}) => {
+    loading.value = true
+    try {
+      const { data } = await axios.get('api/combustible', { params: { pagina, limite }, headers: headers() })
+      return { datos: Array.isArray(data?.datos) ? data.datos : [], hayMas: Boolean(data?.hayMas), total: data?.total || 0 }
+    } catch (error) {
+      avisarError(error, 'No se pudieron cargar los tanqueos')
+      // fallo: la página puede reintentar la misma página con "Cargar más"
+      return { datos: [], hayMas: false, total: 0, fallo: true }
+    } finally {
+      loading.value = false
     }
+  }
 
-    const obtenerResumenPorPlaca = async (placa) => {
-      const useUsuario = useStoreUsuarios()
-      loading.value = true
-      try {
-        let response = await axios.get(`api/combustible/resumen-solicitante/placa/${placa}`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener el resumen por placa', error)
-        return { resumen: null }
-      } finally {
-        loading.value = false
-      }
+  /** Solo admin. Todos los registros con ese estado de factura ('pendiente' | 'legalizado'), sin paginar */
+  const listarPorEstadoFactura = async (estado) => {
+    loading.value = true
+    try {
+      const { data } = await axios.get('api/combustible/filtrados', {
+        params: { tipo: 'estado_factura', valor: estado },
+        headers: headers(),
+      })
+      return Array.isArray(data) ? data : []
+    } catch (error) {
+      avisarError(error, 'No se pudieron cargar los tanqueos')
+      return []
+    } finally {
+      loading.value = false
     }
+  }
 
-    const obtenerCombustiblesOrdenados = async (tipo = 'fecha', orden = 'desc') => {
-      const useUsuario = useStoreUsuarios()
-
-      loading.value = true
-      try {
-        const response = await axios.get(`api/combustible/ordenados`, {
-          params: { tipo, orden },
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-
-        return response.data
-      } catch (err) {
-        console.error(`No se pudo obtener combustible ordenados por ${tipo}:`, err)
-        throw err
-      } finally {
-        loading.value = false
-      }
+  /**
+   * Índice liviano de los tanqueos de UNA placa (todos los perfiles, solo sus placas).
+   * El backend no devuelve la placa en cada fila (ni estado de factura): se la agregamos aquí.
+   * Devuelve null si falló (para distinguirlo de "no hay registros").
+   */
+  const resumenPorPlaca = async (placa) => {
+    try {
+      const { data } = await axios.get(`api/combustible/resumen-solicitante/placa/${encodeURIComponent(placa)}`, {
+        headers: headers(),
+      })
+      const filas = data?.resumen?.total?.consecutivos
+      return (Array.isArray(filas) ? filas : []).map((f) => ({ ...f, placa }))
+    } catch (error) {
+      avisarError(error, `No se pudieron cargar los tanqueos de ${placa}`)
+      return null
     }
+  }
 
-    const obtenerCombustiblesFiltrados = async (tipo, valor) => {
-      const useUsuario = useStoreUsuarios()
-
-      loading.value = true
-
-      try {
-        const response = await axios.get(`api/combustible/filtrados`, {
-          params: { tipo, valor }, 
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-
-        return response.data
-      } catch (err) {
-        console.error(`No se pudo obtener combustible filtrados por ${tipo}:`, err)
-        console.error('Detalles del error:', err.response?.data || err.message)
-        throw err
-      } finally {
-        loading.value = false
-      }
+  /**
+   * Rendimiento acumulado del mes de una placa (mes 'AAAA-MM').
+   * { placa, mes, registros, km_recorridos, galones_cargados, galones_rendimiento, valor_pagado,
+   *   rendimiento (o null), rendimiento_esperado, alerta, odometro_inicial, odometro_final, tanqueos: [filas completas] }
+   */
+  const rendimientoMensual = async (placa, mes, { silencioso = false } = {}) => {
+    try {
+      const { data } = await axios.get(`api/combustible/rendimiento-mensual/${encodeURIComponent(placa)}`, {
+        params: { mes },
+        headers: headers(),
+      })
+      return data
+    } catch (error) {
+      if (!silencioso) avisarError(error, 'No se pudo cargar el rendimiento del mes')
+      return null
     }
+  }
 
-    const postCombustible = async (formData) => {
-      const useUsuario = useStoreUsuarios()
-
-      try {
-        loading.value = true
-        const response = await axios.post('api/combustible/crear', formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        Notify.create({
-          message: 'Combustible creado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
-
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al registrar combustible',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
+  /** Registro completo (incluye rendimiento esperado, km/galones desde el lleno, factura) */
+  const obtenerCombustible = async (consecutivo) => {
+    try {
+      const { data } = await axios.get(`api/combustible/obtenerdatoscombustible/${encodeURIComponent(consecutivo)}`, {
+        headers: headers(),
+      })
+      return data
+    } catch (error) {
+      avisarError(error, 'No se pudo abrir el tanqueo')
+      return null
     }
+  }
 
-    const putLegalizarCombustible = async (consecutivo, data) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        loading.value = true
+  // ── Acciones (lanzan Error) ──
 
-        const response = await axios.put(`api/combustible/legalizar/${consecutivo}`, data, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
+  /** formData: placa, odometro_actual, galones_cargados, valor_pagado, tanque_lleno, archivos[] */
+  const crearCombustible = (formData) =>
+    accion(() => axios.post('api/combustible/crear', formData, { headers: headers() }), 'No se pudo registrar el tanqueo', false)
 
-        Notify.create({
-          message: 'Combustible legalizado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
+  /** Solo propietario/admin. Mismos campos; los archivos son opcionales */
+  const editarCombustible = (consecutivo, formData) =>
+    accion(
+      () => axios.put(`api/combustible/editar/${encodeURIComponent(consecutivo)}`, formData, { headers: headers() }),
+      'No se pudo editar el tanqueo',
+      false,
+    )
 
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al legalizar',
-        })
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
+  /** Solo propietario/admin. Número de factura obligatorio */
+  const legalizarCombustible = (consecutivo, numero_factura) =>
+    accion(
+      () => axios.put(`api/combustible/legalizar/${encodeURIComponent(consecutivo)}`, { numero_factura }, { headers: headers() }),
+      'No se pudo legalizar la factura',
+    )
 
-    const putCombustible = async (consecutivo, formData) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        loading.value = true
-        const response = await axios.put(`api/combustible/editar/${consecutivo}`, formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-
-        Notify.create({
-          message: 'combustible editado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
-
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al registrar combustible',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
-
-    return {
-      obtenerCombustible,
-      obtenerdatosdecombustible,
-      obtenerResumenPorPlaca,
-      obtenerCombustiblesOrdenados,
-      obtenerCombustiblesFiltrados,
-      postCombustible,
-      putLegalizarCombustible,
-      putCombustible,
-      loading,
-      combustible,
-    }
-  },
-  { persist: true },
-)
+  return {
+    loading,
+    listarCombustibles,
+    listarPorEstadoFactura,
+    resumenPorPlaca,
+    rendimientoMensual,
+    obtenerCombustible,
+    crearCombustible,
+    editarCombustible,
+    legalizarCombustible,
+  }
+})

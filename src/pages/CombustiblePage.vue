@@ -1,950 +1,1124 @@
 <template>
-  <q-page padding class="bg-grey-2">
-    <div class="filter-bar q-mb-md">
-      <div class="filter-scroll row no-wrap q-gutter-x-sm q-pb-xs">
-        <q-chip
-          v-for="(config, tipo) in filtrosConfig"
-          :key="tipo"
-          clickable
-          :icon="config.icono"
-          :color="tipoLista === tipo ? 'primary' : 'grey-2'"
-          :text-color="tipoLista === tipo ? 'white' : 'grey-8'"
-          class="filter-chip"
-          @click="cargarListaPor(tipo)"
-        >
-          {{ tipo === 'todos' ? 'Todos' : config.titulo.split(' ').pop() }}
-        </q-chip>
+  <q-page padding class="bg-grey-2 pagina-con-fab">
+    <q-tabs
+      v-model="pestana"
+      dense
+      align="justify"
+      class="bg-white rounded-borders q-mb-md"
+      active-color="primary"
+      indicator-color="primary"
+      @update:model-value="alCambiarPestana"
+    >
+      <q-tab name="tanqueos" icon="local_gas_station" label="Tanqueos" />
+      <q-tab name="mes" icon="insights" label="Rendimiento del mes" />
+    </q-tabs>
+
+    <!-- ═════════════ PESTAÑA: TANQUEOS ═════════════ -->
+    <template v-if="pestana === 'tanqueos'">
+      <div class="filter-bar q-mb-md">
+        <div class="filter-scroll row no-wrap q-gutter-x-sm q-pb-xs">
+          <q-chip
+            v-for="opcion in opcionesEstado"
+            :key="opcion.valor"
+            clickable
+            :color="filtroEstado === opcion.valor ? 'primary' : 'grey-2'"
+            :text-color="filtroEstado === opcion.valor ? 'white' : 'grey-8'"
+            class="filter-chip"
+            @click="cambiarEstado(opcion.valor)"
+          >
+            {{ opcion.etiqueta }}
+          </q-chip>
+        </div>
+
+        <div v-if="placasChips.length > 1" class="filter-scroll row no-wrap q-gutter-x-sm q-pt-sm">
+          <q-chip
+            clickable
+            :color="!filtroPlaca ? 'secondary' : 'grey-2'"
+            :text-color="!filtroPlaca ? 'white' : 'grey-8'"
+            class="filter-chip"
+            @click="cambiarPlaca(null)"
+          >
+            Todas las placas
+          </q-chip>
+          <q-chip
+            v-for="placa in placasChips"
+            :key="placa"
+            clickable
+            :color="filtroPlaca === placa ? 'secondary' : 'grey-2'"
+            :text-color="filtroPlaca === placa ? 'white' : 'grey-8'"
+            class="filter-chip"
+            @click="cambiarPlaca(placa)"
+          >
+            {{ placa }}
+          </q-chip>
+        </div>
       </div>
 
-      <div
-        v-if="tipoLista !== 'todos' && !filtroActual.esFiltroTexto"
-        class="row no-wrap q-gutter-x-sm q-mt-sm"
-      >
-        <q-chip
-          v-for="op in opcionesOrdenamiento"
-          :key="op.value"
-          clickable
-          size="sm"
-          :color="ordenActual === op.value ? 'secondary' : 'transparent'"
-          :text-color="ordenActual === op.value ? 'white' : 'grey-7'"
-          :outline="ordenActual !== op.value"
-          @click="ordenActual = op.value;cargarCombustibles();"
-        >
-          {{ op.label }}
-        </q-chip>
+      <div v-if="!mostrados.length && !cargandoLista" class="text-center text-grey-6 q-py-xl">
+        <q-icon name="local_gas_station" size="48px" />
+        <div class="q-mt-sm">{{ textoVacio }}</div>
       </div>
 
-      <div v-if="filtroActual.esFiltroTexto" class="q-mt-sm">
-        <q-select
-          v-model="valorFiltroTexto"
-          :options="opcionesFiltroTexto"
-          option-value="valor"
-          option-label="etiqueta"
-          dense
-          outlined
-          rounded
-          emit-value
-          map-options
-          @update:model-value="actualizarValorFiltro"
-        />
-      </div>
-    </div>
-
-    <!-- Encabezado -->
-    <div class="row items-center q-mb-sm">
-      <q-icon :name="filtroActual.icono" :color="filtroActual.color" size="20px" />
-      <span class="text-subtitle1 text-weight-medium q-ml-xs">
-        {{ filtroActual.titulo }}
-        <span v-if="filtroActual.esFiltroTexto && valorFiltroTexto">
-          · {{ obtenerEtiquetaFiltroTexto(valorFiltroTexto) }}
-        </span>
-      </span>
-      <q-badge color="blue-1" text-color="blue-9" class="q-ml-auto" rounded>
-        {{ combustibles.length }}
-      </q-badge>
-    </div>
-
-    <!-- Cards de combustible -->
-    <div class="q-gutter-y-sm">
       <q-card
-        v-for="c in combustibles"
+        v-for="c in mostrados"
         :key="c.consecutivo"
         flat
-        bordered
-        class="combustible-card cursor-pointer"
+        class="viaje-card q-mb-sm cursor-pointer"
         @click="verDetalles(c.consecutivo)"
       >
-        <q-card-section class="q-pa-md">
-          <!-- Fila superior: placa + alerta + fecha -->
-          <div class="row items-center q-mb-sm">
-            <div class="placa-badge q-mr-sm">{{ c.placa }}</div>
-            <span class="text-caption text-grey-6">#{{ c.consecutivo }}</span>
+        <q-card-section class="q-py-sm">
+          <div class="row items-center no-wrap">
+            <span class="placa-badge">{{ c.placa }}</span>
+            <span class="text-weight-bold q-ml-sm">{{ c.consecutivo }}</span>
+            <q-icon v-if="c.alerta === 'si'" name="warning" color="negative" size="18px" class="q-ml-xs">
+              <q-tooltip>Rendimiento bajo</q-tooltip>
+            </q-icon>
             <q-space />
-            <q-badge v-if="c.alerta === 'si'" color="negative" text-color="white" rounded>
-              <q-icon name="warning" size="11px" class="q-mr-xs" />
-              Alerta
-            </q-badge>
-            <q-badge v-else color="green-1" text-color="green-9" rounded>OK</q-badge>
+            <q-badge :color="colorEstado(c.estado_factura)" :label="nombreEstado(c.estado_factura)" />
           </div>
-
-          <!-- Fila de métricas principales -->
-          <div class="row q-gutter-x-sm q-mb-sm">
-            <div class="metrica-chip col">
-              <div class="metrica-label">Galones</div>
-              <div class="metrica-valor">{{ c.galones_cargados }}</div>
-            </div>
-            <div class="metrica-chip col">
-              <div class="metrica-label">Valor pagado</div>
-              <div class="metrica-valor">{{ formatPeso(c.valor_pagado) }}</div>
-            </div>
-            <div class="metrica-chip col">
-              <div class="metrica-label">$/Galón</div>
-              <div class="metrica-valor">{{ formatPeso(c.precio_por_galon) }}</div>
-            </div>
-          </div>
-
-          <!-- Fila de rendimiento -->
-          <div class="row q-gutter-x-sm">
-            <div class="metrica-chip col" :class="claseRendimiento(c.diferencia_rendimiento)">
-              <div class="metrica-label">Rendimiento real</div>
-              <div class="metrica-valor">{{ c.rendimiento_real }} km/gl</div>
-            </div>
-            <div class="metrica-chip col">
-              <div class="metrica-label">Esperado</div>
-              <div class="metrica-valor">8 km/gl</div>
-            </div>
-            <div class="metrica-chip col">
-              <div class="metrica-label">Km recorridos</div>
-              <div class="metrica-valor">{{ c.km_recorridos }}</div>
-            </div>
-          </div>
-
-          <!-- Footer: odómetro + fecha -->
-          <div
-            class="row items-center q-mt-sm"
-            style="border-top: 1px solid rgba(0, 0, 0, 0.06); padding-top: 8px"
-          >
-            <q-icon name="speed" size="14px" color="grey-5" class="q-mr-xs" />
-            <span class="text-caption text-grey-6">Odómetro: {{ c.odometro_actual }}</span>
+          <div class="row items-center q-mt-xs text-body2">
+            <span>{{ formatoGalones(c.galones_cargados) }} gal · {{ formatoPeso(c.valor_pagado) }}</span>
             <q-space />
-            <span class="text-caption text-grey-5">{{ formatFecha(c.fecha_registro) }}</span>
+            <span class="text-weight-medium" :class="claseTexto(c.rendimiento_real, c.rendimiento_esperado)">
+              {{ rendimientoCorto(c) }}
+            </span>
+          </div>
+          <div class="row items-center text-caption text-grey-7">
+            <span>{{ formatoFecha(c.fecha_registro) }} · {{ formatoMiles(c.odometro_actual) }} km</span>
+            <q-space />
+            <span class="ellipsis">{{ c.usuario }}</span>
           </div>
         </q-card-section>
       </q-card>
-    </div>
 
-    <div>
+      <div v-if="cargandoLista && !mostrados.length" class="text-center q-py-lg">
+        <q-spinner color="primary" size="32px" />
+      </div>
 
-<q-dialog v-model="mostrarDetalles" persistent>
-  <q-card style="min-width: 350px; max-width: 95vw; border-radius: 16px !important;">
+      <div v-if="hayMas" class="text-center q-my-md">
+        <q-btn outline rounded color="primary" label="Cargar más" :loading="cargandoLista" @click="cargarMas" />
+      </div>
+    </template>
 
-    <!-- Header -->
-    <q-card-section class="q-pb-sm">
-      <div class="row items-center">
-        <div>
-          <div class="text-subtitle1 text-weight-medium">Detalles del Combustible</div>
-          <div class="text-caption text-grey-6" v-if="detallesCombustible">
-            #{{ detallesCombustible.consecutivo }} · {{ formatFecha(detallesCombustible.fecha_registro) }}
-          </div>
-        </div>
-        <q-space />
-        <q-badge
-          v-if="detallesCombustible"
-          :color="detallesCombustible.alerta === 'si' ? 'negative' : 'green-1'"
-          :text-color="detallesCombustible.alerta === 'si' ? 'white' : 'green-9'"
-          rounded
-        >
-          <q-icon
-            :name="detallesCombustible.alerta === 'si' ? 'warning' : 'check_circle'"
-            size="11px"
-            class="q-mr-xs"
+    <!-- ═════════════ PESTAÑA: RENDIMIENTO DEL MES ═════════════ -->
+    <template v-else>
+      <div class="filter-bar q-mb-md row q-col-gutter-sm">
+        <div class="col-6">
+          <q-input
+            v-if="placasDisponibles.length <= 1"
+            :model-value="placaMes || 'Sin placa'"
+            label="Placa"
+            outlined
+            dense
+            readonly
           />
-          {{ detallesCombustible.alerta === 'si' ? 'Alerta' : 'OK' }}
-        </q-badge>
-      </div>
-    </q-card-section>
-
-    <q-separator />
-
-    <q-card-section class="q-pt-md" v-if="detallesCombustible">
-
-      <!-- Placa destacada -->
-      <div class="row justify-center q-mb-md">
-        <div class="placa-badge-lg">{{ detallesCombustible.placa }}</div>
-      </div>
-
-      <!-- Métricas principales -->
-      <div class="row q-gutter-sm q-mb-md">
-        <div class="metrica-chip col">
-          <div class="metrica-label">Galones</div>
-          <div class="metrica-valor">{{ detallesCombustible.galones_cargados }}</div>
+          <q-select
+            v-else
+            v-model="placaMes"
+            :options="placasDisponibles"
+            label="Placa"
+            outlined
+            dense
+            @update:model-value="cargarMes"
+          />
         </div>
-        <div class="metrica-chip col">
-          <div class="metrica-label">Valor pagado</div>
-          <div class="metrica-valor">{{ formatPeso(detallesCombustible.valor_pagado) }}</div>
-        </div>
-        <div class="metrica-chip col">
-          <div class="metrica-label">$/Galón</div>
-          <div class="metrica-valor">{{ formatPeso(detallesCombustible.precio_por_galon) }}</div>
+        <div class="col-6">
+          <q-input
+            v-model="mesSeleccionado"
+            type="month"
+            label="Mes"
+            outlined
+            dense
+            stack-label
+            :max="mesActual"
+            @update:model-value="cargarMes"
+          />
         </div>
       </div>
 
-      <!-- Rendimiento -->
-      <div class="row q-gutter-sm q-mb-md">
-        <div class="metrica-chip col" :class="claseRendimiento(detallesCombustible.diferencia_rendimiento)">
-          <div class="metrica-label">Rendimiento real</div>
-          <div class="metrica-valor">{{ detallesCombustible.rendimiento_real }} km/gl</div>
-        </div>
-        <div class="metrica-chip col">
-          <div class="metrica-label">Esperado</div>
-          <div class="metrica-valor">{{ detallesCombustible.rendimiento_esperado }} km/gl</div>
-        </div>
-        <div class="metrica-chip col" :class="claseRendimiento(detallesCombustible.diferencia_rendimiento)">
-          <div class="metrica-label">Diferencia</div>
-          <div class="metrica-valor">{{ detallesCombustible.diferencia_rendimiento }}</div>
-        </div>
+      <div v-if="cargandoMes" class="text-center q-py-lg">
+        <q-spinner color="primary" size="32px" />
       </div>
 
-      <!-- Odómetro y km -->
-      <div class="row q-gutter-sm q-mb-md">
-        <div class="metrica-chip col">
-          <div class="metrica-label">Odómetro</div>
-          <div class="metrica-valor">{{ detallesCombustible.odometro_actual }} km</div>
-        </div>
-        <div class="metrica-chip col">
-          <div class="metrica-label">Km recorridos</div>
-          <div class="metrica-valor">{{ detallesCombustible.km_recorridos }} km</div>
-        </div>
-      </div>
-
-      <q-separator class="q-mb-md" />
-
-      <!-- Info de factura -->
-      <div class="detalle-fila">
-        <span class="detalle-label">Estado factura</span>
-        <q-badge
-          :color="detallesCombustible.estado_factura === 'legalizado' ? 'green-1' : 'orange-1'"
-          :text-color="detallesCombustible.estado_factura === 'legalizado' ? 'green-9' : 'orange-9'"
-          rounded
-        >
-          {{ detallesCombustible.estado_factura }}
-        </q-badge>
-      </div>
-      <div class="detalle-fila" v-if="detallesCombustible.numero_factura">
-        <span class="detalle-label">N° factura</span>
-        <span class="detalle-valor">{{ detallesCombustible.numero_factura }}</span>
-      </div>
-      <div class="detalle-fila">
-        <span class="detalle-label">Usuario</span>
-        <span class="detalle-valor">{{ detallesCombustible.usuario }}</span>
-      </div>
-      <div class="detalle-fila">
-        <span class="detalle-label">Correo</span>
-        <span class="detalle-valor text-caption">{{ detallesCombustible.correo_usuario }}</span>
-      </div>
-
-      <q-separator class="q-my-md" />
-
-      <!-- Legalización -->
-      <div class="detalle-fila">
-        <span class="detalle-label">Legalización</span>
-        <q-toggle
-          :model-value="detallesCombustible.estado_factura?.toLowerCase().trim() === 'legalizado'"
-          :disable="detallesCombustible.estado_factura?.toLowerCase().trim() !== 'pendiente'"
-          color="primary"
-          @click="cambiarEstado"
-        />
-      </div>
-
-      <q-input
-        v-if="detallesCombustible.estado_factura === 'pendiente'"
-        v-model="numeroFactura"
-        label="Número de factura"
-        dense
-        outlined
-        rounded
-        class="q-mt-sm q-mb-md"
-      />
-
-    </q-card-section>
-
-    <DriveVisor
-      v-model="dialogAbierto"
-      :titulo="tituloVisor"
-      :archivos="archivos"
-      :cargando="cargandoVisor"
-      :error="errorVisor"
-      :url-archivo="urlArchivo"
-      :es-imagen="esImagen"
-      :es-pdf="esPdf"
-    />
-
-    <!-- Acciones -->
-    <q-separator />
-    <q-card-actions class="q-pa-md">
-      <q-btn
-        outline
-        color="secondary"
-        icon="folder"
-        label="Ver archivos"
-        size="sm"
-        @click="abrirVisor(detallesCombustible.link_factura, 'Documentos')"
-      />
-      <q-space />
-      <q-btn
-        flat
-        round
-        icon="edit"
-        color="grey-7"
-        :disable="['legalizado'].includes(detallesCombustible?.estado_factura)"
-        @click="editar(detallesCombustible)"
-      >
-        <q-tooltip v-if="['legalizado'].includes(detallesCombustible?.estado_factura)">
-          Este combustible no puede ser editado
-        </q-tooltip>
-      </q-btn>
-      <q-btn flat label="Cerrar" color="primary" v-close-popup />
-    </q-card-actions>
-
-  </q-card>
-</q-dialog>
-
-      <q-dialog v-model="alert" persistent>
-        <q-card class="" style="width: 700px">
-          <q-card-section class="bg-primary text-white">
-            <div class="text-h6 text-weight-bold">
-              {{ accion == 1 ? 'Agregar Combustible' : 'Editar Combustible' }}
-            </div>
-          </q-card-section>
-
-          <q-card-section class="q-pa-md">
-            <div class="row q-col-gutter-md">
-              <div class="col-12">
-                <q-input
-                  v-if="perfilUsuario === 'conductor'"
-                  outlined
-                  rounded
-                  v-model="formulario.placa"
-                  label="Tu placa"
-                  :dense="dense"
-                  disable
-                />
-
-                <!-- Propietario y Admin: select con opciones -->
-                <q-select
-                  v-else
-                  outlined
-                  rounded
-                  v-model="formulario.placa"
-                  label="Placa"
-                  :options="placasOptions"
-                  :dense="dense"
-                />
-              </div>
-
-              <div class="col-12">
-                <q-input
-                  outlined
-                  rounded
-                  v-model="odometroactualFormatted"
-                  label="Odómetro"
-                  :dense="dense"
-                  @update:model-value="formatearOdometroActual"
-                />
-              </div>
-
-              <div class="col-12">
-                <q-input
-                  outlined
-                  rounded
-                  v-model.trim="formulario.galones_cargados"
-                  label="Galones cargados"
-                  :dense="dense"
-                />
-              </div>
-
-              <div class="col-12">
-                <q-input
-                  rounded
-                  outlined
-                  v-model="valorpagadoFormatted"
-                  label="Valor pagado"
-                  :dense="dense"
-                  @update:model-value="formatearValorpagado"
-                />
-              </div>
+      <template v-else-if="datosMes">
+        <q-card flat class="viaje-card q-mb-md">
+          <q-card-section>
+            <div class="row items-center q-mb-sm">
+              <span class="placa-badge">{{ datosMes.placa }}</span>
+              <span class="q-ml-sm text-subtitle2 text-capitalize">{{ nombreMes(datosMes.mes) }}</span>
+              <q-space />
+              <q-badge v-if="datosMes.alerta === 'si'" color="negative" label="Rendimiento bajo" />
             </div>
 
-            <div class="col-12">
-              <q-banner class="q-mt-lg q-mb-sm text-indigo">Adjuntar Archivos</q-banner>
-              <q-file
-                label="Seleccionar archivos"
-                rounded
-                outlined
-                multiple
-                v-model="archivosSeleccionados"
-                @update:model-value="manejarSeleccionArchivos"
-                accept="image/*, application/pdf, .doc, .docx, .xls, .xlsx, .kml, .kmz"
-                clearable
-                style="max-width: 400px"
-              />
-
-              <div class="q-mt-md row q-col-gutter-sm">
-                <q-chip
-                  v-for="(archivo, index) in formulario.archivos"
-                  :key="index"
-                  removable
-                  @remove="eliminarArchivo(index)"
-                  class="q-ma-xs"
-                >
-                  {{ archivo.name }}
-                  <q-tooltip
-                    >{{ archivo.type }} - {{ (archivo.size / 1024).toFixed(2) }} KB</q-tooltip
-                  >
-                </q-chip>
-              </div>
-            </div>
-          </q-card-section>
-
-          <q-card-actions align="right">
-            <q-btn
-              @click="guardar"
-              color="accent"
-              class="text-white"
-              :loading="useCombustible.loading"
-            >
-              {{ accion === 2 ? 'Actualizar' : 'Agregar' }}
-              <template v-slot:loading>
-                <q-spinner color="white" size="1em" />
+            <div class="rendimiento-caja q-mb-md" :class="claseCaja(datosMes.rendimiento, datosMes.rendimiento_esperado)">
+              <template v-if="tieneRendimiento(datosMes.rendimiento)">
+                <div class="text-caption">Rendimiento acumulado del mes</div>
+                <div class="text-h5 text-weight-bold">{{ formatoMiles(datosMes.rendimiento) }} km/gl</div>
+                <div class="text-caption">
+                  Esperado {{ formatoMiles(datosMes.rendimiento_esperado) }} km/gl ·
+                  {{ textoDiferencia(datosMes.rendimiento, datosMes.rendimiento_esperado) }}
+                </div>
               </template>
-            </q-btn>
-            <q-btn label="Cerrar" color="black" outline @click="cerrar()" />
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
-    </div>
+              <template v-else>
+                <div class="text-body2">Aún no se puede calcular el rendimiento del mes.</div>
+                <div class="text-caption">
+                  Se necesitan al menos 2 tanqueos en el mes. Esperado: {{ formatoMiles(datosMes.rendimiento_esperado) }} km/gl
+                </div>
+              </template>
+            </div>
 
-    <!-- <q-btn color="primary" :label="'Registrar nuevo'" class="q-mt-md" @click="abrir" /> -->
+            <Fila etiqueta="Km recorridos" :valor="`${formatoMiles(datosMes.km_recorridos)} km`" />
+            <Fila
+              v-if="datosMes.odometro_inicial !== null"
+              etiqueta="Odómetro"
+              :valor="`${formatoMiles(datosMes.odometro_inicial)} → ${formatoMiles(datosMes.odometro_final)} km`"
+            />
+            <Fila etiqueta="Galones cargados en el mes" :valor="`${formatoGalones(datosMes.galones_cargados)} gal`" />
+            <Fila etiqueta="Galones usados en el cálculo" :valor="`${formatoGalones(datosMes.galones_rendimiento)} gal`" />
+            <Fila etiqueta="Valor pagado" :valor="formatoPeso(datosMes.valor_pagado)" />
+            <Fila etiqueta="Tanqueos" :valor="datosMes.registros" />
+            <div class="text-caption text-grey-6 q-mt-sm">
+              El cálculo no cuenta los galones del primer tanqueo del mes: esos se gastan en kilómetros anteriores.
+            </div>
+          </q-card-section>
+        </q-card>
+
+        <div class="seccion-titulo">Tanqueos del mes</div>
+        <div v-if="!tanqueosMes.length" class="text-center text-grey-6 q-py-lg">No hay tanqueos en este mes</div>
+        <q-card
+          v-for="c in tanqueosMes"
+          :key="c.consecutivo"
+          flat
+          class="viaje-card q-mb-sm cursor-pointer"
+          @click="verDetalles(c.consecutivo)"
+        >
+          <q-card-section class="q-py-sm">
+            <div class="row items-center no-wrap">
+              <span class="text-weight-bold">{{ c.consecutivo }}</span>
+              <span class="text-caption text-grey-7 q-ml-sm">{{ formatoFecha(c.fecha_registro) }}</span>
+              <q-icon v-if="c.alerta === 'si'" name="warning" color="negative" size="18px" class="q-ml-xs" />
+              <q-space />
+              <q-badge :color="colorEstado(c.estado_factura)" :label="nombreEstado(c.estado_factura)" />
+            </div>
+            <div class="row items-center text-body2 q-mt-xs">
+              <span>{{ formatoMiles(c.odometro_actual) }} km · {{ formatoGalones(c.galones_cargados) }} gal</span>
+              <q-space />
+              <span class="text-weight-medium" :class="claseTexto(c.rendimiento_real, c.rendimiento_esperado)">
+                {{ rendimientoCorto(c) }}
+              </span>
+            </div>
+          </q-card-section>
+        </q-card>
+      </template>
+
+      <div v-else class="text-center text-grey-6 q-py-xl">
+        <q-icon name="insights" size="48px" />
+        <div class="q-mt-sm">{{ placaMes ? 'No se pudo cargar el rendimiento' : 'No tiene placas asignadas' }}</div>
+      </div>
+    </template>
+
     <q-page-sticky position="bottom-right" :offset="[18, 18]">
-      <q-btn fab icon="add" color="primary" @click="abrir" />
+      <q-btn fab icon="add" color="primary" label="Tanqueo" @click="abrirCrear" />
     </q-page-sticky>
 
-    <div class="text-center q-mt-md" v-if="hayMas">
-      <q-btn flat color="primary" label="Cargar más" :loading="cargando" @click="cargarMas" />
-    </div>
+    <!-- ═════════════ DETALLE ═════════════ -->
+    <q-dialog v-model="mostrarDetalles" :maximized="$q.screen.lt.md">
+      <q-card v-if="detalle" style="width: 600px; max-width: 100vw">
+        <q-card-section class="row items-center q-pb-sm sticky-header">
+          <span class="placa-badge-lg">{{ detalle.placa }}</span>
+          <div class="q-ml-md">
+            <div class="text-h6">{{ detalle.consecutivo }}</div>
+            <q-badge :color="colorEstado(detalle.estado_factura)" :label="nombreEstado(detalle.estado_factura)" />
+          </div>
+          <q-space />
+          <q-btn flat round icon="close" v-close-popup />
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-section class="q-pt-sm">
+          <q-banner v-if="detalle.alerta === 'si'" dense rounded class="bg-red-1 text-red-10 q-mb-md">
+            <template #avatar><q-icon name="warning" /></template>
+            Rendimiento bajo: {{ formatoMiles(detalle.rendimiento_real) }} km/gl frente a
+            {{ formatoMiles(detalle.rendimiento_esperado) }} km/gl esperados.
+          </q-banner>
+
+          <div class="seccion-titulo">Tanqueo</div>
+          <Fila etiqueta="Fecha" :valor="formatoFecha(detalle.fecha_registro)" />
+          <Fila etiqueta="Registró" :valor="detalle.usuario" />
+          <Fila etiqueta="Odómetro" :valor="`${formatoMiles(detalle.odometro_actual)} km`" />
+          <Fila etiqueta="Km desde el tanqueo anterior" :valor="`${formatoMiles(detalle.km_recorridos)} km`" />
+          <Fila etiqueta="Galones" :valor="`${formatoGalones(detalle.galones_cargados)} gal`" />
+          <Fila etiqueta="Valor pagado" :valor="formatoPeso(detalle.valor_pagado)" />
+          <Fila etiqueta="Precio por galón" :valor="formatoPeso(detalle.precio_por_galon)" />
+          <Fila etiqueta="¿Llenó el tanque?" :valor="detalle.tanque_lleno === 'no' ? 'No (parcial)' : 'Sí'" />
+
+          <div class="seccion-titulo q-mt-md">Rendimiento</div>
+          <template v-if="tieneRendimiento(detalle.rendimiento_real)">
+            <Fila
+              etiqueta="Real"
+              :valor="`${formatoMiles(detalle.rendimiento_real)} km/gl`"
+              :clase="claseTexto(detalle.rendimiento_real, detalle.rendimiento_esperado)"
+            />
+            <Fila etiqueta="Esperado" :valor="`${formatoMiles(detalle.rendimiento_esperado)} km/gl`" />
+            <Fila
+              etiqueta="Diferencia"
+              :valor="textoDiferencia(detalle.rendimiento_real, detalle.rendimiento_esperado)"
+              :clase="claseTexto(detalle.rendimiento_real, detalle.rendimiento_esperado)"
+            />
+          </template>
+          <template v-else>
+            <Fila etiqueta="Esperado" :valor="`${formatoMiles(detalle.rendimiento_esperado)} km/gl`" />
+            <div class="text-caption text-grey-7 q-py-xs">
+              {{
+                detalle.tanque_lleno === 'no'
+                  ? 'Tanqueo parcial: el rendimiento se calcula en el próximo tanqueo lleno.'
+                  : 'Sin rendimiento: no había un tanque lleno anterior con qué comparar.'
+              }}
+            </div>
+          </template>
+          <Fila v-if="tieneValor(detalle.km_desde_lleno)" etiqueta="Km desde el último lleno" :valor="`${formatoMiles(detalle.km_desde_lleno)} km`" />
+          <Fila v-if="tieneValor(detalle.galones_acumulados)" etiqueta="Galones acumulados" :valor="`${formatoGalones(detalle.galones_acumulados)} gal`" />
+
+          <div class="seccion-titulo q-mt-md">Factura</div>
+          <Fila
+            etiqueta="Estado"
+            :valor="nombreEstado(detalle.estado_factura)"
+            :clase="estadoDe(detalle.estado_factura) === 'legalizado' ? 'text-positive' : 'text-orange-9'"
+          />
+          <Fila etiqueta="Número de factura" :valor="detalle.numero_factura" />
+          <div class="row q-gutter-sm q-mt-xs">
+            <q-btn
+              v-if="detalle.link_factura"
+              outline
+              size="sm"
+              icon="receipt"
+              label="Ver factura"
+              @click="abrirVisor(detalle.link_factura, `Factura ${detalle.consecutivo}`, { prefijo: `${detalle.consecutivo} - ` })"
+            />
+            <span v-else class="text-caption text-grey-6">Sin documentos</span>
+          </div>
+        </q-card-section>
+
+        <q-card-actions v-if="esGestion" align="right" class="q-pa-md bg-grey-1 sticky-footer">
+          <q-btn flat color="grey-8" icon="edit" label="Editar" @click="abrirEditar" />
+          <q-space />
+          <q-btn
+            v-if="estadoDe(detalle.estado_factura) === 'pendiente'"
+            unelevated
+            color="positive"
+            icon="task_alt"
+            label="Legalizar"
+            @click="abrirLegalizar"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- ═════════════ REGISTRAR / EDITAR ═════════════ -->
+    <q-dialog v-model="dialogFormulario" persistent :maximized="$q.screen.lt.md">
+      <q-card style="width: 560px; max-width: 100vw">
+        <q-card-section class="bg-grey-1 row items-center">
+          <div>
+            <div class="text-h6">{{ esEdicion ? `Editar ${consecutivoEditando}` : 'Registrar tanqueo' }}</div>
+            <div v-if="esEdicion" class="text-caption">El rendimiento se recalcula al guardar</div>
+          </div>
+          <q-space />
+          <q-btn flat round icon="close" :disable="guardando" v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-gutter-md">
+          <q-input
+            v-if="opcionesPlacaFormulario.length === 1"
+            :model-value="formulario.placa"
+            label="Placa"
+            outlined
+            dense
+            readonly
+          />
+          <q-select
+            v-else
+            v-model="formulario.placa"
+            :options="opcionesPlacaFormulario"
+            label="Placa"
+            outlined
+            dense
+            :hint="opcionesPlacaFormulario.length ? '' : 'No tiene vehículos disponibles'"
+          />
+
+          <CampoNumero
+            v-model="formulario.odometro_actual"
+            label="Odómetro"
+            sufijo="km"
+            :hint="ayudaOdometro"
+          />
+
+          <q-input
+            :model-value="formulario.galones"
+            label="Galones cargados"
+            inputmode="decimal"
+            suffix="gal"
+            hint="Con decimales si los tiene, ej. 117,883"
+            outlined
+            dense
+            bottom-slots
+            @update:model-value="escribirGalones"
+          />
+
+          <CampoNumero
+            v-model="formulario.valor_pagado"
+            label="Valor pagado"
+            moneda
+            :minimo-sugerido="1000"
+            hint="Valor completo, ej. 1.850.000"
+          />
+
+          <div v-if="precioGalon" class="precio-galon" :class="{ 'precio-raro': precioFueraDeRango }">
+            Precio por galón: <b>{{ formatoPeso(precioGalon) }}</b>
+            <div v-if="precioFueraDeRango" class="text-caption">
+              Se ve fuera de lo normal: revise los galones y el valor.
+            </div>
+          </div>
+
+          <div>
+            <q-checkbox v-model="formulario.tanque_lleno" true-value="si" false-value="no" label="¿Llenó el tanque?" />
+            <div class="text-caption text-grey-7 q-pl-sm">
+              Si no llenó, el rendimiento se calcula en el próximo tanqueo lleno
+            </div>
+          </div>
+
+          <CampoArchivos
+            v-model="formulario.archivos"
+            :label="esEdicion ? 'Agregar fotos de la factura (opcional)' : 'Fotos de la factura (obligatorio)'"
+            multiple
+            accept="image/*, application/pdf"
+            :link-actual="esEdicion ? detalle?.link_factura || '' : ''"
+          />
+
+          <!-- Solo gestión: con el número, el tanqueo queda legalizado de una vez -->
+          <q-input
+            v-if="!esEdicion && esGestion"
+            v-model.trim="formulario.numero_factura"
+            label="Número de factura (opcional)"
+            hint="Si lo escribe, el tanqueo queda legalizado"
+            outlined
+            dense
+          />
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey-8" :disable="guardando" v-close-popup />
+          <q-btn
+            unelevated
+            color="primary"
+            :label="esEdicion ? 'Guardar cambios' : 'Registrar'"
+            :loading="guardando"
+            @click="guardarFormulario"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- ═════════════ RESULTADO (rendimiento calculado) ═════════════ -->
+    <q-dialog v-model="dialogResultado">
+      <q-card v-if="resultado" style="width: 420px; max-width: 95vw">
+        <q-card-section class="row items-center">
+          <q-icon
+            :name="resultado.alerta === 'si' ? 'warning' : 'check_circle'"
+            :color="resultado.alerta === 'si' ? 'negative' : 'positive'"
+            size="28px"
+          />
+          <div class="q-ml-sm">
+            <div class="text-h6">{{ resultado.titulo }}</div>
+            <div class="text-caption">{{ resultado.placa }} · {{ resultado.consecutivo }}</div>
+          </div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <!-- Sin cálculo el backend manda rendimiento_real 0: no debe pintarse como malo -->
+          <div
+            class="rendimiento-caja q-mb-md"
+            :class="claseCaja(resultado.rendimiento_calculado ? resultado.rendimiento_real : '', resultado.rendimiento_esperado)"
+          >
+            <template v-if="resultado.rendimiento_calculado">
+              <div class="text-caption">Rendimiento</div>
+              <div class="text-h5 text-weight-bold">{{ formatoMiles(resultado.rendimiento_real) }} km/gl</div>
+              <div v-if="resultado.rendimiento_esperado" class="text-caption">
+                Esperado {{ formatoMiles(resultado.rendimiento_esperado) }} km/gl ·
+                {{ textoDiferencia(resultado.rendimiento_real, resultado.rendimiento_esperado) }}
+              </div>
+            </template>
+            <div v-else class="text-body2">
+              {{ resultado.tanque_lleno === 'no' ? 'Tanqueo parcial: el' : 'El' }} rendimiento se calculará en el próximo tanqueo lleno.
+            </div>
+          </div>
+
+          <q-banner v-if="resultado.alerta === 'si'" dense rounded class="bg-red-1 text-red-10 q-mb-sm">
+            <template #avatar><q-icon name="warning" /></template>
+            Rendimiento bajo. Se avisó al propietario.
+          </q-banner>
+
+          <Fila etiqueta="Precio por galón" :valor="formatoPeso(resultado.precio_por_galon)" />
+          <Fila etiqueta="Km desde el tanqueo anterior" :valor="`${formatoMiles(resultado.km_recorridos)} km`" />
+
+          <q-banner
+            v-for="(aviso, i) in resultado.avisos"
+            :key="i"
+            dense
+            rounded
+            class="bg-orange-1 text-orange-10 q-mt-sm"
+          >
+            {{ aviso }}
+          </q-banner>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn unelevated color="primary" label="Entendido" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- ═════════════ LEGALIZAR ═════════════ -->
+    <q-dialog v-model="dialogLegalizar" persistent>
+      <q-card style="width: 380px; max-width: 95vw">
+        <q-card-section class="bg-grey-1">
+          <div class="text-h6">Legalizar factura</div>
+          <div class="text-caption">{{ detalle?.placa }} · {{ detalle?.consecutivo }} · {{ formatoPeso(detalle?.valor_pagado) }}</div>
+        </q-card-section>
+        <q-card-section>
+          <q-input v-model.trim="numeroFactura" label="Número de factura" outlined dense autofocus />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey-8" :disable="guardando" v-close-popup />
+          <q-btn unelevated color="positive" label="Legalizar" :loading="guardando" @click="guardarLegalizar" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
   </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
-import { useStoreCombustible } from '../stores/combustible'
+import { ref, computed, onMounted, h } from 'vue'
 import { useQuasar } from 'quasar'
-import { TIPOS_FILTRO, CONFIG_FILTROS } from '../composables/filtroscombustibles'
+import { useStoreCombustible } from '../stores/combustible'
 import { useStoreUsuarios } from '../stores/usuarios'
 import { useStoreVehiculos } from '../stores/vehiculos'
-import { useDriveVisor } from '../composables/useDriveVisor'
-import DriveVisor from 'src/components/VisorDrive.vue'
+import { useVisorArchivos } from '../composables/useVisorArchivos'
+import CampoArchivos from 'components/CampoArchivos.vue'
+import CampoNumero from 'components/viajes/CampoNumero.vue'
+import { formatoPeso, formatoMiles, formatoFecha, hoyISO } from '../utils/formato'
 
-const {
-  dialogAbierto,
-  archivos,
-  cargando: cargandoVisor,
-  titulo: tituloVisor,
-  error: errorVisor,
-  abrirVisor,
-  urlArchivo,
-  esImagen,
-  esPdf,
-} = useDriveVisor()
+defineOptions({ name: 'CombustiblePage' })
 
+const $q = useQuasar()
 const useCombustible = useStoreCombustible()
 const useUsuario = useStoreUsuarios()
 const useVehiculo = useStoreVehiculos()
 
-const perfilUsuario = computed(() => useUsuario.perfile)
+// Visor de archivos (con pellizco), montado una sola vez en MainLayout
+const { abrirArchivos: abrirVisor } = useVisorArchivos()
 
-const alert = ref(false)
-const accion = ref(1)
-const $q = useQuasar()
+// ── Componente pequeño: fila "etiqueta: valor" ──
 
-const paginaActual = ref(1)
-const hayMas = ref(false)
+const Fila = (props) =>
+  h('div', { class: 'detalle-fila' }, [
+    h('span', { class: 'detalle-label' }, props.etiqueta),
+    h('span', { class: ['detalle-valor', props.clase] }, props.valor === '' || props.valor === undefined || props.valor === null ? '—' : props.valor),
+  ])
+Fila.props = ['etiqueta', 'valor', 'clase']
+
+// ── Perfil y placas ──
+
+const esAdmin = computed(() => useUsuario.perfile === 'administrador')
+const esConductor = computed(() => useUsuario.perfile === 'conductor')
+const esGestion = computed(() => ['administrador', 'propietario'].includes(useUsuario.perfile))
+
+const normalizarPlaca = (p) => String(p ?? '').replace(/\s+/g, '').toUpperCase()
+
+const misPlacas = computed(() =>
+  String(useUsuario.user?.placa_asignada || '')
+    .split(',')
+    .map(normalizarPlaca)
+    .filter(Boolean),
+)
+
+// GET api/vehiculos: el backend ya devuelve solo los vehículos del usuario (todos, si es admin)
+const vehiculos = ref([])
+
+async function cargarVehiculos() {
+  const lista = await useVehiculo.obtenerVehiculos()
+  vehiculos.value = Array.isArray(lista) ? lista : []
+}
+
+const vehiculoDe = (placa) => vehiculos.value.find((v) => normalizarPlaca(v.placa) === normalizarPlaca(placa))
+
+/** Placas con las que el usuario puede trabajar */
+const placasDisponibles = computed(() => {
+  if (esConductor.value) return misPlacas.value
+  const deVehiculos = [...new Set(vehiculos.value.map((v) => normalizarPlaca(v.placa)).filter(Boolean))].sort()
+  if (deVehiculos.length) return deVehiculos
+  return esAdmin.value ? [] : misPlacas.value
+})
+
+// El backend valida las placas de propietario/conductor contra placa_asignada
+const placasChips = computed(() => (esAdmin.value ? placasDisponibles.value : misPlacas.value))
+
+// ── Formato y rendimiento ──
+
+const tieneValor = (v) => v !== '' && v !== null && v !== undefined
+const tieneRendimiento = (v) => tieneValor(v) && Number.isFinite(Number(v))
+
+/** Galones con hasta 3 decimales: 117.883 → "117,883" */
+const formatoGalones = (v) => (tieneValor(v) ? Number(v).toLocaleString('es-CO', { maximumFractionDigits: 3 }) : '—')
+
+/** 'bueno' | 'regular' | 'malo' | ''. Malo = alerta del backend (más de 1 km/gl por debajo) */
+function nivelRendimiento(real, esperado) {
+  if (!tieneRendimiento(real) || !(Number(esperado) > 0)) return ''
+  const r = Number(real)
+  const e = Number(esperado)
+  if (r < e - 1) return 'malo'
+  if (r < e) return 'regular'
+  return 'bueno'
+}
+
+const claseTexto = (real, esperado) =>
+  ({ malo: 'text-negative', regular: 'text-orange-9', bueno: 'text-positive' })[nivelRendimiento(real, esperado)] || 'text-grey-7'
+
+const claseCaja = (real, esperado) => `rendimiento-${nivelRendimiento(real, esperado) || 'neutro'}`
+
+function textoDiferencia(real, esperado) {
+  if (!tieneRendimiento(real) || !(Number(esperado) > 0)) return ''
+  const d = Math.round((Number(real) - Number(esperado)) * 100) / 100
+  if (d === 0) return 'igual al esperado'
+  return `${formatoMiles(Math.abs(d))} km/gl ${d > 0 ? 'por encima' : 'por debajo'}`
+}
+
+function rendimientoCorto(c) {
+  if (tieneRendimiento(c.rendimiento_real)) return `${formatoMiles(c.rendimiento_real)} km/gl`
+  return c.tanque_lleno === 'no' ? 'Parcial' : 'Sin rendimiento'
+}
+
+// ── Estados de factura (en minúscula; registros viejos sin estado cuentan como pendientes) ──
+
+const ESTADOS = [
+  { valor: 'pendiente', etiqueta: 'Pendiente', color: 'orange' },
+  { valor: 'legalizado', etiqueta: 'Legalizado', color: 'positive' },
+]
+const estadoDe = (e) => (String(e || '').toLowerCase() === 'legalizado' ? 'legalizado' : 'pendiente')
+const nombreEstado = (e) => ESTADOS.find((x) => x.valor === estadoDe(e))?.etiqueta
+const colorEstado = (e) => ESTADOS.find((x) => x.valor === estadoDe(e))?.color
+
+const opcionesEstado = [{ valor: '', etiqueta: 'Todos' }, ...ESTADOS]
+
+// ─────────────────────────────────────────────────────────────
+// Lista
+//
+// El backend no tiene un listado paginado para propietario/conductor, así que la fuente cambia:
+//   'pagina' → admin sin filtros: GET /api/combustible?pagina&limite
+//   'estado' → admin con estado: GET /filtrados (todo de una vez; se muestra por partes)
+//   'meses'  → propietario/conductor, o admin con placa: el resumen por placa sirve de índice
+//              de meses y cada "Cargar más" trae el mes siguiente con /rendimiento-mensual
+//              (que sí trae estado de factura, rendimiento esperado y factura de cada tanqueo).
+// Los filtros que no cambian la fuente se aplican en pantalla, sin otra petición.
+// ─────────────────────────────────────────────────────────────
+
+const PASO = 25
+
+const registros = ref([])
+const cantidadVisible = ref(PASO)
+const cargandoLista = ref(false)
+const filtroEstado = ref('')
+const filtroPlaca = ref(null)
+const fuente = ref({ modo: '', clave: '', pagina: 0, hayMasServidor: false, meses: [], indiceMes: 0 })
+let idCarga = 0 // descarta respuestas de una carga anterior si el usuario cambió de filtro
+
+const numeroConsecutivo = (c) => parseInt(String(c ?? '').replace(/\D/g, ''), 10) || 0
+
+/** Más reciente primero: fecha y, el mismo día, consecutivo mayor */
+const compararRecientes = (a, b) => {
+  const fa = String(a.fecha_registro || '')
+  const fb = String(b.fecha_registro || '')
+  if (fa !== fb) return fa < fb ? 1 : -1
+  return numeroConsecutivo(b.consecutivo) - numeroConsecutivo(a.consecutivo)
+}
+
+const filtrados = computed(() =>
+  registros.value
+    .filter((r) => !filtroEstado.value || estadoDe(r.estado_factura) === filtroEstado.value)
+    .filter((r) => !filtroPlaca.value || normalizarPlaca(r.placa) === filtroPlaca.value)
+    .sort(compararRecientes),
+)
+
+const mostrados = computed(() => filtrados.value.slice(0, cantidadVisible.value))
+
+const fuenteTieneMas = computed(() => {
+  const f = fuente.value
+  if (f.modo === 'pagina') return f.hayMasServidor
+  if (f.modo === 'meses') return f.indiceMes < f.meses.length
+  return false
+})
+
+const hayMas = computed(() => filtrados.value.length > cantidadVisible.value || fuenteTieneMas.value)
+
+const textoVacio = computed(() => {
+  if (cargandoLista.value) return ''
+  if (!esAdmin.value && !misPlacas.value.length) return 'No tiene placas asignadas'
+  return filtroEstado.value || filtroPlaca.value ? 'No hay tanqueos con este filtro' : 'Aún no hay tanqueos registrados'
+})
+
+function modoActual() {
+  if (!esAdmin.value || filtroPlaca.value) return 'meses'
+  return filtroEstado.value ? 'estado' : 'pagina'
+}
+
+/** Placas que se piden al backend en modo 'meses' (el filtro de placa del no-admin se aplica en pantalla) */
+const placasAlcance = () => (esAdmin.value ? [filtroPlaca.value] : misPlacas.value)
+
+function claveFuente() {
+  const modo = modoActual()
+  if (modo === 'meses') return `meses|${placasAlcance().join(',')}`
+  if (modo === 'estado') return `estado|${filtroEstado.value}`
+  return 'pagina'
+}
+
+/** Agrega filas sin repetir consecutivos (un mes reintentado no duplica) */
+function agregar(filas) {
+  const vistos = new Set(registros.value.map((r) => r.consecutivo))
+  const nuevas = (filas || []).filter((f) => f?.consecutivo && !vistos.has(f.consecutivo))
+  registros.value = [...registros.value, ...nuevas]
+}
+
+/** Trae de la fuente hasta llenar lo visible con los filtros actuales, o hasta que se acabe */
+async function traerDeFuente(id) {
+  const meta = cantidadVisible.value
+  while (filtrados.value.length < meta && fuenteTieneMas.value) {
+    const f = fuente.value
+    if (f.modo === 'pagina') {
+      const r = await useCombustible.listarCombustibles({ pagina: f.pagina + 1, limite: PASO })
+      if (id !== idCarga) return
+      if (r.fallo) return // el aviso ya salió; "Cargar más" sigue visible para reintentar
+      f.pagina++
+      f.hayMasServidor = r.hayMas
+      agregar(r.datos)
+    } else {
+      const { mes, placas } = f.meses[f.indiceMes]
+      const respuestas = await Promise.all(placas.map((p) => useCombustible.rendimientoMensual(p, mes)))
+      if (id !== idCarga) return
+      respuestas.forEach((r) => r && agregar(r.tanqueos))
+      if (respuestas.some((r) => !r)) return // no avanza el mes: "Cargar más" lo reintenta
+      f.indiceMes++
+    }
+  }
+}
+
+/** Índice de meses con tanqueos por placa, a partir del resumen (fila liviana) */
+async function armarIndiceMeses(id) {
+  const indices = await Promise.all(placasAlcance().map((p) => useCombustible.resumenPorPlaca(p)))
+  if (id !== idCarga) return
+  const porMes = new Map()
+  indices.forEach((filas) =>
+    (filas || []).forEach((f) => {
+      const mes = String(f.fecha_registro || '').slice(0, 7)
+      if (!/^\d{4}-\d{2}$/.test(mes)) return
+      if (!porMes.has(mes)) porMes.set(mes, new Set())
+      porMes.get(mes).add(f.placa)
+    }),
+  )
+  fuente.value.meses = [...porMes.keys()]
+    .sort()
+    .reverse()
+    .map((mes) => ({ mes, placas: [...porMes.get(mes)] }))
+}
+
+async function recargar() {
+  const id = ++idCarga
+  const modo = modoActual()
+  registros.value = []
+  cantidadVisible.value = PASO
+  fuente.value = { modo, clave: claveFuente(), pagina: 0, hayMasServidor: modo === 'pagina', meses: [], indiceMes: 0 }
+  cargandoLista.value = true
+  try {
+    if (modo === 'estado') {
+      const lista = await useCombustible.listarPorEstadoFactura(filtroEstado.value)
+      if (id !== idCarga) return
+      agregar(lista)
+    } else {
+      if (modo === 'meses') {
+        if (!placasAlcance().length) return
+        await armarIndiceMeses(id)
+        if (id !== idCarga) return
+      }
+      await traerDeFuente(id)
+    }
+  } finally {
+    if (id === idCarga) cargandoLista.value = false
+  }
+}
+
+/** Después de cambiar un filtro: solo recarga si cambia la fuente; si no, filtra en pantalla */
+async function aplicarFiltros() {
+  if (claveFuente() !== fuente.value.clave) return recargar()
+  cantidadVisible.value = PASO
+  const id = idCarga
+  cargandoLista.value = true
+  try {
+    await traerDeFuente(id)
+  } finally {
+    if (id === idCarga) cargandoLista.value = false
+  }
+}
+
+function cambiarEstado(valor) {
+  if (filtroEstado.value === valor) return
+  filtroEstado.value = valor
+  aplicarFiltros()
+}
+
+function cambiarPlaca(placa) {
+  if (filtroPlaca.value === placa) return
+  filtroPlaca.value = placa
+  aplicarFiltros()
+}
 
 async function cargarMas() {
-  paginaActual.value++
-  await cargarCombustibles()
+  if (cargandoLista.value) return
+  cantidadVisible.value += PASO
+  const id = idCarga
+  cargandoLista.value = true
+  try {
+    await traerDeFuente(id)
+  } finally {
+    if (id === idCarga) cargandoLista.value = false
+  }
 }
 
-const valorpagadoFormatted = ref('')
-const odometroactualFormatted = ref('')
+// ─────────────────────────────────────────────────────────────
+// Detalle
+// ─────────────────────────────────────────────────────────────
 
-function formatearValorpagado(val) {
-  valorpagadoFormatted.value = formatearNumero(val)
-  formulario.value.valor_pagado = Number(valorpagadoFormatted.value.replace(/\./g, ''))
-}
-
-function formatearOdometroActual(val) {
-  odometroactualFormatted.value = formatearNumero(val)
-  formulario.value.odometro_actual = Number(odometroactualFormatted.value.replace(/\./g, ''))
-}
-
-function formatearNumero(valor) {
-  if (!valor) return ''
-  const limpio = valor.toString().replace(/\D/g, '')
-  return new Intl.NumberFormat('es-CO').format(limpio)
-}
-
-const estadoInicial = {
-  placa: '',
-  odometro_actual: '',
-  galones_cargados: '',
-  valor_pagado: '',
-  archivos: [],
-}
-
-const numeroFactura = ref('')
-
-const formulario = ref({ ...estadoInicial })
-const cargando = ref(false)
-
-const tipoLista = ref(TIPOS_FILTRO.TODOS)
-const ordenActual = ref('desc')
-const combustibles = ref([])
-const valorFiltroTexto = ref(null)
-
-const detallesCombustible = ref(null)
+const detalle = ref(null)
 const mostrarDetalles = ref(false)
 
-const placasOptions = ref([])
-
-async function cargarPlacas() {
-  try {
-    // Conductor no necesita cargar placas, ya tiene la suya
-    if (perfilUsuario.value === 'conductor') {
-      formulario.value.placa = useUsuario.user?.placa_asignada || ''
-      return
-    }
-
-    const response = await useVehiculo.obtenerVehiculos()
-    if (!Array.isArray(response)) return
-
-    if (perfilUsuario.value === 'administrador') {
-      placasOptions.value = response.map((v) => v.placa)
-    } else if (perfilUsuario.value === 'propietario') {
-      const placasAsignadas =
-        useUsuario.user?.placa_asignada?.split(',').map((p) => p.trim().toUpperCase()) || []
-      placasOptions.value = response
-        .filter((v) => placasAsignadas.includes(v.placa.toUpperCase()))
-        .map((v) => v.placa)
-    }
-  } catch (e) {
-    console.error(e)
-  }
-}
-
-function abrir() {
-  accion.value = 1
-  alert.value = true
-}
-
-function cerrar() {
-  alert.value = false
-  resetearFormulario()
-}
-
-async function guardar() {
-  cargando.value = true
-
-  if (!validar()) {
-    cargando.value = false
-    return
-  }
-
-  try {
-    const formData = new FormData()
-
-    Object.entries(formulario.value).forEach(([key, value]) => {
-      if (key === 'archivos' && Array.isArray(value)) {
-        value.forEach((file) => {
-          formData.append('archivos', file)
-        })
-      } else if (Array.isArray(value)) {
-        formData.append(key, value.join(','))
-      } else if (value !== null && value !== undefined && value !== '') {
-        formData.append(key, value)
-      }
-    })
-
-    let response
-
-    if (accion.value === 2) {
-      response = await useCombustible.putCombustible(formulario.value.consecutivo, formData)
-    } else {
-      response = await useCombustible.postCombustible(formData)
-    }
-
-    console.log('Respuesta exitosa:', response)
-
-    cerrar()
-    cargarCombustibles()
-    resetearFormulario()
-  } catch (error) {
-    console.error('Error completo:', error)
-    mostrarMensajeError('Error al guardar el combustible')
-  } finally {
-    cargando.value = false
-  }
-}
-
-function editar(combustible) {
-  accion.value = 2
-
-  formulario.value = {
-    ...estadoInicial,
-    ...combustible,
-  }
-
-  valorpagadoFormatted.value = formatearNumero(combustible.valor_pagado || 0)
-
-  odometroactualFormatted.value = formatearNumero(combustible.odometro_actual || 0)
-
-  alert.value = true
-}
-
-async function validar() {
-  let verificado = true
-
-  const { placa, odometro_actual, galones_cargados } = formulario.value
-
-  if (placa === '') {
-    mostrarMensajeError('Diligencie la placa')
-    verificado = false
-  }
-  if (odometro_actual === '') {
-    mostrarMensajeError('Diligencie el odometro actual')
-    verificado = false
-  }
-  if (galones_cargados === '') {
-    mostrarMensajeError('Diligencie los galones cargados')
-    verificado = false
-  }
-
-  return verificado
-}
-
 async function verDetalles(consecutivo) {
+  const data = await useCombustible.obtenerCombustible(consecutivo)
+  if (!data) return null
+  detalle.value = data
+  mostrarDetalles.value = true
+  return data
+}
+
+// ── Utilidades de guardado ──
+
+const guardando = ref(false)
+
+async function ejecutar(fn) {
+  guardando.value = true
   try {
-    const detalle = await useCombustible.obtenerdatosdecombustible(consecutivo)
-    // console.log('Detalles obtenidos:', detalle)
-
-    if (detalle) {
-      detallesCombustible.value = {
-        consecutivo: detalle['consecutivo'] || '',
-        fecha_registro: detalle['fecha_registro'] || '',
-        placa: detalle['placa'] || '',
-        odometro_actual: detalle['odometro_actual'] || '',
-        galones_cargados: detalle['galones_cargados'] || '',
-        valor_pagado: detalle['valor_pagado'] || '',
-        precio_por_galon: detalle['precio_por_galon'] || '',
-        km_recorridos: detalle['km_recorridos'] || '',
-        rendimiento_real: detalle['rendimiento_real'] || '',
-        rendimiento_esperado: detalle['rendimiento_esperado'] || '',
-        diferencia_rendimiento: detalle['diferencia_rendimiento'] || '',
-        alerta: detalle['alerta'] || '',
-        correo_usuario: detalle['correo_usuario'] || '',
-        usuario: detalle['usuario'] || '',
-        estado_factura: detalle['estado_factura'] || '',
-        numero_factura: detalle['numero_factura'] || '',
-        link_factura: detalle['link_factura'] || '',
-      }
-      mostrarDetalles.value = true
-    } else {
-      console.error('No se pudieron obtener los detalles')
-    }
+    await fn()
+    return true
   } catch (error) {
-    console.error('Error al obtener detalles:', error)
+    $q.notify({ type: 'negative', message: error.message, position: 'bottom', timeout: 5000 })
+    return false
+  } finally {
+    guardando.value = false
   }
 }
 
-const filtrosConfig = computed(() => CONFIG_FILTROS)
-
-const filtroActual = computed(() => CONFIG_FILTROS[tipoLista.value])
-
-const opcionesOrdenamiento = computed(() => {
-  if (tipoLista.value === TIPOS_FILTRO.TODOS) return []
-
-  return [
-    { label: filtroActual.value.etiquetaDesc, value: 'desc' },
-    { label: filtroActual.value.etiquetaAsc, value: 'asc' },
-  ]
-})
-
-watch(tipoLista, (newValue) => {
-  const filtro = CONFIG_FILTROS[newValue]
-
-  if (filtro.esFiltroTexto && filtro.opcionesFiltro?.length > 0) {
-    valorFiltroTexto.value = filtro.opcionesFiltro[0].valor
-  } else {
-    valorFiltroTexto.value = null
-  }
-})
-
-watch([tipoLista, valorFiltroTexto, ordenActual], async () => {
-  paginaActual.value = 1
-  await cargarCombustibles()
-})
-
-function cargarListaPor(tipo) {
-  tipoLista.value = tipo
-  ordenActual.value = 'desc'
-
-  const filtro = CONFIG_FILTROS[tipo]
-
-  if (filtro.esFiltroTexto && filtro.opcionesFiltro?.length > 0) {
-    valorFiltroTexto.value = filtro.opcionesFiltro[0].valor
-  } else {
-    valorFiltroTexto.value = null
-  }
-
-  cargarCombustibles()
+const avisar = (mensaje) => {
+  $q.notify({ type: 'warning', message: mensaje, position: 'bottom' })
+  return false
 }
 
-function actualizarValorFiltro(nuevoValor) {
-  valorFiltroTexto.value = nuevoValor
-  cargarCombustibles()
-}
+// ─────────────────────────────────────────────────────────────
+// Registrar / editar
+// ─────────────────────────────────────────────────────────────
 
-// function obtenerEtiquetaValor(valor, item) {
-//   if (tipoLista.value === TIPOS_FILTRO.MES) {
-//     return `${Number(item.valor_pagado).toLocaleString('es-CO')} COP`
-//   }
+const dialogFormulario = ref(false)
+const esEdicion = ref(false)
+const consecutivoEditando = ref('')
 
-//   if (tipoLista.value === TIPOS_FILTRO.VALOR_PAGADO) {
-//     return `${valor} COP`
-//   } else if (tipoLista.value === TIPOS_FILTRO.PRECIO_POR_GALON) {
-//     return `${valor} COP`
-//   }
+// Función y no objeto: cada formulario estrena su arreglo de archivos
+const vacio = () => ({
+  placa: null,
+  odometro_actual: null,
+  galones: '',
+  valor_pagado: null,
+  tanque_lleno: 'si',
+  archivos: [],
+  numero_factura: '',
+})
+const formulario = ref(vacio())
 
-//   return valor
-// }
-
-function obtenerEtiquetaFiltroTexto(valor) {
-  if (filtroActual.value.esFiltroTexto && filtroActual.value.opcionesFiltro) {
-    const opcion = filtroActual.value.opcionesFiltro.find((opt) => opt.valor === valor)
-    return opcion ? opcion.etiqueta : valor
-  }
-  return valor
-}
-
-const opcionesFiltroTexto = computed(() => {
-  if (tipoLista.value && filtroActual.value && filtroActual.value.esFiltroTexto) {
-    return filtroActual.value.opcionesFiltro || []
-  }
-  return []
+const opcionesPlacaFormulario = computed(() => {
+  const base = esConductor.value ? misPlacas.value : placasDisponibles.value
+  // Al editar, la placa del registro siempre debe aparecer
+  const actual = esEdicion.value ? normalizarPlaca(detalle.value?.placa) : ''
+  return actual && !base.includes(actual) ? [actual, ...base] : base
 })
 
-async function cargarCombustibles() {
+/** '117,883' o '117.883' → 117.883 (un tanque no llega a mil galones: el punto es decimal) */
+function leerGalones(texto) {
+  let t = String(texto ?? '').replace(/\s/g, '')
+  if (!t) return null
+  if (t.includes(',') && t.includes('.')) t = t.replace(/\./g, '') // 1.117,5
+  t = t.replace(',', '.')
+  return /^\d+(\.\d+)?$/.test(t) ? Number(t) : NaN
+}
+
+function escribirGalones(valor) {
+  formulario.value.galones = String(valor ?? '').replace(/[^\d.,]/g, '')
+}
+
+/**
+ * Al backend van con coma decimal: su conversión lee '117.883' como 117 mil (miles con punto)
+ * y '117,883' como 117,883.
+ */
+const galonesParaEnviar = (n) => String(n).replace('.', ',')
+
+const galonesNumero = computed(() => leerGalones(formulario.value.galones))
+
+const precioGalon = computed(() => {
+  const g = galonesNumero.value
+  const v = Number(formulario.value.valor_pagado)
+  return g > 0 && v > 0 ? Math.round(v / g) : null
+})
+
+// Aviso suave (no bloquea): casi siempre es un error de dedo en galones o valor
+const precioFueraDeRango = computed(() => precioGalon.value && (precioGalon.value < 5000 || precioGalon.value > 30000))
+
+const odometroVehiculo = computed(() => {
+  const v = vehiculoDe(formulario.value.placa)
+  const n = Number(v?.odometro)
+  return n > 0 ? n : null
+})
+
+const ayudaOdometro = computed(() => {
+  if (esEdicion.value) return `Registrado: ${formatoMiles(detalle.value?.odometro_actual)} km`
+  if (!formulario.value.placa) return 'Seleccione la placa'
+  return odometroVehiculo.value ? `Odómetro actual del vehículo: ${formatoMiles(odometroVehiculo.value)} km` : 'Como aparece en el tablero'
+})
+
+function abrirCrear() {
+  esEdicion.value = false
+  consecutivoEditando.value = ''
+  formulario.value = vacio()
+  // El conductor (o quien tenga una sola placa) siempre la tiene precargada
+  if (opcionesPlacaFormulario.value.length === 1) formulario.value.placa = opcionesPlacaFormulario.value[0]
+  dialogFormulario.value = true
+}
+
+function abrirEditar() {
+  const d = detalle.value
+  esEdicion.value = true
+  consecutivoEditando.value = d.consecutivo
+  formulario.value = {
+    ...vacio(),
+    placa: normalizarPlaca(d.placa),
+    odometro_actual: Number(d.odometro_actual) || null,
+    galones: tieneValor(d.galones_cargados) ? galonesParaEnviar(Number(d.galones_cargados)) : '',
+    valor_pagado: Number(d.valor_pagado) || null,
+    tanque_lleno: d.tanque_lleno === 'no' ? 'no' : 'si',
+  }
+  dialogFormulario.value = true
+}
+
+/** Devuelve el primer error o '' (síncrona: de verdad bloquea el guardado) */
+function validarFormulario() {
+  const f = formulario.value
+  if (!f.placa) return 'Seleccione la placa'
+  if (!(f.odometro_actual > 0)) return 'Escriba el odómetro'
+  if (!esEdicion.value && odometroVehiculo.value && f.odometro_actual < odometroVehiculo.value) {
+    return `El odómetro no puede ser menor al actual del vehículo (${formatoMiles(odometroVehiculo.value)} km)`
+  }
+  const g = galonesNumero.value
+  if (g === null) return 'Escriba los galones cargados'
+  if (!(g > 0)) return 'Los galones no son válidos (ej. 117,883)'
+  if (g >= 1000) return 'Revise los galones: parecen demasiados para un tanqueo'
+  if (!(f.valor_pagado > 0)) return 'Escriba el valor pagado'
+  if (f.valor_pagado < 1000) return 'Escriba el valor completo pagado, ej. 1.850.000'
+  if (!esEdicion.value && !f.archivos.length) return 'Adjunte la foto de la factura'
+  return ''
+}
+
+const dialogResultado = ref(false)
+const resultado = ref(null)
+
+async function guardarFormulario() {
+  const error = validarFormulario()
+  if (error) return avisar(error)
+
+  const f = formulario.value
+  const fd = new FormData()
+  fd.append('placa', f.placa)
+  fd.append('odometro_actual', String(f.odometro_actual))
+  fd.append('galones_cargados', galonesParaEnviar(galonesNumero.value))
+  fd.append('valor_pagado', String(f.valor_pagado))
+  fd.append('tanque_lleno', f.tanque_lleno)
+  f.archivos.forEach((archivo) => fd.append('archivos', archivo))
+
+  if (esEdicion.value) return guardarEdicion(fd)
+
+  await ejecutar(async () => {
+    const r = await useCombustible.crearCombustible(fd)
+    // Ya quedó guardado: desde aquí nada debe dejar el diálogo abierto (otro clic duplicaría el tanqueo)
+    dialogFormulario.value = false
+    const avisos = [...(r.advertencias || [])]
+
+    // /crear no recibe el número de factura: si lo escribieron, se legaliza enseguida
+    if (f.numero_factura && esGestion.value) {
+      try {
+        await useCombustible.legalizarCombustible(r.consecutivo, f.numero_factura)
+      } catch (errorLegalizar) {
+        avisos.push(`El tanqueo quedó registrado pero no se pudo legalizar: ${errorLegalizar.message}`)
+      }
+    }
+
+    resultado.value = {
+      titulo: 'Tanqueo registrado',
+      placa: r.placa || f.placa,
+      consecutivo: r.consecutivo,
+      rendimiento_calculado: Boolean(r.rendimiento_calculado),
+      rendimiento_real: r.rendimiento_real,
+      rendimiento_esperado: r.rendimiento_esperado,
+      alerta: r.alerta,
+      tanque_lleno: r.tanque_lleno || f.tanque_lleno,
+      precio_por_galon: r.precio_por_galon,
+      km_recorridos: r.km_recorridos,
+      avisos,
+    }
+    dialogResultado.value = true
+    // El odómetro del vehículo cambió: se refresca para la ayuda del próximo registro
+    await Promise.all([recargar(), cargarVehiculos(), recargarMesSiAplica()])
+  })
+}
+
+async function guardarEdicion(fd) {
+  const consecutivo = consecutivoEditando.value
+  await ejecutar(async () => {
+    const r = await useCombustible.editarCombustible(consecutivo, fd)
+    dialogFormulario.value = false
+    // El detalle recién leído trae el rendimiento esperado del vehículo (la respuesta de editar no)
+    const d = await verDetalles(consecutivo)
+    resultado.value = {
+      titulo: 'Cambios guardados',
+      placa: d?.placa || formulario.value.placa,
+      consecutivo,
+      rendimiento_calculado: Boolean(r.rendimiento_calculado),
+      rendimiento_real: r.rendimiento_real,
+      rendimiento_esperado: d?.rendimiento_esperado,
+      alerta: r.alerta,
+      tanque_lleno: r.tanque_lleno,
+      precio_por_galon: r.precio_por_galon,
+      km_recorridos: r.km_recorridos,
+      avisos: [],
+    }
+    dialogResultado.value = true
+    await Promise.all([recargar(), cargarVehiculos(), recargarMesSiAplica()])
+  })
+}
+
+// ─────────────────────────────────────────────────────────────
+// Legalizar (propietario/admin)
+// ─────────────────────────────────────────────────────────────
+
+const dialogLegalizar = ref(false)
+const numeroFactura = ref('')
+
+function abrirLegalizar() {
+  numeroFactura.value = detalle.value?.numero_factura || ''
+  dialogLegalizar.value = true
+}
+
+async function guardarLegalizar() {
+  if (!numeroFactura.value) return avisar('Escriba el número de factura')
+  const consecutivo = detalle.value.consecutivo
+  await ejecutar(async () => {
+    await useCombustible.legalizarCombustible(consecutivo, numeroFactura.value)
+    dialogLegalizar.value = false
+    await Promise.all([verDetalles(consecutivo), recargar(), recargarMesSiAplica()])
+  })
+}
+
+// ─────────────────────────────────────────────────────────────
+// Rendimiento del mes
+// ─────────────────────────────────────────────────────────────
+
+const pestana = ref('tanqueos')
+const mesActual = hoyISO().slice(0, 7)
+const mesSeleccionado = ref(mesActual)
+const placaMes = ref(null)
+const datosMes = ref(null)
+const cargandoMes = ref(false)
+let idMes = 0
+
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+const nombreMes = (aaaamm) => {
+  const [anio, mes] = String(aaaamm || '').split('-')
+  return MESES[Number(mes) - 1] ? `${MESES[Number(mes) - 1]} ${anio}` : aaaamm
+}
+
+// El backend los ordena por odómetro (ascendente); en pantalla, el más reciente primero
+const tanqueosMes = computed(() => [...(datosMes.value?.tanqueos || [])].sort(compararRecientes))
+
+async function cargarMes() {
+  if (!placaMes.value) placaMes.value = placasDisponibles.value[0] || null
+  if (!placaMes.value || !/^\d{4}-\d{2}$/.test(mesSeleccionado.value || '')) return
+  const id = ++idMes
+  cargandoMes.value = true
   try {
-    let response = []
-    let hayMasData = false
-
-    if (perfilUsuario.value === 'administrador') {
-      if (tipoLista.value === TIPOS_FILTRO.TODOS) {
-        const res = await useCombustible.obtenerCombustible(paginaActual.value)
-        response = res.datos
-        hayMasData = res.hayMas
-      } else if (filtroActual.value.esFiltroTexto) {
-        response = await useCombustible.obtenerCombustiblesFiltrados(
-          filtroActual.value.campoDatos,
-          valorFiltroTexto.value,
-        )
-      } else {
-        response = await useCombustible.obtenerCombustiblesOrdenados(
-          filtroActual.value.campoOrden,
-          ordenActual.value,
-        )
-      }
-    } else {
-      const placasUsuario = useUsuario.user?.placa_asignada?.split(',').map((p) => p.trim()) || []
-      let todosLosCombustibles = []
-      for (const placa of placasUsuario) {
-        const data = await useCombustible.obtenerResumenPorPlaca(placa)
-        const lista = data?.resumen?.total?.consecutivos || []
-        todosLosCombustibles.push(...lista)
-      }
-      response = todosLosCombustibles
-      if (filtroActual.value?.esFiltroTexto) {
-        response = response.filter((item) => {
-          const valor = item[filtroActual.value.campoDatos]
-          return String(valor).toLowerCase().includes(String(valorFiltroTexto.value).toLowerCase())
-        })
-      } else if (tipoLista.value !== TIPOS_FILTRO.TODOS) {
-        const campo = filtroActual.value.campoOrden
-        response.sort((a, b) => {
-          const valorA = parseFloat(a[campo]) || 0
-          const valorB = parseFloat(b[campo]) || 0
-          return ordenActual.value === 'desc' ? valorB - valorA : valorA - valorB
-        })
-      }
-    }
-
-    hayMas.value = hayMasData
-
-    if (Array.isArray(response)) {
-      const nuevos = response.map((item) => {
-        const result = {
-          consecutivo: item.consecutivo || '',
-          placa: item.placa || '',
-          valor_pagado: item.valor_pagado || 0,
-          galones_cargados: item.galones_cargados || 0,
-          alerta: item.alerta || 0,
-          precio_por_galon: item.precio_por_galon || 0,
-          diferencia_rendimiento: item.diferencia_rendimiento || 0,
-          rendimiento_real: item.rendimiento_real || 0,
-          km_recorridos: item.km_recorridos || 0,
-          odometro_actual: item.odometro_actual || 0,
-          fecha_registro: item.fecha_registro || 0,
-        }
-        const campoDatos = filtroActual.value?.campoDatos
-        if (campoDatos && item[campoDatos] !== undefined) {
-          result.valorFiltro = item[campoDatos]
-        }
-        if (tipoLista.value === TIPOS_FILTRO.MES) {
-          result.valorFiltro = item.valor_pagado
-        }
-        return result
-      })
-
-      if (paginaActual.value === 1) {
-        combustibles.value = nuevos
-      } else {
-        combustibles.value = [...combustibles.value, ...nuevos]
-      }
-    } else {
-      combustibles.value = []
-    }
-  } catch (error) {
-    console.error(`Error al cargar combustibles por ${tipoLista.value}:`, error)
-    combustibles.value = []
+    const data = await useCombustible.rendimientoMensual(placaMes.value, mesSeleccionado.value)
+    if (id === idMes) datosMes.value = data
+  } finally {
+    if (id === idMes) cargandoMes.value = false
   }
 }
+
+function alCambiarPestana(valor) {
+  if (valor === 'mes' && !datosMes.value) cargarMes()
+}
+
+/** Tras guardar algo, si ya se abrió la pestaña del mes, se refresca */
+const recargarMesSiAplica = () => (datosMes.value ? cargarMes() : null)
+
+// ── Inicio ──
 
 onMounted(async () => {
-  await cargarCombustibles()
-  await cargarPlacas()
-})
-
-const cambiarEstado = async () => {
-  try {
-    if (detallesCombustible.value.estado_factura === 'pendiente') {
-      if (!numeroFactura.value) {
-        $q.notify({
-          type: 'warning',
-          message: 'Debes ingresar número de factura',
-        })
-        return
-      }
-
-      await useCombustible.putLegalizarCombustible(detallesCombustible.value.consecutivo, {
-        numero_factura: numeroFactura.value,
-      })
-
-      detallesCombustible.value.estado_factura = 'legalizado'
-    }
-  } catch (error) {
-    console.error('Error:', error)
-
-    $q.notify({
-      type: 'negative',
-      message: error.response?.data?.mensaje || 'Error al legalizar',
-    })
-  }
-}
-
-function manejarSeleccionArchivos(files) {
-  if (files) {
-    // Si es array de archivos
-    if (Array.isArray(files)) {
-      files.forEach((file) => {
-        // Verificar si el archivo ya existe en la lista (evitar duplicados)
-        const existeArchivo = formulario.value.archivos.some(
-          (a) => a.name === file.name && a.size === file.size && a.type === file.type,
-        )
-
-        if (!existeArchivo) {
-          formulario.value.archivos.push(file)
-        }
-      })
-    }
-    // Si es un solo archivo
-    else if (files instanceof File) {
-      const existeArchivo = formulario.value.archivos.some(
-        (a) => a.name === files.name && a.size === files.size && a.type === files.type,
-      )
-
-      if (!existeArchivo) {
-        formulario.value.archivos.push(files)
-      }
-    }
-  }
-}
-
-function eliminarArchivo(index) {
-  formulario.value.archivos.splice(index, 1)
-}
-
-function resetearFormulario() {
-  formulario.value = { ...estadoInicial }
-  accion.value = 1
-  valorpagadoFormatted.value = ''
-  odometroactualFormatted.value = ''
-}
-
-function mostrarMensajeError(mensaje) {
-  $q.notify({
-    type: 'negative',
-    message: mensaje,
-    position: 'bottom-right',
-  })
-}
-
-function formatPeso(valor) {
-  if (!valor) return '-'
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0,
-  }).format(valor)
-}
-
-function formatFecha(fecha) {
-  if (!fecha) return ''
-  return new Date(fecha).toLocaleDateString('es-CO', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
-}
-
-function claseRendimiento(diferencia) {
-  if (!diferencia) return ''
-  return Number(diferencia) < 0 ? 'rendimiento-malo' : 'rendimiento-bueno'
-}
-
-defineOptions({
-  name: 'CombustiblePage',
+  await cargarVehiculos()
+  await recargar()
 })
 </script>
 
 <style scoped>
-.combustible-card {
-  border-radius: 12px !important;
-  transition: border-color 0.15s;
+.pagina-con-fab {
+  padding-bottom: 88px; /* que el botón flotante no tape "Cargar más" */
 }
-.combustible-card:active {
+.filter-bar {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 12px;
+}
+.filter-scroll {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+}
+.filter-scroll::-webkit-scrollbar {
+  display: none;
+}
+.filter-chip {
+  border-radius: 999px !important;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.viaje-card {
+  border: 1px solid #e5e7eb !important;
+  border-radius: 12px !important;
+}
+.viaje-card:active {
   opacity: 0.85;
 }
-
 .placa-badge {
   background: #111827;
   color: white;
@@ -955,97 +1129,84 @@ defineOptions({
   border-radius: 6px;
   font-family: monospace;
 }
-
-.metrica-chip {
-  background: #f9fafb;
-  border-radius: 8px;
-  padding: 8px 10px;
-  min-width: 0;
-}
-.metrica-chip.rendimiento-malo {
-  background: #fef2f2;
-}
-.metrica-chip.rendimiento-bueno {
-  background: #f0fdf4;
-}
-.metrica-label {
-  font-size: 10px;
-  color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 2px;
-}
-.metrica-valor {
-  font-size: 13px;
-  font-weight: 600;
-  color: #111827;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.filter-bar {
-  background: white;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  padding: 12px;
-}
-
-.filter-scroll {
-  overflow-x: auto;
-  flex-wrap: nowrap;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.filter-scroll::-webkit-scrollbar {
-  display: none;
-}
-
-.filter-chip {
-  border-radius: 999px !important;
-  font-size: 13px;
-  flex-shrink: 0;
-}
-
-.avatar-chip {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: #eff6ff;
-  color: #1e50a2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 600;
-  flex-shrink: 0;
-  letter-spacing: 0.5px;
-}
-
 .placa-badge-lg {
   background: #111827;
   color: white;
   font-size: 18px;
   font-weight: 700;
   letter-spacing: 2px;
-  padding: 6px 20px;
+  padding: 6px 16px;
   border-radius: 8px;
   font-family: monospace;
 }
+.seccion-titulo {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #9ca3af;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+.rendimiento-caja {
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.rendimiento-bueno {
+  background: #f0fdf4;
+  color: #166534;
+}
+.rendimiento-regular {
+  background: #fff7ed;
+  color: #9a3412;
+}
+.rendimiento-malo {
+  background: #fef2f2;
+  color: #991b1b;
+}
+.rendimiento-neutro {
+  background: #f3f4f6;
+  color: #374151;
+}
+.precio-galon {
+  background: #eff6ff;
+  color: #1e3a8a;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+.precio-galon.precio-raro {
+  background: #fff7ed;
+  color: #9a3412;
+}
+.sticky-header {
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 2;
+}
+.sticky-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+</style>
 
+<!-- Sin scoped: los usa el componente funcional Fila -->
+<style>
 .detalle-fila {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
-}
-.detalle-fila:last-child {
-  border-bottom: none;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 .detalle-label {
   font-size: 13px;
-  color: #9CA3AF;
+  color: #6b7280;
 }
 .detalle-valor {
   font-size: 13px;

@@ -3,229 +3,92 @@ import axios from 'axios'
 import { ref } from 'vue'
 import { Notify } from 'quasar'
 import { useStoreUsuarios } from './usuarios'
+import { mensajeDeError } from '../utils/formato'
 
-export const useStoreClientes = defineStore(
-  'Cliente',
-  () => {
-    let loading = ref(false)
-    let clientes = ref([])
+// Clientes: solo administrador y propietario.
+// Consultas: devuelven datos (o vacío) y avisan si fallan. Acciones: lanzan Error con el mensaje del backend.
+//
+// Los totales (viajes, valores, ganancia y "¿cumple lo prometido?") los calcula el backend con los viajes
+// aprobados, facturados o pagados que el usuario puede ver: el propietario solo los de sus vehículos.
 
-    const obtenerClientes = async () => {
-      const useUsuario = useStoreUsuarios()
+export const useStoreClientes = defineStore('Cliente', () => {
+  const loading = ref(false)
 
-      loading.value = true
-      try {
-        let response = await axios.get(`api/clientes/`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener el cliente', error)
-        return { resumen: null }
-      } finally {
-        loading.value = false
-      }
+  const headers = () => ({ 'x-token': useStoreUsuarios().token })
+
+  async function accion(fn, porDefecto) {
+    loading.value = true
+    try {
+      const { data } = await fn()
+      if (data?.mensaje) Notify.create({ type: 'positive', message: data.mensaje, position: 'bottom' })
+      return data
+    } catch (error) {
+      throw new Error(mensajeDeError(error, porDefecto))
+    } finally {
+      loading.value = false
     }
+  }
 
-    const obtenerClientesOrdenados = async (tipo = 'fecha', orden = 'desc') => {
-      const useUsuario = useStoreUsuarios()
+  // ── Consultas ──
 
-      loading.value = true
-      try {
-        const response = await axios.get(`api/clientes/ordenados`, {
-          params: { tipo, orden },
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-
-        return response.data
-      } catch (err) {
-        console.error(`No se pudo obtener los clientes ordenados por ${tipo}:`, err)
-        throw err
-      } finally {
-        loading.value = false
-      }
+  /** Lista de clientes con sus totales. Siempre devuelve un arreglo */
+  const obtenerClientes = async () => {
+    loading.value = true
+    try {
+      const { data } = await axios.get('api/clientes/', { headers: headers() })
+      return Array.isArray(data) ? data : []
+    } catch (error) {
+      Notify.create({ type: 'negative', message: mensajeDeError(error, 'No se pudieron cargar los clientes'), position: 'bottom' })
+      return []
+    } finally {
+      loading.value = false
     }
+  }
 
-    const obtenerClientesFiltrados = async (tipo, valor) => {
-      const useUsuario = useStoreUsuarios()
-
-      loading.value = true
-
-      try {
-        const response = await axios.get(`api/clientes/filtrados`, {
-          params: { tipo, valor }, 
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-
-        return response.data
-      } catch (err) {
-        console.error(`No se pudo obtener los clientes filtrados por ${tipo}:`, err)
-        console.error('Detalles del error:', err.response?.data || err.message)
-        throw err
-      } finally {
-        loading.value = false
-      }
+  /** Un cliente con sus totales */
+  const obtenerdatoscliente = async (codigo) => {
+    try {
+      const { data } = await axios.get(`api/clientes/obtenerdatoscliente/${encodeURIComponent(codigo)}`, {
+        headers: headers(),
+      })
+      return data
+    } catch (error) {
+      Notify.create({ type: 'negative', message: mensajeDeError(error, 'No se pudo abrir el cliente'), position: 'bottom' })
+      return null
     }
+  }
 
-    const obtenerdatoscliente = async (codigo) => {
-      const useUsuario = useStoreUsuarios()
+  // ── Acciones (lanzan Error) ──
 
-      try {
-        let response = await axios.get(`api/clientes/obtenerdatoscliente/${codigo}`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener los datos del cliente', error)
-        return null
-      } finally {
-        loading.value = false
-      }
-    }
+  /** Responde { mensaje, codigo } */
+  const postCliente = (datos) =>
+    accion(() => axios.post('api/clientes/crear', datos, { headers: headers() }), 'No se pudo crear el cliente')
 
-    const postCliente = async (formData) => {
-      const useUsuario = useStoreUsuarios()
+  const putCliente = (codigo, datos) =>
+    accion(
+      () => axios.put(`api/clientes/editar/${encodeURIComponent(codigo)}`, datos, { headers: headers() }),
+      'No se pudo editar el cliente',
+    )
 
-      try {
-        loading.value = true
-        const response = await axios.post('api/clientes/crear', formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
+  const putActivarCliente = (codigo) =>
+    accion(
+      () => axios.put(`api/clientes/activar/${encodeURIComponent(codigo)}`, {}, { headers: headers() }),
+      'No se pudo activar el cliente',
+    )
 
-        Notify.create({
-          message: 'Cliente creado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
+  const putDesactivarCliente = (codigo) =>
+    accion(
+      () => axios.put(`api/clientes/desactivar/${encodeURIComponent(codigo)}`, {}, { headers: headers() }),
+      'No se pudo desactivar el cliente',
+    )
 
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al crear',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
-
-    const putCliente = async (codigo, formData) => {
-      const useUsuario = useStoreUsuarios()
-
-      try {
-        loading.value = true
-        const response = await axios.put(`api/clientes/editar/${codigo}`, formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-
-        Notify.create({
-          message: 'Cliente editado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
-
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al registrar gasto',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
-
-    const putActivarCliente = async (codigo, formData) => {
-      const useUsuario = useStoreUsuarios()
-
-      try {
-        loading.value = true
-        const response = await axios.put(`api/clientes/activar/${codigo}`, formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-
-        Notify.create({
-          message: 'Cliente activado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
-
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al activar cliente',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
-
-    const putDesactivarCliente = async (codigo, formData) => {
-      const useUsuario = useStoreUsuarios()
-
-      try {
-        loading.value = true
-        const response = await axios.put(`api/clientes/desactivar/${codigo}`, formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        Notify.create({
-          message: 'Cliente desactivado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
-
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al desactivar cliente',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
-
-    return {
-      obtenerdatoscliente,
-      obtenerClientes,
-      obtenerClientesFiltrados,
-      obtenerClientesOrdenados,
-      postCliente,
-      putCliente,
-      putActivarCliente,
-      putDesactivarCliente,
-      loading,
-      clientes,
-    }
-  },
-  { persist: true },
-)
+  return {
+    loading,
+    obtenerClientes,
+    obtenerdatoscliente,
+    postCliente,
+    putCliente,
+    putActivarCliente,
+    putDesactivarCliente,
+  }
+})

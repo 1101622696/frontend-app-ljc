@@ -1,221 +1,5 @@
 <template>
-  <!-- <q-page class="flex flex-center">
-    <q-card-section>
-      <div class="row items-center q-col-gutter-md">
-        <div class="col-12 col-md-auto">
-          <q-btn-group spread>
-            <q-btn
-              v-for="(config, tipo) in filtrosConfig"
-              :key="tipo"
-              :label="tipo === 'todos' ? 'Todos' : `Por ${config.titulo.split(' ').pop()}`"
-              :icon="config.icono"
-              :color="config.color"
-              @click="cargarListaPor(tipo)"
-              :outline="tipoLista !== tipo"
-            />
-          </q-btn-group>
-        </div>
-
-        <div class="col-12 col-md-auto" v-if="tipoLista !== 'todos' && !filtroActual.esFiltroTexto">
-          <q-btn-toggle
-            v-model="ordenActual"
-            toggle-color="primary"
-            :options="opcionesOrdenamiento"
-            @update:model-value="cargarUsuarios"
-          />
-        </div>
-
-        <div class="col-12 col-md-auto" v-if="filtroActual.esFiltroTexto">
-          <q-select
-            v-model="valorFiltroTexto"
-            :options="opcionesFiltroTexto"
-            option-value="valor"
-            option-label="etiqueta"
-            dense
-            outlined
-            emit-value
-            map-options
-            @update:model-value="actualizarValorFiltro"
-          />
-        </div>
-      </div>
-    </q-card-section>
-
-    <q-card-section>
-      <div class="text-h6 q-mb-md">
-        <q-icon :name="filtroActual.icono" :color="filtroActual.color" />
-        {{ filtroActual.titulo }}
-        <span v-if="filtroActual.esFiltroTexto && valorFiltroTexto">
-          - {{ obtenerEtiquetaFiltroTexto(valorFiltroTexto) }}
-        </span>
-      </div>
-
-      <q-list bordered separator>
-        <q-item
-          v-for="usuario in usuarios"
-          :key="usuario.email"
-          clickable
-          @click="verDetalles(usuario.email)"
-        >
-          <q-item-section>
-            <q-item-label>{{ usuario.nombre }} - {{ usuario.email }}</q-item-label>
-            <q-item-label caption v-if="usuario.valorFiltro !== undefined">
-              {{ obtenerEtiquetaValor(usuario.valorFiltro) }}
-            </q-item-label>
-          </q-item-section>
-        </q-item>
-      </q-list>
-    </q-card-section>
-
-    <div>
-      <q-dialog v-model="mostrarDetalles" persistent>
-        <q-card style="min-width: 350px">
-          <q-card-section>
-            <div class="text-h6">Detalles del Usuario</div>
-          </q-card-section>
-
-          <q-card-section class="q-pt-none" v-if="detallesUsuario">
-            <div class="q-pa-md">
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Nombre:</div>
-                <div class="col-8">{{ detallesUsuario.nombre }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Perfil:</div>
-                <div class="col-8">{{ detallesUsuario.perfil }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Email:</div>
-                <div class="col-8">{{ detallesUsuario.email }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Estado:</div>
-                <div class="col-8">{{ detallesUsuario.estado }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Placa asignada:</div>
-                <div class="col-8">{{ detallesUsuario.placa_asignada }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Tipo de documento:</div>
-                <div class="col-8">{{ detallesUsuario.tipo_documento }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Número de documento:</div>
-                <div class="col-8">{{ detallesUsuario.documento }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Ciudad de expedición:</div>
-                <div class="col-8">{{ detallesUsuario.ciudad_expedicion }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Fecha de expedición:</div>
-                <div class="col-8">{{ detallesUsuario.fecha_expedicion }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">País de nacimiento:</div>
-                <div class="col-8">{{ detallesUsuario.pais_nacimiento }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Ciudad de nacimiento:</div>
-                <div class="col-8">{{ detallesUsuario.ciudad_nacimiento }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Fecha de nacimiento:</div>
-                <div class="col-8">{{ detallesUsuario.fecha_nacimiento }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Grupo sanguíneo:</div>
-                <div class="col-8">{{ detallesUsuario.grupo_sanguineo_rh }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Género:</div>
-                <div class="col-8">{{ detallesUsuario.genero }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Estado civil:</div>
-                <div class="col-8">{{ detallesUsuario.estado_civil }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Teléfono:</div>
-                <div class="col-8">{{ detallesUsuario.telefono }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Tipo de licencia:</div>
-                <div class="col-8">{{ detallesUsuario.tipo_licencia }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Número de licencia:</div>
-                <div class="col-8">{{ detallesUsuario.num_licencia }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Fecha de expedición:</div>
-                <div class="col-8">{{ detallesUsuario.fecha_expedicion_licencia }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Fecha vencimiento licencia:</div>
-                <div class="col-8">{{ detallesUsuario.fecha_vencimiento_licencia }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Viajes realizados:</div>
-                <div class="col-8">{{ detallesUsuario.viajes_realizados }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Banco:</div>
-                <div class="col-8">{{ detallesUsuario.banco }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Número de cuenta:</div>
-                <div class="col-8">{{ detallesUsuario.num_cuenta }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Salario Base:</div>
-                <div class="col-8">{{ detallesUsuario.salario_base }}</div>
-              </div>
-              <div class="row q-mb-md">
-                <div class="col-4 text-weight-bold">Seguridad Social:</div>
-                <div class="col-8">{{ detallesUsuario.sso }}</div>
-              </div>
-            </div>
-
-            <div class="row q-mb-md">
-              <div class="col-4 text-weight-bold">Activación:</div>
-              <div class="col-8">
-                <q-toggle
-                  v-model="isActive"
-                  :color="detallesUsuario.estado === 'activo' ? 'grey' : 'primary'"
-                  @update:model-value="cambiarEstado"
-                />
-              </div>
-            </div>
-            <q-card-actions align="right">
-              <q-btn class="option-button" @click="editar(detallesUsuario)">✏️</q-btn>
-
-              <template
-                v-if="
-                  (perfilUsuario === 'administrador' || perfilUsuario === 'propietario') &&
-                  detallesUsuario.perfil === 'conductor'
-                "
-              >
-                <q-btn
-                  color="teal"
-                  label="Calcular nómina"
-                  size="sm"
-                  @click="abrirCalcularNomina"
-                />
-                <q-btn color="blue" label="Pagar base" size="sm" @click="pagarSalario" />
-              </template>
-            </q-card-actions>
-          </q-card-section>
-
-          <q-card-actions align="right">
-            <q-btn flat label="Cerrar" color="primary" v-close-popup />
-          </q-card-actions>
-        </q-card>
-      </q-dialog> -->
-
   <q-page padding class="bg-grey-2">
-    <!-- Filtros -->
     <div class="filter-bar q-mb-md">
       <div class="filter-scroll row no-wrap q-gutter-x-sm q-pb-xs">
         <q-chip
@@ -474,7 +258,7 @@
           <q-separator class="q-my-md" />
 
           <!-- Activación -->
-          <div class="detalle-fila">
+          <div v-if="puedeGestionarDetalle" class="detalle-fila">
             <span class="detalle-label">Activación</span>
             <q-toggle
               v-model="isActive"
@@ -511,7 +295,14 @@
             />
           </template>
           <q-space />
-          <q-btn flat round icon="edit" color="grey-7" @click="editar(detallesUsuario)" />
+          <q-btn
+            v-if="puedeGestionarDetalle"
+            flat
+            round
+            icon="edit"
+            color="grey-7"
+            @click="editar(detallesUsuario)"
+          />
           <q-btn flat label="Cerrar" color="primary" v-close-popup />
         </q-card-actions>
       </q-card>
@@ -623,6 +414,8 @@
                     type="email"
                     v-model.trim="formulario.email"
                     label="Correo electrónico"
+                    :disable="accion === 2"
+                    :hint="accion === 2 ? 'El correo no se puede cambiar' : ''"
                     dense
                   />
                 </div>
@@ -633,7 +426,13 @@
                     rounded
                     type="password"
                     v-model.trim="formulario.password"
-                    label="Contraseña"
+                    :label="accion === 1 ? 'Contraseña temporal' : 'Nueva contraseña temporal (opcional)'"
+                    :hint="
+                      accion === 1
+                        ? 'Mínimo 6 caracteres. El usuario deberá cambiarla en su primer ingreso.'
+                        : 'Déjela vacía para no cambiarla. Si la escribe, el usuario deberá cambiarla al entrar.'
+                    "
+                    autocomplete="new-password"
                     dense
                   />
                 </div>
@@ -645,6 +444,7 @@
                     v-model="formulario.perfil"
                     label="Perfil"
                     :options="perfilOptions"
+                    :disable="perfilUsuario !== 'administrador'"
                     dense
                   />
                 </div>
@@ -848,6 +648,7 @@
           </q-card>
 
           <!-- ================= INFORMACIÓN BANCARIA ================= -->
+          <!-- Banco y cuenta solo los cambia el administrador; salario y seguridad social, admin y propietario -->
           <q-card flat bordered class="rounded-borders q-mb-md">
             <q-card-section>
               <div class="text-subtitle1 text-primary text-weight-bold q-mb-md">
@@ -855,7 +656,7 @@
               </div>
 
               <div class="row q-col-gutter-md">
-                <div class="col-12">
+                <div v-if="perfilUsuario === 'administrador'" class="col-12">
                   <q-select
                     outlined
                     rounded
@@ -866,7 +667,7 @@
                   />
                 </div>
 
-                <div class="col-12">
+                <div v-if="perfilUsuario === 'administrador'" class="col-12">
                   <q-input
                     outlined
                     rounded
@@ -924,7 +725,7 @@
 
     <!-- <q-btn color="primary" :label="'Registrar Usuario'" class="q-mt-md" @click="abrir" /> -->
 
-    <q-page-sticky position="bottom-right" :offset="[18, 18]">
+    <q-page-sticky v-if="perfilUsuario !== 'conductor'" position="bottom-right" :offset="[18, 18]">
       <q-btn fab icon="add" color="primary" @click="abrir" />
     </q-page-sticky>
   </q-page>
@@ -997,7 +798,13 @@ const estadoInicial = {
   sso: '',
 }
 
-const formulario = ref({ ...estadoInicial })
+// Copia nueva cada vez (los arreglos no se comparten entre formularios)
+const formularioVacio = () => ({ ...estadoInicial, placa_asignada: [] })
+
+const formulario = ref(formularioVacio())
+
+// Correo original del usuario que se edita (llave para el PUT)
+const emailEditando = ref('')
 const cargando = ref(false)
 
 const tipoLista = ref(TIPOS_FILTRO.TODOS)
@@ -1011,6 +818,15 @@ const mostrarDetalles = ref(false)
 const perfilOptions = ['administrador', 'conductor', 'propietario']
 
 const perfilUsuario = computed(() => useUsuario.perfile)
+
+// Admin: todos menos a sí mismo para el toggle. Propietario: solo conductores (el backend valida sus placas)
+const puedeGestionarDetalle = computed(() => {
+  const d = detallesUsuario.value
+  if (!d) return false
+  if (d.email === useUsuario.user?.email) return false
+  if (perfilUsuario.value === 'administrador') return true
+  return perfilUsuario.value === 'propietario' && d.perfil === 'conductor'
+})
 
 const placasOptions = ref([])
 
@@ -1046,7 +862,9 @@ async function cargarPlacas() {
 }
 
 function abrir() {
+  resetearFormulario()
   accion.value = 1
+  if (perfilUsuario.value === 'propietario') formulario.value.perfil = 'conductor'
   alert.value = true
 }
 
@@ -1056,38 +874,31 @@ function cerrar() {
 }
 
 async function guardar() {
+  if (!validar()) return
+
   cargando.value = true
-
-  if (!validar()) {
-    cargando.value = false
-    return
-  }
-
   try {
+    const { password, ...datos } = formulario.value
     const dataEnviar = {
-      ...formulario.value,
-
-      placa_asignada: Array.isArray(formulario.value.placa_asignada)
-        ? formulario.value.placa_asignada.join(',')
-        : formulario.value.placa_asignada,
+      ...datos,
+      placa_asignada: Array.isArray(datos.placa_asignada)
+        ? datos.placa_asignada.join(',')
+        : datos.placa_asignada,
     }
-
-    let response
 
     if (accion.value === 2) {
-      response = await useUsuario.putUsuarios(formulario.value.email, dataEnviar)
+      await useUsuario.putUsuarios(emailEditando.value, dataEnviar)
+      // Contraseña temporal opcional al editar
+      if (password) await useUsuario.putUsuariospassword(emailEditando.value, password)
     } else {
-      response = await useUsuario.postUsuario(dataEnviar)
+      await useUsuario.postUsuario({ ...dataEnviar, password })
     }
-
-    console.log('Respuesta exitosa:', response)
 
     cerrar()
     cargarUsuarios()
-    resetearFormulario()
   } catch (error) {
-    console.error('Error completo:', error)
-    mostrarMensajeError('Error al guardar el usuario')
+    // El store ya mostró el mensaje del backend; el formulario queda abierto para corregir
+    console.error('Error al guardar usuario:', error)
   } finally {
     cargando.value = false
   }
@@ -1095,11 +906,15 @@ async function guardar() {
 
 function editar(usuario) {
   accion.value = 2
+  emailEditando.value = usuario.email
 
   formulario.value = {
-    ...estadoInicial,
+    ...formularioVacio(),
     ...usuario,
-    placa_asignada: usuario.placa_asignada ? usuario.placa_asignada.split(',') : [],
+    password: '',
+    placa_asignada: usuario.placa_asignada
+      ? usuario.placa_asignada.split(',').map((p) => p.trim()).filter(Boolean)
+      : [],
   }
 
   salariobaseFormatted.value = formatearNumero(usuario.salario_base || 0)
@@ -1118,8 +933,13 @@ function validar() {
     verificado = false
   }
 
-  if (accion.value === 1 && !password) {
-    mostrarMensajeError('Diligencie una contraseña')
+  if (accion.value === 1 && (!password || password.length < 6)) {
+    mostrarMensajeError('La contraseña temporal debe tener al menos 6 caracteres')
+    verificado = false
+  }
+
+  if (accion.value === 2 && password && password.length < 6) {
+    mostrarMensajeError('La nueva contraseña temporal debe tener al menos 6 caracteres')
     verificado = false
   }
 
@@ -1185,7 +1005,7 @@ async function verDetalles(email) {
         num_cuenta: detalle['num_cuenta'] || '',
         salario_base: detalle['salario_base'] || '',
         sso: detalle['sso'] || '',
-        estado: detalle['estado'] || '',
+        estado: String(detalle['estado'] || '').toLowerCase(),
       }
       mostrarDetalles.value = true
     } else {
@@ -1268,7 +1088,7 @@ async function cargarUsuarios() {
 
     // conductor -> solo él
     if (perfilUsuario.value === 'conductor') {
-      response = [await useUsuario.obtenerUsuariosPorEmail(useUsuario.user.email)]
+      response = [await useUsuario.obtenerUsuariosPorEmail(useUsuario.user.email)].filter(Boolean)
     }
 
     // propietario -> conductores de sus placas
@@ -1303,7 +1123,7 @@ async function cargarUsuarios() {
           nombre: item['nombre'] || '',
           email: item['email'] || '',
           perfil: item['perfil'] || '',
-          estado: item['estado'] || '',
+          estado: String(item['estado'] || '').toLowerCase(),
         }
 
         const campoDatos = filtroActual.value?.campoDatos
@@ -1348,7 +1168,8 @@ const cambiarEstado = async () => {
 }
 
 function resetearFormulario() {
-  formulario.value = { ...estadoInicial }
+  formulario.value = formularioVacio()
+  emailEditando.value = ''
   accion.value = 1
   salariobaseFormatted.value = ''
   ssoFormatted.value = ''

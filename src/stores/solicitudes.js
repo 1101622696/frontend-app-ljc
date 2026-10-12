@@ -3,104 +3,91 @@ import axios from 'axios'
 import { ref } from 'vue'
 import { Notify } from 'quasar'
 import { useStoreUsuarios } from './usuarios'
+import { mensajeDeError } from '../utils/formato'
 
-export const useStoreSolicitudes = defineStore(
-  'Solicitud',
-  () => {
-    let loading = ref(false)
-    let solicitudes = ref([])
+// Solicitudes de mantenimiento: avisos del conductor (o propietario/admin) cuando nota algo raro.
+// No se vinculan a mantenimientos; solo alertan al propietario.
+// Consultas: devuelven datos (o vacío). Crear: lanza Error con el mensaje del backend.
 
-    const obtenerSolicitudes = async () => {
-      const useUsuario = useStoreUsuarios()
-      loading.value = true
-      try {
-        let response = await axios.get(`api/solicitudes/`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener la solicitud', error)
-        return { resumen: null }
-      } finally {
-        loading.value = false
+const numeroConsecutivo = (c) => Number(String(c ?? '').replace(/\D/g, '')) || 0
+
+/** Más reciente primero. fecha_creacion trae hora ('2026-10-11T19:45:03-05:00'), todas en hora Colombia */
+const ordenarRecientes = (lista) =>
+  [...lista].sort((a, b) => {
+    const fa = /^\d{4}-\d{2}-\d{2}/.test(a.fecha_creacion || '') ? a.fecha_creacion : ''
+    const fb = /^\d{4}-\d{2}-\d{2}/.test(b.fecha_creacion || '') ? b.fecha_creacion : ''
+    return fb.localeCompare(fa) || numeroConsecutivo(b.consecutivo) - numeroConsecutivo(a.consecutivo)
+  })
+
+export const useStoreSolicitudes = defineStore('Solicitud', () => {
+  const loading = ref(false)
+
+  const headers = () => ({ 'x-token': useStoreUsuarios().token })
+
+  const fallo = (error, porDefecto) =>
+    Notify.create({ type: 'negative', message: mensajeDeError(error, porDefecto), position: 'bottom' })
+
+  // ── Consultas ──
+
+  /**
+   * Lista para la pantalla, más reciente primero.
+   * - Administrador: GET api/solicitudes (todas).
+   * - Conductor y propietario: GET resumen-solicitante/placa/:placas (varias placas separadas por coma,
+   *   sin espacios; el backend verifica que sean del usuario). GET api/solicitudes es solo del administrador.
+   */
+  const listarSolicitudes = async ({ esAdmin = false, placas = [] } = {}) => {
+    loading.value = true
+    try {
+      if (esAdmin) {
+        const { data } = await axios.get('api/solicitudes/', { headers: headers() })
+        return ordenarRecientes(Array.isArray(data) ? data : [])
       }
+      if (!placas.length) return []
+      const { data } = await axios.get(
+        `api/solicitudes/resumen-solicitante/placa/${encodeURIComponent(placas.join(','))}`,
+        { headers: headers() },
+      )
+      return ordenarRecientes(data?.resumen?.total?.consecutivos || [])
+    } catch (error) {
+      fallo(error, 'No se pudieron cargar las solicitudes')
+      return []
+    } finally {
+      loading.value = false
     }
+  }
 
-    const obtenerResumenPorPlaca = async (placa) => {
-      const useUsuario = useStoreUsuarios()
-      loading.value = true
-      try {
-        let response = await axios.get(`api/solicitudes/resumen-solicitante/placa/${placa}`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener el resumen por placa', error)
-        return { resumen: null }
-      } finally {
-        loading.value = false
-      }
+  /** Una solicitud por consecutivo (p. ej. al abrirla desde una notificación) */
+  const obtenerdatodessolicitud = async (consecutivo) => {
+    try {
+      const { data } = await axios.get(
+        `api/solicitudes/obtenerdatossolicitud/${encodeURIComponent(consecutivo)}`,
+        { headers: headers() },
+      )
+      return data
+    } catch (error) {
+      fallo(error, 'No se pudo abrir la solicitud')
+      return null
     }
+  }
 
-    const obtenerdatodessolicitud = async (consecutivo) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        let response = await axios.get(`api/solicitudes/obtenerdatossolicitud/${consecutivo}`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener los datos de la solicitud', error)
-        return null
-      } finally {
-        loading.value = false
-      }
+  // ── Acción (lanza Error) ──
+
+  /**
+   * FormData: placa, tipo_mantenimiento, descripcion, odometro?, archivos[] (fotos).
+   * Devuelve { mensaje, consecutivo, placa, link, fecha_creacion, odometro_actualizado }.
+   * El mensaje de éxito lo arma la página.
+   */
+  const crearSolicitud = async (formData) => {
+    loading.value = true
+    try {
+      const { data } = await axios.post('api/solicitudes/crear', formData, { headers: headers() })
+      return data
+    } catch (error) {
+      throw new Error(mensajeDeError(error, 'No se pudo enviar la solicitud'))
+    } finally {
+      loading.value = false
     }
+  }
 
-    const postSolicitud = async (formData) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        loading.value = true
-        const response = await axios.post('api/solicitudes/crear', formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-
-        Notify.create({
-          message: 'solicitud creada correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
-
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al registrar solicitud',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
-
-    return {
-      obtenerdatodessolicitud,
-      obtenerResumenPorPlaca,
-      obtenerSolicitudes,
-      postSolicitud,
-      loading,
-      solicitudes,
-    }
-  },
-  { persist: true },
-)
+  return { loading, listarSolicitudes, obtenerdatodessolicitud, crearSolicitud }
+})

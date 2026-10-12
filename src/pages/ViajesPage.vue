@@ -1,1989 +1,1044 @@
-  <!-- <q-page class="q-pa-md"> -->
-    <!-- <q-card-section>
-      <div class="row items-center q-col-gutter-md">
-        <div class="col-12 col-md-auto">
-          <q-btn-group spread>
-            <q-btn
-              v-for="(config, tipo) in filtrosConfig"
-              :key="tipo"
-              :label="tipo === 'todos' ? 'Todos' : config.titulo.split(' ').pop()"
-              :icon="config.icono"
-              :color="config.color"
-              @click="cargarListaPor(tipo)"
-              :outline="tipoLista !== tipo"
-              size="sm"
-            />
-          </q-btn-group>
-        </div>
-
-        <div class="col-12 col-md-auto" v-if="tipoLista !== 'todos' && !filtroActual.esFiltroTexto">
-          <q-btn-toggle
-            v-model="ordenActual"
-            toggle-color="primary"
-            :options="opcionesOrdenamiento"
-            @update:model-value="cargarViajes"
-          />
-        </div>
-
-        <div class="col-12 col-md-auto" v-if="filtroActual.esFiltroTexto">
-          <q-select
-            v-model="valorFiltroTexto"
-            :options="opcionesFiltroTexto"
-            option-value="valor"
-            option-label="etiqueta"
-            dense
-            outlined
-            emit-value
-            map-options
-            @update:model-value="actualizarValorFiltro"
-          />
-        </div>
-      </div>
-    </q-card-section>
-
-    <div class="text-h6 q-mb-md">Viajes</div>
-    <div class="row q-gutter-sm q-mb-md">
-      <q-btn
-        v-for="estado in ['solicitado', 'completado', 'aprobado', 'facturado']"
-        :key="estado"
-        :color="colorEstado(estado)"
-        :outline="!(tipoLista === 'estado_viaje' && valorFiltroTexto === estado)"
-        size="sm"
-        @click="
-          () => {
-            tipoLista = 'estado_viaje'
-            valorFiltroTexto = estado
-            cargarViajes()
-          }
-        "
-      >
-        {{ estado }} ({{ conteoEstados[estado] }})
-      </q-btn>
-
-      <q-btn
-        size="sm"
-        color="primary"
-        :outline="tipoLista !== 'todos'"
-        @click="cargarListaPor('todos')"
-        label="Todos"
-      />
-    </div>
-
-    <div class="text-subtitle1 q-mb-sm q-px-md">
-      <q-icon :name="filtroActual.icono" :color="filtroActual.color" />
-      {{ filtroActual.titulo }}
-      <span v-if="filtroActual.esFiltroTexto && valorFiltroTexto">
-        — {{ obtenerEtiquetaFiltroTexto(valorFiltroTexto) }}
-      </span>
-    </div>
-
-    <q-list bordered separator>
-      <q-item
-        v-for="viaje in viajes"
-        :key="viaje.consecutivo"
-        clickable
-        @click="verDetalles(viaje.consecutivo)"
-      >
-        <q-item-section>
-          <q-item-label>{{ viaje.consecutivo }} — {{ viaje.placa }}</q-item-label>
-          <q-item-label caption>{{ viaje.cliente }} · {{ viaje.destino }}</q-item-label>
-          <q-item-label caption v-if="viaje.valorFiltro !== undefined">
-            {{ viaje.valorFiltro }}
-          </q-item-label>
-        </q-item-section>
-        <q-item-section side>
-          <q-badge :color="colorEstado(viaje.estado_viaje)" :label="viaje.estado_viaje" />
-        </q-item-section>
-      </q-item>
-    </q-list>
-
-    <q-btn color="primary" label="Crear viaje" class="q-mt-md" @click="abrirCrear" /> -->
 <template>
+  <q-page padding class="bg-grey-2">
+    <!-- ───────────── FILTROS ───────────── -->
+    <div class="filter-bar q-mb-md">
+      <div class="filter-scroll row no-wrap q-gutter-x-sm q-pb-xs">
+        <q-chip
+          v-for="opcion in opcionesEstado"
+          :key="opcion.valor"
+          clickable
+          :color="filtroEstado === opcion.valor ? 'primary' : 'grey-2'"
+          :text-color="filtroEstado === opcion.valor ? 'white' : 'grey-8'"
+          class="filter-chip"
+          @click="cambiarEstado(opcion.valor)"
+        >
+          {{ opcion.etiqueta }}
+          <q-badge v-if="opcion.cantidad" rounded color="white" text-color="grey-9" class="q-ml-xs">
+            {{ opcion.cantidad }}
+          </q-badge>
+        </q-chip>
+      </div>
 
-<q-page padding class="bg-grey-2">
-
-  <!-- Filtros -->
-  <div class="filter-bar q-mb-md">
-    <div class="filter-scroll row no-wrap q-gutter-x-sm q-pb-xs">
-      <q-chip
-        v-for="(config, tipo) in filtrosConfig"
-        :key="tipo"
-        clickable
-        :icon="config.icono"
-        :color="tipoLista === tipo ? 'primary' : 'grey-2'"
-        :text-color="tipoLista === tipo ? 'white' : 'grey-8'"
-        class="filter-chip"
-        @click="cargarListaPor(tipo)"
-      >
-        {{ tipo === 'todos' ? 'Todos' : config.titulo.split(' ').pop() }}
-      </q-chip>
-    </div>
-
-    <div v-if="tipoLista !== 'todos' && !filtroActual.esFiltroTexto" class="row no-wrap q-gutter-x-sm q-mt-sm">
-      <q-chip
-        v-for="op in opcionesOrdenamiento"
-        :key="op.value"
-        clickable size="sm"
-        :color="ordenActual === op.value ? 'secondary' : 'transparent'"
-        :text-color="ordenActual === op.value ? 'white' : 'grey-7'"
-        :outline="ordenActual !== op.value"
-        @click="ordenActual = op.value; cargarViajes()"
-      >
-        {{ op.label }}
-      </q-chip>
-    </div>
-
-    <div v-if="filtroActual.esFiltroTexto" class="q-mt-sm">
       <q-select
-        v-model="valorFiltroTexto"
-        :options="opcionesFiltroTexto"
-        option-value="valor" option-label="etiqueta"
-        dense outlined rounded emit-value map-options
-        @update:model-value="actualizarValorFiltro"
+        v-if="placasFiltro.length > 1"
+        v-model="filtroPlaca"
+        :options="placasFiltro"
+        label="Placa"
+        dense
+        outlined
+        clearable
+        emit-value
+        map-options
+        class="q-mt-sm"
+        @update:model-value="recargar"
       />
     </div>
-  </div>
 
-  <!-- Chips de estado con conteo -->
-  <div class="filter-scroll row no-wrap q-gutter-x-sm q-mb-md">
-    <q-chip
-      v-for="estado in ['solicitado', 'completado', 'aprobado', 'facturado']"
-      :key="estado"
-      clickable
-      :color="tipoLista === 'estado_viaje' && valorFiltroTexto === estado ? colorEstado(estado) : 'grey-2'"
-      :text-color="tipoLista === 'estado_viaje' && valorFiltroTexto === estado ? 'white' : 'grey-8'"
-      class="filter-chip"
-      @click="tipoLista = 'estado_viaje'; valorFiltroTexto = estado; cargarViajes()"
-    >
-      {{ estado }}
-      <q-badge
-        floating rounded
-        :color="colorEstado(estado)"
-        style="top: -4px; right: -4px; font-size: 10px;"
-      >
-        {{ conteoEstados[estado] }}
-      </q-badge>
-    </q-chip>
-    <q-chip
-      clickable
-      :color="tipoLista === 'todos' ? 'primary' : 'grey-2'"
-      :text-color="tipoLista === 'todos' ? 'white' : 'grey-8'"
-      class="filter-chip"
-      @click="cargarListaPor('todos')"
-    >
-      Todos
-    </q-chip>
-  </div>
+    <!-- ───────────── LISTA ───────────── -->
+    <div v-if="!viajes.length && !cargandoLista" class="text-center text-grey-6 q-py-xl">
+      <q-icon name="local_shipping" size="48px" />
+      <div class="q-mt-sm">No hay viajes {{ filtroEstado ? 'en este estado' : '' }}</div>
+    </div>
 
-  <!-- Encabezado -->
-  <div class="row items-center q-mb-sm">
-    <q-icon :name="filtroActual.icono" :color="filtroActual.color" size="20px" />
-    <span class="text-subtitle1 text-weight-medium q-ml-xs">
-      {{ filtroActual.titulo }}
-      <span v-if="filtroActual.esFiltroTexto && valorFiltroTexto">
-        · {{ obtenerEtiquetaFiltroTexto(valorFiltroTexto) }}
-      </span>
-    </span>
-    <q-badge color="blue-1" text-color="blue-9" class="q-ml-auto" rounded>
-      {{ viajes.length }}
-    </q-badge>
-  </div>
-
-  <!-- Cards -->
-  <div class="q-gutter-y-sm">
     <q-card
-      v-for="v in viajes"
-      :key="v.consecutivo"
-      flat bordered
-      class="viaje-card cursor-pointer"
-      @click="verDetalles(v.consecutivo)"
+      v-for="viaje in viajes"
+      :key="viaje.consecutivo"
+      flat
+      class="viaje-card q-mb-sm cursor-pointer"
+      @click="verDetalles(viaje.consecutivo)"
     >
-      <q-card-section class="q-pa-md">
-
-        <div class="row items-center q-mb-sm">
-          <div class="placa-badge q-mr-sm">{{ v.placa }}</div>
-          <span class="text-caption text-grey-6">#{{ v.consecutivo }}</span>
+      <q-card-section class="q-py-sm">
+        <div class="row items-center no-wrap">
+          <span class="placa-badge">{{ viaje.placa }}</span>
+          <span class="text-weight-bold q-ml-sm">{{ viaje.consecutivo }}</span>
           <q-space />
-          <q-badge
-            :color="colorEstado(v.estado_viaje)"
-            text-color="white"
-            rounded
-          >
-            {{ v.estado_viaje }}
-          </q-badge>
+          <q-badge :color="colorEstado(viaje.estado_viaje)" :label="nombreEstado(viaje.estado_viaje)" />
         </div>
-
-        <div class="row items-start q-gutter-x-sm">
-          <div class="col">
-            <div class="text-caption text-grey-5">Cliente</div>
-            <div class="text-body2 text-weight-medium ellipsis">{{ v.cliente }}</div>
-          </div>
-          <div class="col">
-            <div class="text-caption text-grey-5">Destino</div>
-            <div class="text-body2 ellipsis">{{ v.destino }}</div>
-          </div>
-        </div>
-
-        <div class="row items-center q-mt-sm" style="border-top: 1px solid rgba(0,0,0,0.06); padding-top: 8px;">
-          <q-icon name="event" size="13px" color="grey-5" class="q-mr-xs" />
-          <span class="text-caption text-grey-5">{{ formatFecha(v.fecha_inicio) }}</span>
+        <div class="text-body2 q-mt-xs ellipsis">{{ viaje.cliente_nombre }} · {{ soloCiudad(viaje.destino) }}</div>
+        <div class="row items-center text-caption text-grey-7">
+          <span>{{ formatoFecha(viaje.fecha_inicio) }} · {{ viaje.usuario }}</span>
           <q-space />
-          <q-icon name="chevron_right" color="grey-4" size="16px" />
+          <span v-if="siguientePaso(viaje)" class="text-orange-9 text-weight-medium">{{ siguientePaso(viaje) }}</span>
         </div>
-
       </q-card-section>
     </q-card>
-  </div>
 
-  <q-page-sticky position="bottom-right" :offset="[18, 18]">
-    <q-btn fab icon="add" color="primary" @click="abrirCrear" />
-  </q-page-sticky>
-<!-- </q-page> -->
+    <div v-if="hayMas" class="text-center q-my-md">
+      <q-btn outline rounded color="primary" label="Cargar más" :loading="cargandoLista" @click="cargarMas" />
+    </div>
 
+    <q-page-sticky position="bottom-right" :offset="[18, 18]">
+      <q-btn fab icon="add" color="primary" label="Anticipo" @click="abrirCrear" />
+    </q-page-sticky>
 
     <!-- ───────────── DETALLE ───────────── -->
-    <!-- <q-dialog v-model="mostrarDetalles" persistent>
-      <q-card style="min-width: 350px; max-width: 600px">
-        <q-card-section>
-          <div class="text-h6">Detalle del viaje</div>
-        </q-card-section>
-
-        <q-card-section class="q-pt-none" v-if="detalleViaje">
-          <div class="q-pa-md">
-            <div
-              v-for="(val, key) in camposDetalle"
-              :key="key"
-              class="row q-mb-sm items-center"
-              :class="{
-                'bg-green-1 q-pa-sm rounded-borders': key === 'ganancia_viaje_real',
-              }"
-            >
-              <div
-                class="col-5 text-weight-bold"
-                :class="{
-                  'text-h6 text-weight-bolder': key === 'ganancia_viaje_real',
-                }"
-              >
-                {{ val.label }}:
-              </div>
-
-              <div class="col-7" :class="obtenerClaseValor(detalleViaje[key], key)">                <template v-if="key.startsWith('link_')">
-                  <q-btn
-                    v-if="detalleViaje[key]"
-                    outline
-                    color="orange"
-                    icon="folder"
-                    label="Ver archivos"
-                    size="sm"
-                    @click="abrirVisor(detalleViaje[key], val.label)"
-                  />
-
-                  <span v-else>—</span>
-                </template>
-
-                <template v-else>
-                  {{ formatearValor(detalleViaje[key], key) }}
-                </template>
-              </div>
-            </div>
+    <q-dialog v-model="mostrarDetalles" :maximized="$q.screen.lt.md">
+      <q-card v-if="detalle" style="width: 640px; max-width: 100vw">
+        <q-card-section class="row items-center q-pb-sm sticky-header">
+          <span class="placa-badge-lg">{{ detalle.placa }}</span>
+          <div class="q-ml-md">
+            <div class="text-h6">{{ detalle.consecutivo }}</div>
+            <q-badge :color="colorEstado(detalle.estado_viaje)" :label="nombreEstado(detalle.estado_viaje)" />
           </div>
-
-          <q-card-actions align="right">
-            <q-btn
-              v-if="detalleViaje.estado_viaje === 'solicitado'"
-              color="orange"
-              label="Cerrar viaje (conductor)"
-              @click="abrirCerrarConductor"
-            />
-            <q-btn
-              v-if="
-                detalleViaje.estado_viaje === 'completado' &&
-                (perfilUsuario === 'propietario' || perfilUsuario === 'administrador')
-              "
-              color="blue"
-              label="Aprobar (propietario)"
-              @click="abrirAprobarPropietario"
-            />
-            <q-btn
-              v-if="
-                detalleViaje.estado_viaje === 'aprobado' &&
-                (perfilUsuario === 'propietario' || perfilUsuario === 'administrador')
-              "
-              color="purple"
-              label="Facturar viaje"
-              @click="abrirFacturar"
-            />
-            <q-btn
-              v-if="
-                detalleViaje.estado_viaje === 'facturado' &&
-                detalleViaje.estado_saldo_cliente !== 'pagado' &&
-                (perfilUsuario === 'propietario' || perfilUsuario === 'administrador')
-              "
-              color="green"
-              label="Completar saldo"
-              @click="completarSaldo"
-              :loading="cargando"
-            />
-          </q-card-actions>
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat label="Cerrar" color="primary" v-close-popup />
-        </q-card-actions>
-      </q-card>
-    </q-dialog> -->
-
-<q-dialog v-model="mostrarDetalles" persistent>
-  <q-card style="min-width: 350px; max-width: 95vw; width: 500px; border-radius: 16px !important;">
-
-    <!-- Header -->
-    <q-card-section class="q-pb-sm">
-      <div class="row items-center">
-        <div>
-          <div class="text-subtitle1 text-weight-medium">Detalle del viaje</div>
-          <div class="text-caption text-grey-6" v-if="detalleViaje">
-            #{{ detalleViaje.consecutivo }} · {{ formatFecha(detalleViaje.fecha_inicio) }}
-          </div>
-        </div>
-        <q-space />
-        <q-badge
-          v-if="detalleViaje"
-          :color="colorEstado(detalleViaje.estado_viaje)"
-          text-color="white"
-          rounded
-        >
-          {{ detalleViaje.estado_viaje }}
-        </q-badge>
-      </div>
-    </q-card-section>
-
-    <q-separator />
-
-    <q-card-section class="q-pt-md" v-if="detalleViaje" style="max-height: 65vh; overflow-y: auto;">
-
-      <!-- Placa + ruta -->
-      <div class="row items-center q-mb-md">
-        <div class="placa-badge-lg q-mr-md">{{ detalleViaje.placa }}</div>
-        <div>
-          <div class="text-body2 text-weight-medium">{{ detalleViaje.cliente }}</div>
-          <div class="text-caption text-grey-6">
-            <q-icon name="arrow_forward" size="12px" />
-            {{ detalleViaje.destino }}
-          </div>
-        </div>
-      </div>
-
-      <!-- Ganancia real destacada si existe -->
-      <div
-        v-if="detalleViaje.ganancia_viaje_real"
-        class="ganancia-banner q-mb-md"
-        :class="Number(detalleViaje.ganancia_viaje_real) >= 0 ? 'ganancia-positiva' : 'ganancia-negativa'"
-      >
-        <div class="text-caption" style="opacity: 0.7;">Ganancia real</div>
-        <div class="text-h6 text-weight-bold">
-          {{ formatearValor(detalleViaje.ganancia_viaje_real, 'ganancia_viaje_real') }}
-        </div>
-      </div>
-
-      <!-- Sección: Info general -->
-      <div class="seccion-titulo">Info general</div>
-      <div class="detalle-fila">
-        <span class="detalle-label">Creado por</span>
-        <span class="detalle-valor">{{ detalleViaje.usuario || '—' }}</span>
-      </div>
-      <div class="detalle-fila">
-        <span class="detalle-label">Fecha creación</span>
-        <span class="detalle-valor">{{ formatFecha(detalleViaje.fecha_creacion) }}</span>
-      </div>
-      <div class="detalle-fila">
-        <span class="detalle-label">Fecha fin</span>
-        <span class="detalle-valor">{{ formatFecha(detalleViaje.fecha_fin_viaje) }}</span>
-      </div>
-      <div class="detalle-fila">
-        <span class="detalle-label">Liquidado</span>
-        <q-badge
-          :color="detalleViaje.liquidado ? 'green-1' : 'orange-1'"
-          :text-color="detalleViaje.liquidado ? 'green-9' : 'orange-9'"
-          rounded
-        >
-          {{ detalleViaje.liquidado ? 'Sí' : 'No' }}
-        </q-badge>
-      </div>
-
-      <!-- Sección: Toneladas -->
-      <div class="seccion-titulo q-mt-md">Toneladas</div>
-      <div class="row q-gutter-sm q-mb-sm">
-        <div class="metrica-chip col">
-          <div class="metrica-label">Inicio</div>
-          <div class="metrica-valor">{{ detalleViaje.toneladas_inicio || '—' }}</div>
-        </div>
-        <div class="metrica-chip col">
-          <div class="metrica-label">Descargue</div>
-          <div class="metrica-valor">{{ detalleViaje.toneladas_descargue || '—' }}</div>
-        </div>
-        <div class="metrica-chip col" :class="Number(detalleViaje.diferencia_kg) < 0 ? 'rendimiento-malo' : ''">
-          <div class="metrica-label">Diferencia kg</div>
-          <div class="metrica-valor">{{ detalleViaje.diferencia_kg || '—' }}</div>
-        </div>
-      </div>
-      <div class="row q-gutter-sm q-mb-sm">
-        <div class="metrica-chip col">
-          <div class="metrica-label">Valor ton. inicial</div>
-          <div class="metrica-valor">{{ formatearValor(detalleViaje.valor_tonelada_inicial, 'valor_tonelada_inicial') }}</div>
-        </div>
-        <div class="metrica-chip col">
-          <div class="metrica-label">Valor ton. final</div>
-          <div class="metrica-valor">{{ formatearValor(detalleViaje.valor_tonelada_final, 'valor_tonelada_final') }}</div>
-        </div>
-      </div>
-
-      <!-- Sección: Cliente -->
-      <div class="seccion-titulo q-mt-md">Valores cliente</div>
-      <div class="detalle-fila">
-        <span class="detalle-label">Anticipo cliente</span>
-        <span class="detalle-valor">{{ formatearValor(detalleViaje.valor_anticipo_cliente, 'valor_anticipo_cliente') }}</span>
-      </div>
-      <div class="detalle-fila">
-        <span class="detalle-label">Saldo sin descuento</span>
-        <span class="detalle-valor">{{ formatearValor(detalleViaje.saldo_pendiente_cliente_sin_descuento, 'saldo_pendiente_cliente_sin_descuento') }}</span>
-      </div>
-      <div class="detalle-fila">
-        <span class="detalle-label">Saldo real</span>
-        <span class="detalle-valor" :class="obtenerClaseValor(detalleViaje.saldo_pendiente_cliente_real, 'saldo_pendiente_cliente_real')">
-          {{ formatearValor(detalleViaje.saldo_pendiente_cliente_real, 'saldo_pendiente_cliente_real') }}
-        </span>
-      </div>
-      <div class="detalle-fila">
-        <span class="detalle-label">Rete fuente</span>
-        <span class="detalle-valor">{{ formatearValor(detalleViaje.descuento_rete_fuente, 'descuento_rete_fuente') }}</span>
-      </div>
-      <div class="detalle-fila">
-        <span class="detalle-label">Rete ICA</span>
-        <span class="detalle-valor">{{ formatearValor(detalleViaje.descuento_rete_ica, 'descuento_rete_ica') }}</span>
-      </div>
-      <div class="detalle-fila">
-        <span class="detalle-label">Total descuentos</span>
-        <span class="detalle-valor">{{ formatearValor(detalleViaje.total_descuentos_cliente, 'total_descuentos_cliente') }}</span>
-      </div>
-      <div class="detalle-fila">
-        <span class="detalle-label">Estado saldo</span>
-        <q-badge
-          :color="detalleViaje.estado_saldo_cliente === 'pagado' ? 'green-1' : 'orange-1'"
-          :text-color="detalleViaje.estado_saldo_cliente === 'pagado' ? 'green-9' : 'orange-9'"
-          rounded
-        >
-          {{ detalleViaje.estado_saldo_cliente || '—' }}
-        </q-badge>
-      </div>
-
-      <!-- Sección: Facturación -->
-      <div class="seccion-titulo q-mt-md">Facturación</div>
-      <div class="row q-gutter-sm q-mb-sm">
-        <div class="metrica-chip col">
-          <div class="metrica-label">Estimado</div>
-          <div class="metrica-valor">{{ formatearValor(detalleViaje.valor_viaje_estimado, 'valor_viaje_estimado') }}</div>
-        </div>
-        <div class="metrica-chip col">
-          <div class="metrica-label">Real</div>
-          <div class="metrica-valor">{{ formatearValor(detalleViaje.valor_viaje_real, 'valor_viaje_real') }}</div>
-        </div>
-        <div class="metrica-chip col" :class="Number(detalleViaje.diferencia_facturacion) < 0 ? 'rendimiento-malo' : 'rendimiento-bueno'">
-          <div class="metrica-label">Diferencia</div>
-          <div class="metrica-valor">{{ formatearValor(detalleViaje.diferencia_facturacion, 'diferencia_facturacion') }}</div>
-        </div>
-      </div>
-      <div class="detalle-fila">
-        <span class="detalle-label">N° factura cliente</span>
-        <span class="detalle-valor">{{ detalleViaje.num_factura_cliente || '—' }}</span>
-      </div>
-      <div class="detalle-fila" v-if="detalleViaje.notas_facturacion">
-        <span class="detalle-label">Notas</span>
-        <span class="detalle-valor">{{ detalleViaje.notas_facturacion }}</span>
-      </div>
-
-      <!-- Sección: Conductor -->
-      <div class="seccion-titulo q-mt-md">Conductor</div>
-      <div class="detalle-fila">
-        <span class="detalle-label">10% viaje</span>
-        <span class="detalle-valor">{{ formatearValor(detalleViaje.diez_pcto, 'diez_pcto') }}</span>
-      </div>
-      <div class="detalle-fila">
-        <span class="detalle-label">Anticipo</span>
-        <span class="detalle-valor">{{ formatearValor(detalleViaje.valor_anticipo_conductor, 'valor_anticipo_conductor') }}</span>
-      </div>
-      <div class="detalle-fila">
-        <span class="detalle-label">Saldo anticipo</span>
-        <span class="detalle-valor">{{ formatearValor(detalleViaje.saldo_anticipo_conductor, 'saldo_anticipo_conductor') }}</span>
-      </div>
-      <div class="detalle-fila">
-        <span class="detalle-label">Gastos conductor</span>
-        <span class="detalle-valor">{{ formatearValor(detalleViaje.total_gastos_conductor, 'total_gastos_conductor') }}</span>
-      </div>
-      <div class="detalle-fila">
-        <span class="detalle-label">Saldo pendiente</span>
-        <span class="detalle-valor" :class="obtenerClaseValor(detalleViaje.saldo_pendiente_conductor, 'saldo_pendiente_conductor')">
-          {{ formatearValor(detalleViaje.saldo_pendiente_conductor, 'saldo_pendiente_conductor') }}
-        </span>
-      </div>
-
-      <!-- Sección: Propietario y ganancia -->
-      <div class="seccion-titulo q-mt-md">Propietario y ganancia</div>
-      <div class="detalle-fila">
-        <span class="detalle-label">Gastos propietario</span>
-        <span class="detalle-valor">{{ formatearValor(detalleViaje.total_gastos_propietario, 'total_gastos_propietario') }}</span>
-      </div>
-      <div class="detalle-fila">
-        <span class="detalle-label">Ganancia estimada</span>
-        <span class="detalle-valor">{{ formatearValor(detalleViaje.ganancia_viaje_estimada, 'ganancia_viaje_estimada') }}</span>
-      </div>
-
-      <!-- Documentos -->
-      <div class="seccion-titulo q-mt-md">Documentos</div>
-      <div class="row q-gutter-sm q-mb-sm">
-        <q-btn
-          v-if="detalleViaje.link_manifiesto"
-          outline color="secondary" icon="folder" label="Manifiesto" size="sm"
-          @click="abrirVisor(detalleViaje.link_manifiesto, 'Manifiesto')"
-        />
-        <q-btn
-          v-if="detalleViaje.link_gastos_conductor"
-          outline color="secondary" icon="folder" label="Gastos conductor" size="sm"
-          @click="abrirVisor(detalleViaje.link_gastos_conductor, 'Gastos conductor')"
-        />
-        <q-btn
-          v-if="detalleViaje.link_gastos_propietario"
-          outline color="secondary" icon="folder" label="Gastos propietario" size="sm"
-          @click="abrirVisor(detalleViaje.link_gastos_propietario, 'Gastos propietario')"
-        />
-        <span v-if="!detalleViaje.link_manifiesto && !detalleViaje.link_gastos_conductor && !detalleViaje.link_gastos_propietario"
-          class="text-caption text-grey-5">Sin documentos</span>
-      </div>
-
-    </q-card-section>
-
-    <DriveVisor
-      v-model="dialogAbierto"
-      :titulo="tituloVisor"
-      :archivos="archivos"
-      :cargando="cargandoVisor"
-      :error="errorVisor"
-      :url-archivo="urlArchivo"
-      :es-imagen="esImagen"
-      :es-pdf="esPdf"
-    />
-
-    <q-separator />
-
-    <!-- Acciones según estado -->
-    <q-card-actions class="q-pa-md" align="right">
-      <q-btn
-        v-if="detalleViaje?.estado_viaje === 'solicitado'"
-        color="orange" label="Cerrar viaje" icon="check" size="sm"
-        @click="abrirCerrarConductor"
-      />
-      <q-btn
-        v-if="detalleViaje?.estado_viaje === 'completado' && ['propietario','administrador'].includes(perfilUsuario)"
-        color="blue" label="Aprobar" icon="thumb_up" size="sm"
-        @click="abrirAprobarPropietario"
-      />
-      <q-btn
-        v-if="detalleViaje?.estado_viaje === 'aprobado' && ['propietario','administrador'].includes(perfilUsuario)"
-        color="purple" label="Facturar" icon="receipt" size="sm"
-        @click="abrirFacturar"
-      />
-      <q-btn
-        v-if="detalleViaje?.estado_viaje === 'facturado' && detalleViaje?.estado_saldo_cliente !== 'pagado' && ['propietario','administrador'].includes(perfilUsuario)"
-        color="green" label="Completar saldo" icon="payments" size="sm"
-        @click="completarSaldo" :loading="cargando"
-      />
-      <q-btn flat label="Cerrar" color="primary" v-close-popup />
-    </q-card-actions>
-
-  </q-card>
-</q-dialog>
-
-    <!-- ───────────── CREAR VIAJE ───────────── -->
-    <q-dialog v-model="dialogCrear" persistent>
-      <q-card style="width: 600px">
-        <q-card-section style="background-color: #f5f5f5">
-          <div class="text-h6">Crear viaje</div>
-        </q-card-section>
-
-        <div class="q-pa-md">
-          <div class="q-gutter-md">
-            <!-- Conductor: muestra la placa pero no puede cambiarla -->
-            <q-input
-              v-if="perfilUsuario === 'conductor'"
-              outlined
-              rounded
-              v-model="formularioCrear.placa"
-              label="Tu placa"
-              :dense="dense"
-              disable
-            />
-
-            <!-- Propietario y Admin: select con opciones -->
-            <q-select
-              v-else
-              outlined
-              rounded
-              v-model="formularioCrear.placa"
-              label="Placa"
-              :options="placasOptions"
-              :dense="dense"
-            />
-
-            <q-select
-              outlined
-              rounded
-              v-model="formularioCrear.cliente"
-              label="Cliente"
-              :options="clientesOptions"
-              option-label="label"
-              option-value="value"
-              emit-value
-              map-options
-              :dense="dense"
-            />
-            <q-input
-              outlined
-              rounded
-              v-model.trim="formularioCrear.destino"
-              label="Destino"
-              :dense="dense"
-            />
-            <q-input
-              outlined
-              rounded
-              v-model="formularioCrear.fecha_inicio"
-              label="Fecha inicio"
-              :dense="dense"
-              readonly
-            >
-              <template v-slot:append>
-                <q-icon name="event" class="cursor-pointer">
-                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                    <q-date v-model="formularioCrear.fecha_inicio" mask="YYYY-MM-DD" />
-                  </q-popup-proxy>
-                </q-icon>
-              </template>
-            </q-input>
-            <q-input
-              outlined
-              rounded
-              v-model="anticipoFormatted"
-              label="Anticipo conductor"
-              :dense="dense"
-              @update:model-value="formatearAnticipo"
-            />
-
-            <q-input
-              outlined
-              rounded
-              v-model="toneladaFormatted"
-              label="Valor tonelada inicial"
-              :dense="dense"
-              @update:model-value="formatearTonelada"
-            />
-          </div>
-        </div>
-
-        <q-card-actions align="right">
-          <q-btn color="primary" label="Crear" @click="guardarCrear" :loading="cargando" />
-          <q-btn flat label="Cancelar" @click="dialogCrear = false" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- ───────────── CERRAR CONDUCTOR ───────────── -->
-    <q-dialog v-model="dialogCerrarConductor" persistent>
-      <q-card style="width: 600px">
-        <q-card-section style="background-color: #f5f5f5">
-          <div class="text-h6">Cerrar viaje — Conductor</div>
-        </q-card-section>
-
-        <div class="q-pa-md">
-          <div class="q-gutter-md">
-            <q-input
-              outlined
-              rounded
-              v-model="formularioConductor.fecha_fin_viaje"
-              label="Fecha fin"
-              :dense="dense"
-              readonly
-            >
-              <template v-slot:append>
-                <q-icon name="event" class="cursor-pointer">
-                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                    <q-date v-model="formularioConductor.fecha_fin_viaje" mask="YYYY-MM-DD" />
-                  </q-popup-proxy>
-                </q-icon>
-              </template>
-            </q-input>
-            <q-input
-              outlined
-              rounded
-              v-model.number="formularioConductor.toneladas_inicio"
-              label="Toneladas inicio"
-              type="number"
-              :dense="dense"
-            />
-            <q-input
-              outlined
-              rounded
-              v-model.number="formularioConductor.toneladas_descargue"
-              label="Toneladas descargue"
-              type="number"
-              :dense="dense"
-            />
-            <q-input
-              outlined
-              rounded
-              v-model="toneladaFinalFormatted"
-              label="Valor tonelada final"
-              :dense="dense"
-              @update:model-value="formatearToneladaFinal"
-            />
-            <q-separator label="Gastos conductor" label-color="grey-7" />
-
-            <CampoGasto
-              label="Peajes"
-              @update:valor="(v) => (formularioConductor.peajes_conductor = v)"
-              @update:tipoFactura="(v) => (formularioConductor.tipo_factura_peajes_conductor = v)"
-              @update:archivo="(v) => (formularioConductor.peajes_conductor_archivos = v)"
-              :dense="dense"
-            />
-            <CampoGasto
-              label="Lavadas"
-              @update:valor="(v) => (formularioConductor.lavadas_conductor = v)"
-              @update:tipoFactura="(v) => (formularioConductor.tipo_factura_lavadas_conductor = v)"
-              @update:archivo="(v) => (formularioConductor.lavadas_conductor_archivos = v)"
-              :dense="dense"
-            />
-            <CampoGasto
-              label="Parqueadero"
-              @update:valor="(v) => (formularioConductor.parqueadero_conductor = v)"
-              @update:tipoFactura="
-                (v) => (formularioConductor.tipo_factura_parqueadero_conductor = v)
-              "
-              @update:archivo="(v) => (formularioConductor.parqueadero_conductor_archivos = v)"
-              :dense="dense"
-            />
-            <CampoGasto
-              label="Engrase"
-              @update:valor="(v) => (formularioConductor.engrase_conductor = v)"
-              @update:tipoFactura="(v) => (formularioConductor.tipo_factura_engrase_conductor = v)"
-              @update:archivo="(v) => (formularioConductor.engrase_conductor_archivos = v)"
-              :dense="dense"
-            />
-            <CampoGasto
-              label="Fumigación"
-              @update:valor="(v) => (formularioConductor.fumigacion_conductor = v)"
-              @update:tipoFactura="
-                (v) => (formularioConductor.tipo_factura_fumigacion_conductor = v)
-              "
-              @update:archivo="(v) => (formularioConductor.fumigacion_conductor_archivos = v)"
-              :dense="dense"
-            />
-            <CampoGasto
-              label="Cargue"
-              @update:valor="(v) => (formularioConductor.cargue_conductor = v)"
-              @update:tipoFactura="(v) => (formularioConductor.tipo_factura_cargue_conductor = v)"
-              @update:archivo="(v) => (formularioConductor.cargue_conductor_archivos = v)"
-              :dense="dense"
-            />
-            <CampoGasto
-              label="Descargue"
-              @update:valor="(v) => (formularioConductor.descargue_conductor = v)"
-              @update:tipoFactura="
-                (v) => (formularioConductor.tipo_factura_descargue_conductor = v)
-              "
-              @update:archivo="(v) => (formularioConductor.descargue_conductor_archivos = v)"
-              :dense="dense"
-            />
-            <CampoGasto
-              label="Comisión"
-              :conArchivo="false"
-              @update:valor="(v) => (formularioConductor.comision_conductor = v)"
-              @update:tipoFactura="(v) => (formularioConductor.tipo_factura_comision_conductor = v)"
-              @update:archivo="(v) => (formularioConductor.comision_conductor_archivos = v)"
-              :dense="dense"
-            />
-            <CampoGasto
-              label="Otro"
-              @update:valor="(v) => (formularioConductor.otro_conductor = v)"
-              @update:tipoFactura="(v) => (formularioConductor.tipo_factura_otro_conductor = v)"
-              @update:archivo="(v) => (formularioConductor.otro_conductor_archivos = v)"
-              :dense="dense"
-            />
-
-            <q-separator label="Manifiesto" label-color="grey-7" />
-            <div>
-              <div class="text-caption text-grey-7">Manifiesto (obligatorio)</div>
-              <q-file
-                outlined
-                rounded
-                v-model="formularioConductor.manifiesto"
-                label="Seleccionar archivo"
-                :dense="dense"
-              />
-            </div>
-          </div>
-        </div>
-
-        <q-card-actions align="right">
-          <q-btn
-            color="orange"
-            label="Cerrar viaje"
-            @click="guardarCerrarConductor"
-            :loading="cargando"
-          />
-          <q-btn flat label="Cancelar" @click="dialogCerrarConductor = false" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- ───────────── APROBAR PROPIETARIO ───────────── -->
-
-    <q-dialog v-model="dialogAprobarPropietario" persistent>
-      <q-card style="width: 600px">
-        <q-card-section class="q-pb-none">
-          <div class="text-subtitle2 q-mb-sm text-grey-8">Documentos del conductor</div>
-
-          <div class="row q-gutter-sm">
-            <q-btn
-              v-if="detalleViaje?.link_manifiesto"
-              outline
-              color="teal"
-              icon="description"
-              label="Ver manifiesto"
-              size="sm"
-              @click="abrirVisor(detalleViaje.link_manifiesto, 'Manifiesto')"
-            />
-
-            <q-btn
-              v-if="detalleViaje?.link_gastos_conductor"
-              outline
-              color="orange"
-              icon="folder"
-              label="Ver soportes gastos"
-              size="sm"
-              @click="abrirVisor(detalleViaje.link_gastos_conductor, 'Soportes gastos conductor')"
-            />
-          </div>
-        </q-card-section>
-        <q-separator class="q-my-sm" />
-
-        <q-card-section style="background-color: #f5f5f5">
-          <div class="text-h6">Aprobar viaje — Propietario</div>
-        </q-card-section>
-        <div class="q-pa-md">
-          <div class="text-subtitle2 q-mb-sm text-grey-8">Verificar datos del conductor</div>
-          <div class="q-gutter-md q-mb-md">
-            <q-input
-              outlined
-              rounded
-              v-model.number="formularioPropietario.toneladas_inicio"
-              label="Toneladas inicio"
-              type="number"
-              :dense="dense"
-            />
-            <q-input
-              outlined
-              rounded
-              v-model.number="formularioPropietario.toneladas_descargue"
-              label="Toneladas descargue"
-              type="number"
-              :dense="dense"
-            />
-            <q-input
-              outlined
-              rounded
-              v-model.number="formularioPropietario.valor_tonelada_final"
-              label="Valor tonelada final"
-              type="number"
-              :dense="dense"
-            />
-
-            <CampoGasto
-              label="Peajes conductor"
-              :valorInicial="formularioPropietario.peajes_conductor"
-              :tipoFacturaInicial="formularioPropietario.tipo_factura_peajes_conductor"
-              @update:valor="(v) => (formularioPropietario.peajes_conductor = v)"
-              @update:tipoFactura="(v) => (formularioPropietario.tipo_factura_peajes_conductor = v)"
-              @update:archivo="(v) => (formularioPropietario.peajes_conductor_archivos = v)"
-              :dense="dense"
-            />
-
-            <CampoGasto
-              label="Lavadas conductor"
-              :valorInicial="formularioPropietario.lavadas_conductor"
-              :tipoFacturaInicial="formularioPropietario.tipo_factura_lavadas_conductor"
-              @update:valor="(v) => (formularioPropietario.lavadas_conductor = v)"
-              @update:tipoFactura="
-                (v) => (formularioPropietario.tipo_factura_lavadas_conductor = v)
-              "
-              @update:archivo="(v) => (formularioPropietario.lavadas_conductor_archivos = v)"
-              :dense="dense"
-            />
-
-            <CampoGasto
-              label="Parqueadero conductor"
-              :valorInicial="formularioPropietario.parqueadero_conductor"
-              :tipoFacturaInicial="formularioPropietario.tipo_factura_parqueadero_conductor"
-              @update:valor="(v) => (formularioPropietario.parqueadero_conductor = v)"
-              @update:tipoFactura="
-                (v) => (formularioPropietario.tipo_factura_parqueadero_conductor = v)
-              "
-              @update:archivo="(v) => (formularioPropietario.parqueadero_conductor_archivos = v)"
-              :dense="dense"
-            />
-
-            <CampoGasto
-              label="Engrase conductor"
-              :valorInicial="formularioPropietario.engrase_conductor"
-              :tipoFacturaInicial="formularioPropietario.tipo_factura_engrase_conductor"
-              @update:valor="(v) => (formularioPropietario.engrase_conductor = v)"
-              @update:tipoFactura="
-                (v) => (formularioPropietario.tipo_factura_engrase_conductor = v)
-              "
-              @update:archivo="(v) => (formularioPropietario.engrase_conductor_archivos = v)"
-              :dense="dense"
-            />
-
-            <CampoGasto
-              label="Fumigación conductor"
-              :valorInicial="formularioPropietario.fumigacion_conductor"
-              :tipoFacturaInicial="formularioPropietario.tipo_factura_fumigacion_conductor"
-              @update:valor="(v) => (formularioPropietario.fumigacion_conductor = v)"
-              @update:tipoFactura="
-                (v) => (formularioPropietario.tipo_factura_fumigacion_conductor = v)
-              "
-              @update:archivo="(v) => (formularioPropietario.fumigacion_conductor_archivos = v)"
-              :dense="dense"
-            />
-
-            <CampoGasto
-              label="Cargue conductor"
-              :valorInicial="formularioPropietario.cargue_conductor"
-              :tipoFacturaInicial="formularioPropietario.tipo_factura_cargue_conductor"
-              @update:valor="(v) => (formularioPropietario.cargue_conductor = v)"
-              @update:tipoFactura="(v) => (formularioPropietario.tipo_factura_cargue_conductor = v)"
-              @update:archivo="(v) => (formularioPropietario.cargue_conductor_archivos = v)"
-              :dense="dense"
-            />
-
-            <CampoGasto
-              label="Descargue conductor"
-              :valorInicial="formularioPropietario.descargue_conductor"
-              :tipoFacturaInicial="formularioPropietario.tipo_factura_descargue_conductor"
-              @update:valor="(v) => (formularioPropietario.descargue_conductor = v)"
-              @update:tipoFactura="
-                (v) => (formularioPropietario.tipo_factura_descargue_conductor = v)
-              "
-              @update:archivo="(v) => (formularioPropietario.descargue_conductor_archivos = v)"
-              :dense="dense"
-            />
-
-            <CampoGasto
-              label="Comisión conductor"
-              :valorInicial="formularioPropietario.comision_conductor"
-              :tipoFacturaInicial="formularioPropietario.tipo_factura_comision_conductor"
-              @update:valor="(v) => (formularioPropietario.comision_conductor = v)"
-              @update:tipoFactura="
-                (v) => (formularioPropietario.tipo_factura_comision_conductor = v)
-              "
-              @update:archivo="(v) => (formularioPropietario.comision_conductor_archivos = v)"
-              :dense="dense"
-            />
-
-            <CampoGasto
-              label="Otro conductor"
-              :valorInicial="formularioPropietario.otro_conductor"
-              :tipoFacturaInicial="formularioPropietario.tipo_factura_otro_conductor"
-              @update:valor="(v) => (formularioPropietario.otro_conductor = v)"
-              @update:tipoFactura="(v) => (formularioPropietario.tipo_factura_otro_conductor = v)"
-              @update:archivo="(v) => (formularioPropietario.otro_conductor_archivos = v)"
-              :dense="dense"
-            />
-          </div>
-
-          <q-separator label="Datos propietario" label-color="grey-7" class="q-my-md" />
-          <div class="q-gutter-md">
-            <q-input
-              filled
-              v-model="anticipoclienteFormatted"
-              label="Anticipo cliente"
-              :dense="dense"
-              @update:model-value="formatearanticipocliente"
-            />
-
-            <CampoGasto
-              label="Peajes propietario"
-              @update:valor="(v) => (formularioPropietario.peajes_propietario = v)"
-              @update:tipoFactura="
-                (v) => (formularioPropietario.tipo_factura_peajes_propietario = v)
-              "
-              @update:archivo="(v) => (formularioPropietario.peajes_propietario_archivos = v)"
-              :dense="dense"
-            />
-
-            <CampoGasto
-              label="Parqueadero propietario"
-              @update:valor="(v) => (formularioPropietario.parqueadero_propietario = v)"
-              @update:tipoFactura="
-                (v) => (formularioPropietario.tipo_factura_parqueadero_propietario = v)
-              "
-              @update:archivo="(v) => (formularioPropietario.parqueadero_propietario_archivos = v)"
-              :dense="dense"
-            />
-            <CampoGasto
-              label="Engrase propietario"
-              @update:valor="(v) => (formularioPropietario.engrase_propietario = v)"
-              @update:tipoFactura="
-                (v) => (formularioPropietario.tipo_factura_engrase_propietario = v)
-              "
-              @update:archivo="(v) => (formularioPropietario.engrase_propietario_archivos = v)"
-              :dense="dense"
-            />
-            <CampoGasto
-              label="Fumigación propietario"
-              @update:valor="(v) => (formularioPropietario.fumigacion_propietario = v)"
-              @update:tipoFactura="
-                (v) => (formularioPropietario.tipo_factura_fumigacion_propietario = v)
-              "
-              @update:archivo="(v) => (formularioPropietario.fumigacion_propietario_archivos = v)"
-              :dense="dense"
-            />
-            <CampoGasto
-              label="Cargue propietario"
-              @update:valor="(v) => (formularioPropietario.cargue_propietario = v)"
-              @update:tipoFactura="
-                (v) => (formularioPropietario.tipo_factura_cargue_propietario = v)
-              "
-              @update:archivo="(v) => (formularioPropietario.cargue_propietario_archivos = v)"
-              :dense="dense"
-            />
-            <CampoGasto
-              label="Descargue propietario"
-              @update:valor="(v) => (formularioPropietario.descargue_propietario = v)"
-              @update:tipoFactura="
-                (v) => (formularioPropietario.tipo_factura_descargue_propietario = v)
-              "
-              @update:archivo="(v) => (formularioPropietario.descargue_propietario_archivos = v)"
-              :dense="dense"
-            />
-            <CampoGasto
-              label="Comisión propietario"
-              @update:valor="(v) => (formularioPropietario.comision_propietario = v)"
-              @update:tipoFactura="
-                (v) => (formularioPropietario.tipo_factura_comision_propietario = v)
-              "
-              @update:archivo="(v) => (formularioPropietario.comision_propietario_archivos = v)"
-              :dense="dense"
-            />
-            <CampoGasto
-              label="Otro"
-              @update:valor="(v) => (formularioPropietario.otro_propietario = v)"
-              @update:tipoFactura="(v) => (formularioPropietario.tipo_factura_otro_propietario = v)"
-              @update:archivo="(v) => (formularioPropietario.otro_propietario_archivos = v)"
-              :dense="dense"
-            />
-          </div>
-        </div>
-        <q-card-actions align="right">
-          <q-btn
-            color="blue"
-            label="Aprobar"
-            @click="guardarAprobarPropietario"
-            :loading="cargando"
-          />
-          <q-btn flat label="Cancelar" @click="dialogAprobarPropietario = false" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- Dialog visor de archivos -->
-    <q-dialog v-model="dialogVisor" persistent>
-      <q-card style="width: 95vw; max-width: 600px; max-height: 90vh">
-        <q-card-section class="row items-center q-pb-none">
-          <div class="text-subtitle1">{{ visorTitulo }}</div>
           <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
+          <q-btn flat round icon="close" v-close-popup />
         </q-card-section>
 
-        <q-card-section style="overflow-y: auto; max-height: 75vh">
-          <!-- Cargando -->
-          <div v-if="cargandoVisor" class="text-center q-pa-lg">
-            <q-spinner color="primary" size="3em" />
-            <div class="text-grey-6 q-mt-sm">Cargando archivos...</div>
-          </div>
+        <q-separator />
 
-          <!-- Archivos -->
-          <div v-else class="q-gutter-md">
-            <div v-for="archivo in archivosVisor" :key="archivo.id">
-              <div class="text-caption text-grey-7 q-mb-xs">
-                {{ archivo.name }}
-              </div>
+        <q-card-section class="q-pt-sm">
+          <!-- Paso pendiente -->
+          <q-banner v-if="siguientePaso(detalle)" dense rounded class="bg-orange-1 text-orange-10 q-mb-md">
+            <template #avatar><q-icon name="pending_actions" /></template>
+            {{ siguientePaso(detalle) }}
+          </q-banner>
 
-              <!-- Imagen -->
-              <q-img
-                v-if="archivo.mimeType?.startsWith('image/')"
-                :src="`http://localhost:4000/api/viajes/drive-archivo/${archivo.id}`"
-                spinner-color="primary"
-                fit="contain"
-                style="width: 100%; max-height: 500px"
-              />
+          <!-- General -->
+          <div class="seccion-titulo">Viaje</div>
+          <Fila etiqueta="Cliente" :valor="detalle.cliente_nombre" />
+          <Fila etiqueta="Destino" :valor="detalle.destino" />
+          <Fila etiqueta="Conductor" :valor="detalle.usuario" />
+          <Fila etiqueta="Fecha inicio" :valor="formatoFecha(detalle.fecha_inicio)" />
+          <Fila v-if="detalle.fecha_fin_viaje" etiqueta="Fecha fin" :valor="formatoFecha(detalle.fecha_fin_viaje)" />
 
-              <!-- PDF -->
-              <iframe
-                v-else-if="archivo.mimeType === 'application/pdf'"
-                :src="`http://localhost:4000/api/viajes/drive-archivo/${archivo.id}`"
-                style="width: 100%; height: 500px; border: none"
-              />
+          <!-- Anticipo -->
+          <div class="seccion-titulo q-mt-md">Anticipo del conductor</div>
+          <Fila etiqueta="Solicitado" :valor="formatoPeso(detalle.valor_anticipo_conductor)" />
+          <Fila
+            etiqueta="Consignado"
+            :valor="detalle.valor_anticipo_consignado ? formatoPeso(detalle.valor_anticipo_consignado) : 'Pendiente'"
+            :clase="detalle.valor_anticipo_consignado ? '' : 'text-orange-9'"
+          />
+          <Fila v-if="detalle.fecha_consignacion" etiqueta="Fecha consignación" :valor="formatoFecha(detalle.fecha_consignacion)" />
 
-              <!-- Otros -->
-              <div v-else class="text-grey-6 q-pa-sm bg-grey-2 rounded-borders">
-                {{ archivo.name }} (no previsualizable)
-              </div>
+          <!-- Preoperacional -->
+          <div class="seccion-titulo q-mt-md">Preoperacional</div>
+          <Fila
+            etiqueta="Estado"
+            :valor="detalle.estado_preoperacional === 'realizado' ? `Realizado (${detalle.consecutivo_preoperacional || ''})` : 'Pendiente'"
+            :clase="detalle.estado_preoperacional === 'realizado' ? 'text-positive' : 'text-orange-9'"
+          />
+          <Fila v-if="detalle.odometro_preoperacional" etiqueta="Odómetro" :valor="`${formatoMiles(detalle.odometro_preoperacional)} km`" />
 
-              <q-separator class="q-my-md" />
+          <!-- Carga -->
+          <template v-if="detalle.kilos_cargue">
+            <div class="seccion-titulo q-mt-md">Carga</div>
+            <Fila etiqueta="Kilos cargue" :valor="formatoKilos(detalle.kilos_cargue)" />
+            <Fila etiqueta="Kilos descargue" :valor="formatoKilos(detalle.kilos_descargue)" />
+            <Fila etiqueta="Diferencia" :valor="formatoKilos(detalle.diferencia_kg)" />
+            <Fila etiqueta="Valor tonelada inicial" :valor="formatoPeso(detalle.valor_tonelada_inicial)" />
+            <Fila etiqueta="Valor tonelada final" :valor="formatoPeso(detalle.valor_tonelada_final)" />
+            <Fila etiqueta="Valor estimado del viaje" :valor="formatoPeso(detalle.valor_viaje_estimado)" />
+          </template>
+          <Fila v-else etiqueta="Valor tonelada inicial" :valor="formatoPeso(detalle.valor_tonelada_inicial)" />
+
+          <!-- Conductor -->
+          <template v-if="detalle.diez_pcto !== '' && detalle.diez_pcto !== undefined">
+            <div class="seccion-titulo q-mt-md">Cuentas con el conductor</div>
+            <Fila etiqueta="10 % del conductor" :valor="formatoPeso(detalle.diez_pcto)" />
+            <div class="detalle-fila cursor-pointer" @click="verGastos = verGastos === 'conductor' ? '' : 'conductor'">
+              <span class="detalle-label">Gastos del conductor <q-icon :name="verGastos === 'conductor' ? 'expand_less' : 'expand_more'" /></span>
+              <span class="detalle-valor text-primary">{{ formatoPeso(detalle.total_gastos_conductor) }}</span>
             </div>
+            <ListaGastos v-if="verGastos === 'conductor'" :gastos="gastosDe('conductor')" :puede-legalizar="esGestion" @ver="abrirVisor" @legalizar="abrirLegalizar" />
+            <Fila etiqueta="Saldo del anticipo" :valor="formatoPeso(detalle.saldo_anticipo_conductor)" />
+            <div class="ganancia-banner q-mt-sm" :class="Number(detalle.saldo_pendiente_conductor) >= 0 ? 'ganancia-positiva' : 'ganancia-negativa'">
+              <div class="text-caption">
+                {{ Number(detalle.saldo_pendiente_conductor) >= 0 ? 'Saldo a favor del conductor' : 'El conductor queda debiendo' }}
+              </div>
+              <div class="text-h6">{{ formatoPeso(Math.abs(Number(detalle.saldo_pendiente_conductor) || 0)) }}</div>
+              <div class="text-caption">Se cruza en la nómina{{ detalle.liquidado === 'si' ? ' (ya liquidado)' : '' }}</div>
+            </div>
+          </template>
+
+          <!-- Propietario y cliente (no los ve el conductor) -->
+          <template v-if="esGestion && ['aprobado', 'facturado', 'pagado'].includes(detalle.estado_viaje)">
+            <div class="seccion-titulo q-mt-md">Propietario</div>
+            <div class="detalle-fila cursor-pointer" @click="verGastos = verGastos === 'propietario' ? '' : 'propietario'">
+              <span class="detalle-label">Gastos del propietario <q-icon :name="verGastos === 'propietario' ? 'expand_less' : 'expand_more'" /></span>
+              <span class="detalle-valor text-primary">{{ formatoPeso(detalle.total_gastos_propietario) }}</span>
+            </div>
+            <ListaGastos v-if="verGastos === 'propietario'" :gastos="gastosDe('propietario')" puede-legalizar @ver="abrirVisor" @legalizar="abrirLegalizar" />
+            <Fila etiqueta="Ganancia estimada" :valor="formatoPeso(detalle.ganancia_viaje_estimada)" />
+            <Fila v-if="detalle.ganancia_viaje_real !== ''" etiqueta="Ganancia real" :valor="formatoPeso(detalle.ganancia_viaje_real)" clase="text-positive text-weight-bold" />
+
+            <div class="seccion-titulo q-mt-md">Cliente</div>
+            <Fila etiqueta="Anticipo del cliente" :valor="formatoPeso(detalle.valor_anticipo_cliente)" />
+            <Fila etiqueta="Rete fuente" :valor="formatoPeso(detalle.descuento_rete_fuente)" />
+            <Fila etiqueta="Rete ICA" :valor="formatoPeso(detalle.descuento_rete_ica)" />
+            <Fila etiqueta="Saldo por cobrar" :valor="formatoPeso(detalle.saldo_pendiente_cliente_real)" clase="text-weight-bold" />
+            <Fila etiqueta="Estado del pago" :valor="detalle.estado_saldo_cliente === 'pagado' ? `Pagado ${formatoFecha(detalle.fecha_pago_cliente)}` : 'Pendiente'" />
+
+            <template v-if="detalle.valor_viaje_real">
+              <div class="seccion-titulo q-mt-md">Facturación</div>
+              <Fila etiqueta="Factura" :valor="detalle.num_factura_cliente" />
+              <Fila etiqueta="Valor facturado" :valor="formatoPeso(detalle.valor_viaje_real)" />
+              <Fila v-if="detalle.notas_facturacion" etiqueta="Notas" :valor="detalle.notas_facturacion" />
+              <Fila v-if="Number(detalle.ajuste_diez_pcto_pendiente)" etiqueta="Ajuste 10 % para nómina" :valor="formatoPeso(detalle.ajuste_diez_pcto_pendiente)" clase="text-orange-9" />
+            </template>
+
+            <div class="seccion-titulo q-mt-md">Comparado con lo prometido</div>
+            <Fila etiqueta="Por precio de la tonelada" :valor="formatoPeso(detalle.diferencia_precio)" :clase="claseSigno(detalle.diferencia_precio)" />
+            <Fila etiqueta="Por merma (kilos perdidos)" :valor="formatoPeso(-Number(detalle.valor_merma || 0))" :clase="claseSigno(-Number(detalle.valor_merma || 0))" />
+            <Fila v-if="detalle.diferencia_facturacion !== ''" etiqueta="Facturado vs. estimado" :valor="formatoPeso(detalle.diferencia_facturacion)" :clase="claseSigno(detalle.diferencia_facturacion)" />
+          </template>
+
+          <!-- Documentos -->
+          <div class="seccion-titulo q-mt-md">Documentos</div>
+          <div class="row q-gutter-sm">
+            <q-btn v-if="detalle.link_consignacion" outline size="sm" icon="receipt" label="Consignación" @click="abrirVisor(detalle.link_consignacion, 'Consignación')" />
+            <q-btn v-if="detalle.link_manifiesto" outline size="sm" icon="description" label="Manifiesto" @click="abrirVisor(detalle.link_manifiesto, 'Manifiesto')" />
+            <q-btn v-if="detalle.link_gastos_conductor" outline size="sm" icon="folder" label="Gastos conductor" @click="abrirVisor(detalle.link_gastos_conductor, 'Gastos conductor')" />
+            <q-btn v-if="esGestion && detalle.link_gastos_propietario" outline size="sm" icon="folder" label="Gastos propietario" @click="abrirVisor(detalle.link_gastos_propietario, 'Gastos propietario')" />
+            <span v-if="!detalle.link_consignacion && !detalle.link_manifiesto && !detalle.link_gastos_conductor" class="text-caption text-grey-6">Sin documentos</span>
           </div>
         </q-card-section>
-      </q-card>
-    </q-dialog>
 
-    <DriveVisor
-      v-model="dialogAbierto"
-      :titulo="tituloVisor"
-      :archivos="archivos"
-      :cargando="cargandoVisor"
-      :error="errorVisor"
-      :url-archivo="urlArchivo"
-      :es-imagen="esImagen"
-      :es-pdf="esPdf"
-    />
-
-    <!-- ───────────── FACTURAR ───────────── -->
-    <q-dialog v-model="dialogFacturar" persistent>
-      <q-card style="width: 500px">
-        <q-card-section style="background-color: #f5f5f5">
-          <div class="text-h6">Facturar viaje</div>
-        </q-card-section>
-
-        <div class="q-pa-md">
-          <div class="q-gutter-md">
-            <q-input
-              outlined
-              rounded
-              v-model="valorviajerealFormatted"
-              label="Valor viaje real"
-              :dense="dense"
-              @update:model-value="formatearValorViajeReal"
-            />
-            <q-input
-              outlined
-              rounded
-              v-model.trim="formularioFacturar.notas_facturacion"
-              label="Notas facturación"
-              type="textarea"
-              :dense="dense"
-            />
-            <q-input
-              outlined
-              rounded
-              v-model.trim="formularioFacturar.num_factura_cliente"
-              label="Número factura cliente"
-              :dense="dense"
-            />
-          </div>
-        </div>
-
-        <q-card-actions align="right">
-          <q-btn color="purple" label="Facturar" @click="guardarFacturar" :loading="cargando" />
-          <q-btn flat label="Cancelar" @click="dialogFacturar = false" />
+        <!-- Acciones según estado y perfil -->
+        <q-card-actions align="right" class="q-pa-md bg-grey-1 sticky-footer">
+          <q-btn v-if="esAdmin && puedeEditar" flat color="grey-8" icon="edit" label="Editar" @click="abrirEditar" />
+          <q-space />
+          <q-btn v-if="detalle.estado_viaje === 'solicitado' && esGestion" unelevated color="green" icon="payments" label="Consignar anticipo" @click="abrirConsignar" />
+          <q-btn
+            v-if="['solicitado', 'anticipo_consignado'].includes(detalle.estado_viaje) && detalle.estado_preoperacional !== 'realizado'"
+            unelevated
+            color="teal"
+            icon="fact_check"
+            label="Hacer preoperacional"
+            :to="{ name: 'PreoperacionalesPage', query: { viaje: detalle.consecutivo } }"
+          />
+          <q-btn v-if="puedeCerrar" unelevated color="orange" icon="flag" label="Cerrar viaje" @click="abrirCerrar" />
+          <q-btn v-if="detalle.estado_viaje === 'completado' && esGestion" unelevated color="blue" icon="task_alt" label="Aprobar" @click="abrirAprobar" />
+          <q-btn v-if="detalle.estado_viaje === 'aprobado' && esGestion" unelevated color="purple" icon="receipt_long" label="Facturar" @click="abrirFacturar" />
+          <q-btn v-if="detalle.estado_viaje === 'facturado' && esGestion" unelevated color="positive" icon="price_check" label="Cliente pagó" @click="abrirPago" />
         </q-card-actions>
       </q-card>
     </q-dialog>
-    <div class="text-center q-mt-md" v-if="hayMas">
-      <q-btn flat color="primary" label="Cargar más" :loading="cargando" @click="cargarMas" />
-    </div>
+
+    <!-- ───────────── 1. SOLICITAR ANTICIPO ───────────── -->
+    <q-dialog v-model="dialogCrear" persistent :maximized="$q.screen.lt.md">
+      <q-card style="width: 560px; max-width: 100vw">
+        <q-card-section class="bg-grey-1"><div class="text-h6">Solicitar anticipo</div></q-card-section>
+        <q-card-section class="q-gutter-md">
+          <q-input v-if="esConductor && misPlacas.length === 1" :model-value="misPlacas[0]" label="Placa" outlined dense readonly />
+          <q-select v-else v-model="formCrear.placa" :options="placasCrear" label="Placa" outlined dense emit-value map-options @update:model-value="cargarConductores" />
+          <q-select
+            v-if="!esConductor"
+            v-model="formCrear.correo_conductor"
+            :options="conductoresOpciones"
+            label="Conductor"
+            outlined
+            dense
+            emit-value
+            map-options
+            :disable="!formCrear.placa"
+            :hint="formCrear.placa && !conductoresOpciones.length ? 'Esta placa no tiene conductor activo' : ''"
+          />
+          <q-select v-model="formCrear.cliente" :options="clientesOpciones" label="Cliente" outlined dense emit-value map-options use-input input-debounce="0" @filter="filtrarClientes" />
+          <CampoDestino v-model="formCrear.destino" />
+          <q-input v-model="formCrear.fecha_inicio" type="date" label="Fecha de inicio" outlined dense stack-label />
+          <CampoNumero v-model="formCrear.valor_anticipo_conductor" label="Anticipo que necesita" moneda />
+          <CampoNumero v-model="formCrear.valor_tonelada_inicial" label="Valor de la tonelada (lo que dijo el cliente)" moneda :minimo-sugerido="1000" hint="Valor completo, ej. 154.000" />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey-8" v-close-popup />
+          <q-btn unelevated color="primary" label="Solicitar" :loading="guardando" @click="guardarCrear" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- ───────────── 2. CONSIGNAR ANTICIPO ───────────── -->
+    <q-dialog v-model="dialogConsignar" persistent>
+      <q-card style="width: 480px; max-width: 95vw">
+        <q-card-section class="bg-grey-1">
+          <div class="text-h6">Consignar anticipo</div>
+          <div class="text-caption">{{ detalle?.consecutivo }} · pidió {{ formatoPeso(detalle?.valor_anticipo_conductor) }}</div>
+        </q-card-section>
+        <q-card-section class="q-gutter-md">
+          <CampoNumero v-model="formConsignar.valor" label="Valor consignado" moneda hint="Puede ser menor a lo que pidió" />
+          <q-input v-model="formConsignar.fecha" type="date" label="Fecha de la consignación" outlined dense stack-label />
+          <CampoArchivos v-model="formConsignar.comprobante" label="Comprobante de la consignación (obligatorio)" multiple accept="image/*, application/pdf" />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey-8" v-close-popup />
+          <q-btn unelevated color="green" label="Registrar consignación" :loading="guardando" @click="guardarConsignar" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- ───────────── 4. CERRAR VIAJE ───────────── -->
+    <q-dialog v-model="dialogCerrar" persistent :maximized="$q.screen.lt.md">
+      <q-card style="width: 640px; max-width: 100vw">
+        <q-card-section class="bg-grey-1 row items-center">
+          <div>
+            <div class="text-h6">Cerrar viaje {{ detalle?.consecutivo }}</div>
+            <div class="text-caption">Anticipo consignado: {{ formatoPeso(detalle?.valor_anticipo_consignado) }}</div>
+          </div>
+          <q-space />
+          <q-btn flat round icon="close" v-close-popup />
+        </q-card-section>
+        <q-card-section class="q-gutter-md">
+          <q-input v-model="formCarga.fecha_fin_viaje" type="date" label="Fecha de fin del viaje" outlined dense stack-label />
+          <CampoNumero v-model="formCarga.kilos_cargue" label="Kilos de cargue" sufijo="kg" hint="Como aparece en el tiquete de báscula, ej. 34.310" />
+          <CampoNumero v-model="formCarga.kilos_descargue" label="Kilos de descargue" sufijo="kg" hint="Tiquete de báscula del descargue" />
+          <CampoNumero v-model="formCarga.valor_tonelada_final" label="Valor de la tonelada final" moneda :minimo-sugerido="1000" hint="Valor completo, ej. 154.000" />
+          <div v-if="valorEstimadoCierre" class="text-body2 text-grey-8">
+            Valor estimado del viaje: <b>{{ formatoPeso(valorEstimadoCierre) }}</b> · Su 10 %: <b>{{ formatoPeso(valorEstimadoCierre * 0.1) }}</b>
+          </div>
+
+          <q-separator />
+          <GastosViaje ref="refGastosCierre" v-model="gastosConductor" quien="conductor" titulo="Mis gastos del viaje" :existentes="existentesConductor" />
+
+          <q-separator />
+          <CampoArchivos v-model="formCarga.manifiesto" label="Manifiesto (puede subir varias fotos)" multiple accept="image/*, application/pdf" :link-actual="detalle?.link_manifiesto || ''" />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey-8" v-close-popup />
+          <q-btn unelevated color="orange" label="Cerrar viaje" :loading="guardando" @click="guardarCerrar" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- ───────────── 5. APROBAR ───────────── -->
+    <q-dialog v-model="dialogAprobar" persistent :maximized="$q.screen.lt.md">
+      <q-card style="width: 680px; max-width: 100vw">
+        <q-card-section class="bg-grey-1 row items-center">
+          <div class="text-h6">Aprobar viaje {{ detalle?.consecutivo }}</div>
+          <q-space />
+          <q-btn flat round icon="close" v-close-popup />
+        </q-card-section>
+        <q-card-section class="q-gutter-md">
+          <div class="text-subtitle2 text-grey-8">Revise y corrija lo del conductor si hace falta</div>
+          <q-input v-model="formCarga.fecha_fin_viaje" type="date" label="Fecha de fin" outlined dense stack-label />
+          <CampoNumero v-model="formCarga.kilos_cargue" label="Kilos de cargue" sufijo="kg" />
+          <CampoNumero v-model="formCarga.kilos_descargue" label="Kilos de descargue" sufijo="kg" />
+          <CampoNumero v-model="formCarga.valor_tonelada_final" label="Valor de la tonelada final" moneda :minimo-sugerido="1000" />
+          <GastosViaje v-model="gastosConductor" quien="conductor" titulo="Gastos del conductor" :existentes="existentesConductor" :exigir-soporte="false" />
+
+          <q-separator spaced />
+          <div class="text-subtitle2 text-grey-8">Lo del propietario</div>
+          <CampoNumero v-model="formAprobar.valor_anticipo_cliente" label="Anticipo que pagó el cliente" moneda hint="0 si el cliente no dio anticipo" />
+          <GastosViaje ref="refGastosPropietario" v-model="gastosPropietario" quien="propietario" titulo="Gastos del propietario" :existentes="existentesPropietario" />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey-8" v-close-popup />
+          <q-btn unelevated color="blue" label="Aprobar" :loading="guardando" @click="guardarAprobar" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- ───────────── 6. FACTURAR ───────────── -->
+    <q-dialog v-model="dialogFacturar" persistent>
+      <q-card style="width: 480px; max-width: 95vw">
+        <q-card-section class="bg-grey-1">
+          <div class="text-h6">Facturar {{ detalle?.consecutivo }}</div>
+          <div class="text-caption">Valor estimado: {{ formatoPeso(detalle?.valor_viaje_estimado) }}</div>
+        </q-card-section>
+        <q-card-section class="q-gutter-md">
+          <CampoNumero v-model="formFacturar.valor_viaje_real" label="Valor facturado al cliente" moneda hint="El 10 % del conductor y las retenciones se recalculan con este valor" />
+          <q-input v-model.trim="formFacturar.num_factura_cliente" label="Número de factura" outlined dense />
+          <q-input v-model.trim="formFacturar.notas_facturacion" label="Notas (opcional)" type="textarea" autogrow outlined dense />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey-8" v-close-popup />
+          <q-btn unelevated color="purple" label="Facturar" :loading="guardando" @click="guardarFacturar" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- ───────────── 7. PAGO DEL CLIENTE ───────────── -->
+    <q-dialog v-model="dialogPago" persistent>
+      <q-card style="width: 420px; max-width: 95vw">
+        <q-card-section class="bg-grey-1">
+          <div class="text-h6">Pago del cliente</div>
+          <div class="text-caption">{{ detalle?.cliente_nombre }} · saldo {{ formatoPeso(detalle?.saldo_pendiente_cliente_real) }}</div>
+        </q-card-section>
+        <q-card-section>
+          <q-input v-model="formPago.fecha" type="date" label="Fecha del pago" outlined dense stack-label />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey-8" v-close-popup />
+          <q-btn unelevated color="positive" label="Registrar pago" :loading="guardando" @click="guardarPago" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- ───────────── EDITAR (admin) ───────────── -->
+    <q-dialog v-model="dialogEditar" persistent :maximized="$q.screen.lt.md">
+      <q-card style="width: 680px; max-width: 100vw">
+        <q-card-section class="bg-grey-1 row items-center">
+          <div>
+            <div class="text-h6">Editar {{ detalle?.consecutivo }}</div>
+            <div class="text-caption">Se recalcula todo al guardar</div>
+          </div>
+          <q-space />
+          <q-btn flat round icon="close" v-close-popup />
+        </q-card-section>
+        <q-card-section class="q-gutter-md">
+          <q-select v-model="formEditar.cliente" :options="clientesOpciones" label="Cliente" outlined dense emit-value map-options use-input input-debounce="0" @filter="filtrarClientes" />
+          <CampoDestino v-model="formEditar.destino" />
+          <q-input v-model="formEditar.fecha_inicio" type="date" label="Fecha de inicio" outlined dense stack-label />
+          <CampoNumero v-model="formEditar.valor_anticipo_conductor" label="Anticipo solicitado" moneda />
+          <CampoNumero v-model="formEditar.valor_tonelada_inicial" label="Valor tonelada inicial" moneda :minimo-sugerido="1000" />
+          <CampoNumero v-if="detalle?.estado_viaje !== 'solicitado'" v-model="formEditar.valor_anticipo_consignado" label="Anticipo consignado" moneda />
+
+          <template v-if="['completado', 'aprobado'].includes(detalle?.estado_viaje)">
+            <q-separator spaced />
+            <q-input v-model="formCarga.fecha_fin_viaje" type="date" label="Fecha de fin" outlined dense stack-label />
+            <CampoNumero v-model="formCarga.kilos_cargue" label="Kilos de cargue" sufijo="kg" />
+            <CampoNumero v-model="formCarga.kilos_descargue" label="Kilos de descargue" sufijo="kg" />
+            <CampoNumero v-model="formCarga.valor_tonelada_final" label="Valor tonelada final" moneda :minimo-sugerido="1000" />
+            <GastosViaje v-model="gastosConductor" quien="conductor" titulo="Gastos del conductor" :existentes="existentesConductor" :exigir-soporte="false" />
+          </template>
+
+          <template v-if="detalle?.estado_viaje === 'aprobado'">
+            <q-separator spaced />
+            <CampoNumero v-model="formAprobar.valor_anticipo_cliente" label="Anticipo del cliente" moneda />
+            <GastosViaje v-model="gastosPropietario" quien="propietario" titulo="Gastos del propietario" :existentes="existentesPropietario" :exigir-soporte="false" />
+          </template>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey-8" v-close-popup />
+          <q-btn unelevated color="primary" label="Guardar cambios" :loading="guardando" @click="guardarEditar" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- ───────────── LEGALIZAR FACTURA DE UN GASTO ───────────── -->
+    <q-dialog v-model="dialogLegalizar">
+      <q-card style="width: 380px; max-width: 95vw">
+        <q-card-section class="text-h6">Legalizar factura</q-card-section>
+        <q-card-section>
+          <div class="text-caption q-mb-sm">{{ gastoLegalizar?.tipo_gasto }} · {{ gastoLegalizar?.quien }} · {{ formatoPeso(gastoLegalizar?.valor) }}</div>
+          <q-input v-model.trim="numeroFacturaGasto" label="Número de factura electrónica" outlined dense />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey-8" v-close-popup />
+          <q-btn unelevated color="primary" label="Legalizar" :loading="guardando" @click="guardarLegalizar" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
   </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted, computed, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, h } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
 import { useStoreViajes } from '../stores/viajes'
 import { useStoreUsuarios } from '../stores/usuarios'
-import { useQuasar } from 'quasar'
-import { useStoreClientes } from '../stores/clientes'
 import { useStoreVehiculos } from '../stores/vehiculos'
-import CampoGasto from 'components/CampoGasto.vue'
-import { TIPOS_FILTRO, CONFIG_FILTROS } from '../composables/filtrosviajes'
-import { useDriveVisor } from '../composables/useDriveVisor'
-import DriveVisor from 'src/components/VisorDrive.vue'
+import { useVisorArchivos } from '../composables/useVisorArchivos'
+import CampoArchivos from 'components/CampoArchivos.vue'
+import CampoNumero from 'components/viajes/CampoNumero.vue'
+import CampoDestino from 'components/CampoDestino.vue'
+import GastosViaje, { agregarGastosAFormData, gastosDesdeLista, existentesDesdeLista } from 'components/viajes/GastosViaje.vue'
+import { formatoPeso, formatoKilos, formatoMiles, formatoFecha, hoyISO } from '../utils/formato'
+import { soloCiudad } from '../composables/useCiudades'
 
-const {
-  dialogAbierto,
-  archivos,
-  cargando: cargandoVisor,
-  titulo: tituloVisor,
-  error: errorVisor,
-  abrirVisor,
-  urlArchivo,
-  esImagen,
-  esPdf,
-} = useDriveVisor()
+defineOptions({ name: 'ViajesPage' })
 
+const $q = useQuasar()
 const useViaje = useStoreViajes()
 const useUsuario = useStoreUsuarios()
-const $q = useQuasar()
-
-const paginaActual = ref(1)
-const hayMas = ref(false)
-
-const dense = ref(false)
-const cargando = ref(false)
-const viajes = ref([])
-const todosLosViajes = ref([])
-const useCliente = useStoreClientes()
-const clientesOptions = ref([])
-
 const useVehiculo = useStoreVehiculos()
-const placasOptions = ref([])
 
-const anticipoFormatted = ref('')
-const toneladaFormatted = ref('')
-const toneladaFinalFormatted = ref('')
-const anticipoclienteFormatted = ref('')
-const valorviajerealFormatted = ref('')
+// Visor de archivos (con pellizco), montado una sola vez en MainLayout
+const { abrirArchivos: abrirVisor } = useVisorArchivos()
 
-const mostrarDetalles = ref(false)
-const detalleViaje = ref(null)
+// ── Componentes pequeños de la vista ──
 
-const dialogCrear = ref(false)
-const dialogCerrarConductor = ref(false)
-const dialogAprobarPropietario = ref(false)
-const dialogFacturar = ref(false)
+const Fila = (props) =>
+  h('div', { class: 'detalle-fila' }, [
+    h('span', { class: 'detalle-label' }, props.etiqueta),
+    h('span', { class: ['detalle-valor', props.clase] }, props.valor === '' || props.valor === undefined || props.valor === null ? '—' : props.valor),
+  ])
+Fila.props = ['etiqueta', 'valor', 'clase']
 
-const perfilUsuario = computed(() => useUsuario.perfile)
-
-async function cargarMas() {
-  paginaActual.value++
-  await cargarViajes()
+const NOMBRE_TIPO = {
+  peajes: 'Peajes', lavadas: 'Lavadas', parqueadero: 'Parqueadero', engrase: 'Engrase', fumigacion: 'Fumigación',
+  cargue: 'Cargue', descargue: 'Descargue', comision: 'Comisión', otro: 'Otro',
 }
+const ListaGastos = (props, { emit }) =>
+  h(
+    'div',
+    { class: 'lista-gastos q-mb-sm' },
+    props.gastos.length
+      ? props.gastos.map((g) =>
+          h('div', { class: 'row items-center q-py-xs' }, [
+            h('div', { class: 'col' }, [
+              h('div', { class: 'text-body2' }, `${NOMBRE_TIPO[g.tipo_gasto] || g.tipo_gasto}${g.descripcion ? ` — ${g.descripcion}` : ''}`),
+              h(
+                'div',
+                { class: 'text-caption text-grey-7' },
+                `${g.tipo_factura === 'recibo_caja' ? 'Recibo de caja' : 'Factura electrónica'}${g.estado_factura === 'legalizado' ? ` · legalizada ${g.numero_factura || ''}` : ''}`
+              ),
+            ]),
+            h('div', { class: 'text-body2 text-weight-medium q-mr-sm' }, formatoPeso(g.valor)),
+            g.link_soporte
+              ? h('button', { class: 'btn-mini', onClick: () => emit('ver', g.link_soporte, `Soportes ${g.quien}`) }, 'Ver')
+              : null,
+            props.puedeLegalizar && g.tipo_factura === 'factura_electronica' && g.estado_factura !== 'legalizado'
+              ? h('button', { class: 'btn-mini q-ml-xs', onClick: () => emit('legalizar', g) }, 'Legalizar')
+              : null,
+          ])
+        )
+      : [h('div', { class: 'text-caption text-grey-6' }, 'Sin gastos')]
+  )
+ListaGastos.props = ['gastos', 'puedeLegalizar']
+ListaGastos.emits = ['ver', 'legalizar']
 
-const tipoLista = ref(TIPOS_FILTRO.TODOS)
-const ordenActual = ref('desc')
-const valorFiltroTexto = ref(null)
+// ── Perfil ──
 
-const filtrosConfig = computed(() => CONFIG_FILTROS)
-const filtroActual = computed(() => CONFIG_FILTROS[tipoLista.value])
+const esAdmin = computed(() => useUsuario.perfile === 'administrador')
+const esConductor = computed(() => useUsuario.perfile === 'conductor')
+const esGestion = computed(() => ['administrador', 'propietario'].includes(useUsuario.perfile))
+const misPlacas = computed(() =>
+  String(useUsuario.user?.placa_asignada || '')
+    .split(',')
+    .map((p) => p.trim().toUpperCase())
+    .filter(Boolean),
+)
 
-const formularioCrear = ref({
-  placa: '',
-  cliente: '',
-  destino: '',
-  fecha_inicio: '',
-  valor_anticipo_conductor: '',
-  valor_tonelada_inicial: '',
-})
+// ── Estados ──
 
-const formularioConductor = ref({
-  fecha_fin_viaje: '',
-  toneladas_inicio: '',
-  toneladas_descargue: '',
-  valor_tonelada_final: '',
-  peajes_conductor: 0,
-  tipo_factura_peajes_conductor: '',
-  peajes_conductor_archivos: null,
-  lavadas_conductor: 0,
-  tipo_factura_lavadas_conductor: '',
-  lavadas_conductor_archivos: null,
-  parqueadero_conductor: 0,
-  tipo_factura_parqueadero_conductor: '',
-  parqueadero_conductor_archivos: null,
-  engrase_conductor: 0,
-  tipo_factura_engrase_conductor: '',
-  engrase_conductor_archivos: null,
-  fumigacion_conductor: 0,
-  tipo_factura_fumigacion_conductor: '',
-  fumigacion_conductor_archivos: null,
-  cargue_conductor: 0,
-  tipo_factura_cargue_conductor: '',
-  cargue_conductor_archivos: null,
-  descargue_conductor: 0,
-  tipo_factura_descargue_conductor: '',
-  descargue_conductor_archivos: null,
-  comision_conductor: 0,
-  tipo_factura_comision_conductor: '',
-  comision_conductor_archivos: null,
-  otro_conductor: 0,
-  tipo_factura_otro_conductor: '',
-  otro_conductor_archivos: null,
-  manifiesto: null,
-})
-const formularioPropietario = ref({
-  valor_anticipo_cliente: '',
-  peajes_propietario: '',
-  peajes_propietario_archivos: null,
-})
+const ESTADOS = [
+  { valor: 'solicitado', etiqueta: 'Solicitado', color: 'grey-7' },
+  { valor: 'anticipo_consignado', etiqueta: 'Consignado', color: 'teal' },
+  { valor: 'completado', etiqueta: 'Por aprobar', color: 'orange' },
+  { valor: 'aprobado', etiqueta: 'Aprobado', color: 'blue' },
+  { valor: 'facturado', etiqueta: 'Facturado', color: 'purple' },
+  { valor: 'pagado', etiqueta: 'Pagado', color: 'positive' },
+]
+const nombreEstado = (e) => ESTADOS.find((x) => x.valor === e)?.etiqueta || e
+const colorEstado = (e) => ESTADOS.find((x) => x.valor === e)?.color || 'grey'
 
-const formularioFacturar = ref({
-  valor_viaje_real: '',
-  notas_facturacion: '',
-  num_factura_cliente: '',
-})
-
-// ── Helpers UI ──
-function colorEstado(estado) {
-  const mapa = {
-    solicitado: 'green',
-    completado: 'orange',
-    aprobado: 'blue',
-    facturado: 'purple',
+/** Qué falta en el viaje, dicho para quien lo está viendo */
+function siguientePaso(v) {
+  if (!v) return ''
+  const preop = v.estado_preoperacional === 'realizado'
+  switch (v.estado_viaje) {
+    case 'solicitado':
+      return esGestion.value ? 'Falta consignar el anticipo' : 'Esperando la consignación'
+    case 'anticipo_consignado':
+      return preop ? 'Listo para cerrar' : 'Falta el preoperacional'
+    case 'completado':
+      return esGestion.value ? 'Por aprobar' : 'En revisión'
+    case 'aprobado':
+      return esGestion.value ? 'Por facturar' : ''
+    case 'facturado':
+      return esGestion.value ? 'Por cobrar al cliente' : ''
+    default:
+      return ''
   }
-  return mapa[estado] || 'grey'
 }
 
-function mostrarMensajeError(mensaje) {
-  $q.notify({
-    type: 'negative',
-    message: mensaje,
-    position: 'bottom-right',
-  })
-}
+const claseSigno = (n) => (Number(n) > 0 ? 'text-positive' : Number(n) < 0 ? 'text-negative' : '')
 
-const opcionesOrdenamiento = computed(() => {
-  if (tipoLista.value === 'todos') return []
-  return [
-    { label: filtroActual.value.etiquetaDesc, value: 'desc' },
-    { label: filtroActual.value.etiquetaAsc, value: 'asc' },
-  ]
-})
+// ── Lista ──
 
-const opcionesFiltroTexto = computed(() => {
-  return filtroActual.value?.esFiltroTexto ? filtroActual.value.opcionesFiltro || [] : []
-})
+const viajes = ref([])
+const conteo = ref({})
+const pagina = ref(1)
+const hayMas = ref(false)
+const cargandoLista = ref(false)
+const filtroEstado = ref('')
+const filtroPlaca = ref(null)
+const vehiculos = ref([])
 
-function obtenerEtiquetaFiltroTexto(valor) {
-  if (filtroActual.value?.esFiltroTexto && filtroActual.value.opcionesFiltro) {
-    const opcion = filtroActual.value.opcionesFiltro.find((o) => o.valor === valor)
-    return opcion ? opcion.etiqueta : valor
-  }
-  return valor
-}
+const opcionesEstado = computed(() => [
+  { valor: '', etiqueta: 'Todos', cantidad: Object.values(conteo.value).reduce((a, b) => a + b, 0) },
+  ...ESTADOS.map((e) => ({ ...e, cantidad: conteo.value[e.valor] || 0 })),
+])
 
-function actualizarValorFiltro(nuevoValor) {
-  valorFiltroTexto.value = nuevoValor
-  cargarViajes()
-}
-
-function cargarListaPor(tipo) {
-  tipoLista.value = tipo
-  ordenActual.value = 'desc'
-  const filtro = CONFIG_FILTROS[tipo]
-  valorFiltroTexto.value = filtro.esFiltroTexto ? filtro.opcionesFiltro[0].valor : null
-  cargarViajes()
-}
-
-const conteoEstados = computed(() => {
-  const conteo = { solicitado: 0, completado: 0, aprobado: 0, facturado: 0 }
-  todosLosViajes.value.forEach((v) => {
-    if (conteo[v.estado_viaje] !== undefined) conteo[v.estado_viaje]++
-  })
-  return conteo
-})
+const placasFiltro = computed(() => vehiculos.value.map((v) => ({ label: v.placa, value: v.placa })))
 
 async function cargarViajes() {
+  cargandoLista.value = true
   try {
-    let response = []
-    let hayMasData = false
-
-    if (perfilUsuario.value === 'administrador') {
-      if (tipoLista.value === TIPOS_FILTRO.TODOS) {
-        const res = await useViaje.obtenerViajes(paginaActual.value)
-        response = res.datos
-        hayMasData = res.hayMas
-      } else if (filtroActual.value.esFiltroTexto) {
-        response = await useViaje.obtenerViajesFiltrados(
-          filtroActual.value.campoDatos,
-          valorFiltroTexto.value,
-        )
-      } else {
-        response = await useViaje.obtenerViajesOrdenados(
-          filtroActual.value.campoOrden,
-          ordenActual.value,
-        )
-      }
-    } else {
-      const placasUsuario = useUsuario.user?.placa_asignada?.split(',').map((p) => p.trim()) || []
-      let todosLosViajes = []
-      for (const placa of placasUsuario) {
-        const data = await useViaje.obtenerResumenPorPlaca(placa)
-        const lista = data?.resumen?.total?.consecutivos || []
-        todosLosViajes.push(...lista)
-      }
-      response = todosLosViajes
-      if (filtroActual.value?.esFiltroTexto) {
-        response = response.filter((item) => {
-          const valor = item[filtroActual.value.campoDatos]
-          return String(valor).toLowerCase().includes(String(valorFiltroTexto.value).toLowerCase())
-        })
-      } else if (tipoLista.value !== TIPOS_FILTRO.TODOS) {
-        const campo = filtroActual.value.campoOrden
-        response.sort((a, b) => {
-          const valorA = parseFloat(a[campo]) || 0
-          const valorB = parseFloat(b[campo]) || 0
-          return ordenActual.value === 'desc' ? valorB - valorA : valorA - valorB
-        })
-      }
-    }
-
-    hayMas.value = hayMasData
-
-    if (Array.isArray(response)) {
-      const nuevos = response.map((item) => {
-        const result = {
-          consecutivo: item.consecutivo || '',
-          placa: item.placa || '',
-          cliente: item.cliente || '',
-          destino: item.destino || '',
-          fecha_inicio: item.fecha_inicio || '',
-          estado_viaje: item.estado_viaje || '',
-        }
-        const campoDatos = filtroActual.value?.campoDatos
-        if (campoDatos && item[campoDatos] !== undefined) {
-          result.valorFiltro = item[campoDatos]
-        }
-        return result
-      })
-
-      if (paginaActual.value === 1) {
-        viajes.value = nuevos
-      } else {
-        viajes.value = [...viajes.value, ...nuevos]
-      }
-    } else {
-      viajes.value = []
-    }
-  } catch (error) {
-    console.error(`Error al cargar viajes por ${tipoLista.value}:`, error)
-    viajes.value = []
+    const r = await useViaje.listarViajes({ estado: filtroEstado.value, placa: filtroPlaca.value || '', pagina: pagina.value })
+    viajes.value = pagina.value === 1 ? r.datos : [...viajes.value, ...r.datos]
+    hayMas.value = r.hayMas
+    conteo.value = r.conteo || {}
+  } finally {
+    cargandoLista.value = false
   }
 }
 
-watch([tipoLista, valorFiltroTexto], () => {
-  paginaActual.value = 1
-  cargarViajes() // o cargarCombustibles()
+function recargar() {
+  pagina.value = 1
+  return cargarViajes()
+}
+
+function cambiarEstado(valor) {
+  filtroEstado.value = valor
+  recargar()
+}
+
+function cargarMas() {
+  pagina.value++
+  cargarViajes()
+}
+
+// ── Detalle ──
+
+const detalle = ref(null)
+const mostrarDetalles = ref(false)
+const verGastos = ref('')
+
+async function verDetalles(consecutivo) {
+  const data = await useViaje.obtenerdatodeviaje(consecutivo)
+  if (!data) return
+  detalle.value = data
+  verGastos.value = ''
+  mostrarDetalles.value = true
+}
+
+const gastosDe = (quien) => (detalle.value?.gastos || []).filter((g) => g.quien === quien)
+const existentesConductor = computed(() => existentesDesdeLista(detalle.value?.gastos, 'conductor'))
+const existentesPropietario = computed(() => existentesDesdeLista(detalle.value?.gastos, 'propietario'))
+
+const puedeCerrar = computed(() => {
+  const v = detalle.value
+  if (!v || v.estado_viaje !== 'anticipo_consignado' || v.estado_preoperacional !== 'realizado') return false
+  return esGestion.value || v.correo_usuario === useUsuario.user?.email
 })
 
-// ── Ver detalles ──
-async function verDetalles(consecutivo) {
+const puedeEditar = computed(
+  () => detalle.value && !['facturado', 'pagado'].includes(detalle.value.estado_viaje) && detalle.value.liquidado !== 'si',
+)
+
+/** Después de una acción: refresca la lista y el detalle */
+async function despuesDeGuardar(consecutivo) {
+  await recargar()
+  await verDetalles(consecutivo)
+}
+
+const guardando = ref(false)
+
+async function ejecutar(fn) {
+  guardando.value = true
   try {
-    const data = await useViaje.obtenerdatodeviaje(consecutivo)
-    if (data) {
-      detalleViaje.value = data
-      mostrarDetalles.value = true
-    }
-  } catch (e) {
-    console.error(e)
+    await fn()
+    return true
+  } catch (error) {
+    $q.notify({ type: 'negative', message: error.message, position: 'bottom', timeout: 5000 })
+    return false
+  } finally {
+    guardando.value = false
   }
 }
 
-// ── Crear ──
+const avisar = (mensaje) => {
+  $q.notify({ type: 'warning', message: mensaje, position: 'bottom' })
+  return false
+}
+
+// ── Clientes y conductores ──
+
+const clientes = ref([])
+const clientesOpciones = ref([])
+const conductoresOpciones = ref([])
+
+function filtrarClientes(texto, actualizar) {
+  actualizar(() => {
+    const t = texto.toLowerCase()
+    clientesOpciones.value = clientes.value.filter((c) => c.label.toLowerCase().includes(t))
+  })
+}
+
+async function cargarClientes() {
+  const lista = await useViaje.obtenerClientesOpciones()
+  clientes.value = lista.map((c) => ({ label: c.empresa, value: c.codigo }))
+  clientesOpciones.value = clientes.value
+}
+
+async function cargarConductores() {
+  formCrear.value.correo_conductor = null
+  conductoresOpciones.value = []
+  const placa = formCrear.value.placa
+  if (!placa || esConductor.value) return
+  const lista = esAdmin.value
+    ? await useUsuario.listarUsuario()
+    : await useUsuario.obtenerUsuariosPorPropietario(useUsuario.user?.email)
+  conductoresOpciones.value = (Array.isArray(lista) ? lista : [])
+    .filter(
+      (u) =>
+        u.perfil === 'conductor' &&
+        String(u.estado || '').toLowerCase() === 'activo' &&
+        String(u.placa_asignada || '').toUpperCase().split(',').map((p) => p.trim()).includes(placa),
+    )
+    .map((u) => ({ label: u.nombre, value: u.email }))
+  if (conductoresOpciones.value.length === 1) formCrear.value.correo_conductor = conductoresOpciones.value[0].value
+}
+
+// ─────────────────────────────────────────────────────────────
+// 1. Solicitar anticipo
+// ─────────────────────────────────────────────────────────────
+
+const dialogCrear = ref(false)
+const formCrear = ref({})
+const placasCrear = computed(() => {
+  const placas = esConductor.value ? misPlacas.value : vehiculos.value.map((v) => v.placa)
+  return placas.map((p) => ({ label: p, value: p }))
+})
+
 function abrirCrear() {
-  formularioCrear.value = {
-    placa: '',
-    cliente: '',
+  formCrear.value = {
+    placa: esConductor.value && misPlacas.value.length === 1 ? misPlacas.value[0] : null,
+    correo_conductor: null,
+    cliente: null,
     destino: '',
-    fecha_inicio: '',
-    valor_anticipo_conductor: '',
-    valor_tonelada_inicial: '',
+    fecha_inicio: hoyISO(),
+    valor_anticipo_conductor: null,
+    valor_tonelada_inicial: null,
   }
+  conductoresOpciones.value = []
   dialogCrear.value = true
 }
 
 async function guardarCrear() {
-  const { cliente, destino, fecha_inicio, valor_anticipo_conductor, valor_tonelada_inicial } =
-    formularioCrear.value
-  if (
-    !cliente ||
-    !destino ||
-    !fecha_inicio ||
-    !valor_anticipo_conductor ||
-    !valor_tonelada_inicial
-  ) {
-    mostrarMensajeError('Complete todos los campos')
-    return
-  }
-  cargando.value = true
-  try {
-    const payload = { ...formularioCrear.value }
-    if (perfilUsuario.value === 'conductor') delete payload.placa
-    await useViaje.postViaje(payload)
-    // mostrarMensajeExito('Viaje creado correctamente')
+  const f = formCrear.value
+  if (!f.placa) return avisar('Seleccione la placa')
+  if (!esConductor.value && !f.correo_conductor) return avisar('Seleccione el conductor')
+  if (!f.cliente) return avisar('Seleccione el cliente')
+  if (!f.destino) return avisar('Elija la ciudad de destino')
+  if (!f.fecha_inicio) return avisar('Seleccione la fecha de inicio')
+  if (!(f.valor_anticipo_conductor > 0)) return avisar('Escriba el valor del anticipo')
+  if (!(f.valor_tonelada_inicial >= 1000)) return avisar('Escriba el valor completo de la tonelada, ej. 154.000')
+
+  const ok = await ejecutar(async () => {
+    const r = await useViaje.postViaje(f)
     dialogCrear.value = false
-    await cargarViajes()
-  } catch (e) {
-    console.error('Error completo:', e)
-
-    mostrarMensajeError(e.response?.data?.mensaje || e.message || 'Error al crear el viaje')
-  } finally {
-    cargando.value = false
-  }
+    await recargar()
+    if (r?.consecutivo) await verDetalles(r.consecutivo)
+  })
+  return ok
 }
 
-// ── Cerrar conductor ──
-function abrirCerrarConductor() {
-  mostrarDetalles.value = false
-  formularioConductor.value = {
-    fecha_fin_viaje: '',
-    toneladas_inicio: '',
-    toneladas_descargue: '',
-    valor_tonelada_final: '',
-    peajes_conductor: '',
-    tipo_factura_peajes_conductor: '',
-    peajes_conductor_archivos: null,
-    lavadas_conductor: '',
-    tipo_factura_lavadas_conductor: '',
-    lavadas_conductor_archivos: null,
-    comision_conductor: '',
-    manifiesto: null,
-  }
-  dialogCerrarConductor.value = true
+// ─────────────────────────────────────────────────────────────
+// 2. Consignar anticipo
+// ─────────────────────────────────────────────────────────────
+
+const dialogConsignar = ref(false)
+const formConsignar = ref({})
+
+function abrirConsignar() {
+  formConsignar.value = { valor: Number(detalle.value.valor_anticipo_conductor) || null, fecha: hoyISO(), comprobante: [] }
+  dialogConsignar.value = true
 }
 
-async function guardarCerrarConductor() {
-  cargando.value = true
-  try {
-    const formData = new FormData()
-    const f = formularioConductor.value
+async function guardarConsignar() {
+  const f = formConsignar.value
+  if (!(f.valor > 0)) return avisar('Escriba el valor consignado')
+  if (!f.comprobante.length) return avisar('Adjunte el comprobante')
 
-    Object.entries(f).forEach(([key, value]) => {
-      if (value === null || value === undefined || value === '') return
-      if (value instanceof File) {
-        formData.append(key, value)
-      } else {
-        formData.append(key, value)
-      }
-    })
+  const fd = new FormData()
+  fd.append('valor_anticipo_consignado', String(f.valor))
+  fd.append('fecha_consignacion', f.fecha || '')
+  f.comprobante.forEach((a) => fd.append('comprobante', a))
 
-    await useViaje.putCerrarViajeConductor(detalleViaje.value.consecutivo, formData)
-    // mostrarMensajeExito('Viaje cerrado correctamente')
-    dialogCerrarConductor.value = false
-    await cargarViajes()
-  } catch (e) {
-    console.error('Error completo:', e)
-
-    mostrarMensajeError(e.response?.data?.mensaje || e.message || 'Error al cerrar el viaje')
-  } finally {
-    cargando.value = false
-  }
+  const consecutivo = detalle.value.consecutivo
+  await ejecutar(async () => {
+    await useViaje.consignarAnticipo(consecutivo, fd)
+    dialogConsignar.value = false
+    await despuesDeGuardar(consecutivo)
+  })
 }
 
-// ── Aprobar propietario ──
-async function abrirAprobarPropietario() {
-  mostrarDetalles.value = false
-  dialogAprobarPropietario.value = true // ← abrir primero para que monte los componentes
+// ─────────────────────────────────────────────────────────────
+// Datos de carga (se usan en cerrar, aprobar y editar)
+// ─────────────────────────────────────────────────────────────
 
-  const gastos = await useViaje.obtenerGastos(detalleViaje.value.consecutivo)
+const formCarga = ref({})
+const gastosConductor = ref({})
+const gastosPropietario = ref({})
+const refGastosCierre = ref(null)
+const refGastosPropietario = ref(null)
 
-  const getGasto = (tipo, quien) => {
-    const g = gastos.find((g) => g.tipo_gasto === tipo && g.quien === quien)
-    return g ? Number(g.valor) || 0 : 0
+function cargarFormCarga() {
+  const v = detalle.value
+  formCarga.value = {
+    fecha_fin_viaje: v.fecha_fin_viaje || hoyISO(),
+    kilos_cargue: Number(v.kilos_cargue) || null,
+    kilos_descargue: Number(v.kilos_descargue) || null,
+    valor_tonelada_final: Number(v.valor_tonelada_final) || Number(v.valor_tonelada_inicial) || null,
+    manifiesto: [],
   }
-  const getTipoFactura = (tipo, quien) => {
-    const g = gastos.find((g) => g.tipo_gasto === tipo && g.quien === quien)
-    return g ? g.tipo_factura || '' : ''
-  }
-
-  // Esperar a que Vue monte los componentes del dialog
-  await nextTick()
-
-  formularioPropietario.value = {
-    toneladas_inicio: detalleViaje.value.toneladas_inicio || '',
-    toneladas_descargue: detalleViaje.value.toneladas_descargue || '',
-    valor_tonelada_final: detalleViaje.value.valor_tonelada_final || '',
-    // Gastos conductor desde hoja separada
-    peajes_conductor: getGasto('peajes', 'conductor'),
-    tipo_factura_peajes_conductor: getTipoFactura('peajes', 'conductor'),
-    lavadas_conductor: getGasto('lavadas', 'conductor'),
-    tipo_factura_lavadas_conductor: getTipoFactura('lavadas', 'conductor'),
-    parqueadero_conductor: getGasto('parqueadero', 'conductor'),
-    tipo_factura_parqueadero_conductor: getTipoFactura('parqueadero', 'conductor'),
-    engrase_conductor: getGasto('engrase', 'conductor'),
-    tipo_factura_engrase_conductor: getTipoFactura('engrase', 'conductor'),
-    fumigacion_conductor: getGasto('fumigacion', 'conductor'),
-    tipo_factura_fumigacion_conductor: getTipoFactura('fumigacion', 'conductor'),
-    cargue_conductor: getGasto('cargue', 'conductor'),
-    descargue_conductor: getGasto('descargue', 'conductor'),
-    tipo_factura_descargue_conductor: getTipoFactura('descargue', 'conductor'),
-    comision_conductor: getGasto('comision', 'conductor'),
-    tipo_factura_comision_conductor: getTipoFactura('comision', 'conductor'),
-    tipo_factura_cargue_conductor: getTipoFactura('cargue', 'conductor'),
-    otro_conductor: getGasto('otro', 'conductor'),
-    tipo_factura_otro_conductor: getTipoFactura('otro', 'conductor'),
-    // Datos propietario vacíos
-    valor_anticipo_cliente: '',
-    peajes_propietario: 0,
-    peajes_propietario_archivos: null,
-    lavadas_propietario: 0,
-    parqueadero_propietario: 0,
-    engrase_propietario: 0,
-    fumigacion_propietario: 0,
-    cargue_propietario: 0,
-    descargue_propietario: 0,
-    comision_propietario: 0,
-  }
-
-  dialogAprobarPropietario.value = true
+  gastosConductor.value = gastosDesdeLista(v.gastos, 'conductor')
+  gastosPropietario.value = gastosDesdeLista(v.gastos, 'propietario')
 }
 
-async function guardarAprobarPropietario() {
-  cargando.value = true
-  try {
-    const formData = new FormData()
-    const f = formularioPropietario.value
+const valorEstimadoCierre = computed(() => {
+  const kilos = Number(formCarga.value.kilos_descargue) || 0
+  const precio = Number(formCarga.value.valor_tonelada_final) || 0
+  return kilos && precio >= 1000 ? Math.round((kilos / 1000) * precio) : 0
+})
 
-    Object.entries(f).forEach(([key, value]) => {
-      if (value === null || value === undefined || value === '') return
-      formData.append(key, value)
-    })
-
-    await useViaje.putAprobarPropietario(detalleViaje.value.consecutivo, formData)
-    dialogAprobarPropietario.value = false
-    await cargarViajes()
-  } catch (e) {
-    console.error('Error completo:', e)
-
-    mostrarMensajeError(e.response?.data?.mensaje || e.message || 'Error al aprobar el viaje')
-  } finally {
-    cargando.value = false
-  }
+function validarCarga({ obligatorio }) {
+  const f = formCarga.value
+  if (obligatorio && !f.fecha_fin_viaje) return 'Seleccione la fecha de fin'
+  if (obligatorio && !f.kilos_cargue) return 'Escriba los kilos de cargue'
+  if (obligatorio && !f.kilos_descargue) return 'Escriba los kilos de descargue'
+  if (f.kilos_cargue && f.kilos_cargue < 10000) return 'Los kilos de cargue parecen incompletos (ej. 34.310)'
+  if (f.kilos_descargue && f.kilos_descargue < 10000) return 'Los kilos de descargue parecen incompletos (ej. 34.270)'
+  if (obligatorio && !f.valor_tonelada_final) return 'Escriba el valor de la tonelada final'
+  if (f.valor_tonelada_final && f.valor_tonelada_final < 1000) return 'Escriba el valor completo de la tonelada, ej. 154.000'
+  return ''
 }
 
-// ── Facturar ──
+function agregarCarga(fd) {
+  const f = formCarga.value
+  if (f.fecha_fin_viaje) fd.append('fecha_fin_viaje', f.fecha_fin_viaje)
+  if (f.kilos_cargue) fd.append('kilos_cargue', String(f.kilos_cargue))
+  if (f.kilos_descargue) fd.append('kilos_descargue', String(f.kilos_descargue))
+  if (f.valor_tonelada_final) fd.append('valor_tonelada_final', String(f.valor_tonelada_final))
+}
+
+// ─────────────────────────────────────────────────────────────
+// 4. Cerrar viaje
+// ─────────────────────────────────────────────────────────────
+
+const dialogCerrar = ref(false)
+
+function abrirCerrar() {
+  cargarFormCarga()
+  dialogCerrar.value = true
+}
+
+async function guardarCerrar() {
+  const errorCarga = validarCarga({ obligatorio: true })
+  if (errorCarga) return avisar(errorCarga)
+  const errorGastos = refGastosCierre.value?.validar()
+  if (errorGastos) return avisar(errorGastos)
+  if (!formCarga.value.manifiesto.length && !detalle.value.link_manifiesto) return avisar('Adjunte el manifiesto')
+
+  const fd = new FormData()
+  agregarCarga(fd)
+  agregarGastosAFormData(fd, gastosConductor.value, 'conductor')
+  formCarga.value.manifiesto.forEach((a) => fd.append('manifiesto', a))
+
+  const consecutivo = detalle.value.consecutivo
+  await ejecutar(async () => {
+    await useViaje.putCerrarViajeConductor(consecutivo, fd)
+    dialogCerrar.value = false
+    await despuesDeGuardar(consecutivo)
+  })
+}
+
+// ─────────────────────────────────────────────────────────────
+// 5. Aprobar
+// ─────────────────────────────────────────────────────────────
+
+const dialogAprobar = ref(false)
+const formAprobar = ref({})
+
+function abrirAprobar() {
+  cargarFormCarga()
+  formAprobar.value = { valor_anticipo_cliente: Number(detalle.value.valor_anticipo_cliente) || 0 }
+  dialogAprobar.value = true
+}
+
+async function guardarAprobar() {
+  const errorCarga = validarCarga({ obligatorio: false })
+  if (errorCarga) return avisar(errorCarga)
+  const errorGastos = refGastosPropietario.value?.validar()
+  if (errorGastos) return avisar(errorGastos)
+
+  const fd = new FormData()
+  agregarCarga(fd)
+  agregarGastosAFormData(fd, gastosConductor.value, 'conductor')
+  agregarGastosAFormData(fd, gastosPropietario.value, 'propietario')
+  fd.append('valor_anticipo_cliente', String(formAprobar.value.valor_anticipo_cliente || 0))
+
+  const consecutivo = detalle.value.consecutivo
+  await ejecutar(async () => {
+    await useViaje.putAprobarPropietario(consecutivo, fd)
+    dialogAprobar.value = false
+    await despuesDeGuardar(consecutivo)
+  })
+}
+
+// ─────────────────────────────────────────────────────────────
+// 6. Facturar
+// ─────────────────────────────────────────────────────────────
+
+const dialogFacturar = ref(false)
+const formFacturar = ref({})
+
 function abrirFacturar() {
-  mostrarDetalles.value = false
-  formularioFacturar.value = {
-    valor_viaje_real: '',
-    notas_facturacion: '',
+  formFacturar.value = {
+    valor_viaje_real: Number(detalle.value.valor_viaje_estimado) || null,
     num_factura_cliente: '',
+    notas_facturacion: '',
   }
   dialogFacturar.value = true
 }
 
 async function guardarFacturar() {
-  if (!formularioFacturar.value.valor_viaje_real) {
-    mostrarMensajeError('Ingrese el valor real del viaje')
-    return
-  }
-  cargando.value = true
-  try {
-    await useViaje.putFacturarViaje(detalleViaje.value.consecutivo, formularioFacturar.value)
+  const f = formFacturar.value
+  if (!(f.valor_viaje_real > 0)) return avisar('Escriba el valor facturado')
+  if (!f.num_factura_cliente) return avisar('Escriba el número de factura')
+
+  const consecutivo = detalle.value.consecutivo
+  await ejecutar(async () => {
+    await useViaje.putFacturarViaje(consecutivo, f)
     dialogFacturar.value = false
-    await cargarViajes()
-  } catch (e) {
-    console.error('Error completo:', e)
-
-    mostrarMensajeError(e.response?.data?.mensaje || e.message || 'Error al facturar el viaje')
-  } finally {
-    cargando.value = false
-  }
-}
-
-// ── Completar saldo ──
-async function completarSaldo() {
-  cargando.value = true
-  try {
-    await useViaje.putCompletarSaldo(detalleViaje.value.consecutivo)
-    mostrarDetalles.value = false
-    await cargarViajes()
-  } catch (e) {
-    console.error('Error completo:', e)
-
-    mostrarMensajeError(e.response?.data?.mensaje || e.message || 'Error al completar saldo')
-  } finally {
-    cargando.value = false
-  }
-}
-
-async function cargarClientes() {
-  try {
-    const response = await useCliente.obtenerClientes()
-    if (Array.isArray(response)) {
-      clientesOptions.value = response.map((c) => ({
-        label: c.empresa,
-        value: c.codigo,
-      }))
-    }
-  } catch (e) {
-    console.error(e)
-  }
-}
-
-async function cargarPlacas() {
-  try {
-    // Conductor no necesita cargar placas, ya tiene la suya
-    if (perfilUsuario.value === 'conductor') {
-      formularioCrear.value.placa = useUsuario.user?.placa_asignada || ''
-      return
-    }
-
-    const response = await useVehiculo.obtenerVehiculos()
-    if (!Array.isArray(response)) return
-
-    if (perfilUsuario.value === 'administrador') {
-      placasOptions.value = response.map((v) => v.placa)
-    } else if (perfilUsuario.value === 'propietario') {
-      const placasAsignadas =
-        useUsuario.user?.placa_asignada?.split(',').map((p) => p.trim().toUpperCase()) || []
-      placasOptions.value = response
-        .filter((v) => placasAsignadas.includes(v.placa.toUpperCase()))
-        .map((v) => v.placa)
-    }
-  } catch (e) {
-    console.error(e)
-  }
-}
-
-onMounted(async () => {
-  await cargarViajes()
-  await cargarClientes()
-  await cargarPlacas()
-})
-
-function formatearNumero(valor) {
-  if (!valor) return ''
-  const limpio = valor.toString().replace(/\D/g, '')
-  return new Intl.NumberFormat('es-CO').format(limpio)
-}
-
-function formatearAnticipo(val) {
-  anticipoFormatted.value = formatearNumero(val)
-
-  formularioCrear.value.valor_anticipo_conductor = Number(
-    anticipoFormatted.value.replace(/\./g, ''),
-  )
-}
-
-function formatearValorViajeReal(val) {
-  valorviajerealFormatted.value = formatearNumero(val)
-
-  formularioFacturar.value.valor_viaje_real = Number(
-    valorviajerealFormatted.value.replace(/\./g, ''),
-  )
-}
-
-function formatearTonelada(val) {
-  toneladaFormatted.value = formatearNumero(val)
-  formularioCrear.value.valor_tonelada_inicial = Number(toneladaFormatted.value.replace(/\./g, ''))
-}
-
-function formatearToneladaFinal(val) {
-  toneladaFinalFormatted.value = formatearNumero(val)
-
-  formularioConductor.value.valor_tonelada_final = Number(
-    toneladaFinalFormatted.value.replace(/\./g, ''),
-  )
-}
-
-function formatearanticipocliente(val) {
-  anticipoclienteFormatted.value = formatearNumero(val)
-
-  formularioPropietario.value.valor_anticipo_cliente = Number(
-    anticipoclienteFormatted.value.replace(/\./g, ''),
-  )
-}
-
-function obtenerClaseValor(valor, key) {
-  // Destacar ganancia real
-  if (key === 'ganancia_viaje_real') {
-    return 'text-h5 text-weight-bold text-positive'
-  }
-
-  const numero = Number(valor)
-
-  if (!isNaN(numero)) {
-    if (numero < 0) {
-      return 'text-negative text-weight-bold'
-    }
-
-    if (numero > 0) {
-      return 'text-positive'
-    }
-  }
-
-  return ''
-}
-
-function formatearValor(valor, key) {
-  if (valor === null || valor === undefined || valor === '') {
-    return '—'
-  }
-
-  const camposMoneda = [
-    'valor_anticipo_cliente',
-    'saldo_pendiente_cliente_sin_descuento',
-    'saldo_pendiente_cliente_real',
-    'descuento_rete_fuente',
-    'descuento_rete_ica',
-    'total_descuentos_cliente',
-    'valor_viaje_estimado',
-    'valor_viaje_real',
-    'diferencia_facturacion',
-    'diez_pcto',
-    'valor_anticipo_conductor',
-    'saldo_anticipo_conductor',
-    'total_gastos_conductor',
-    'saldo_pendiente_conductor',
-    'total_gastos_propietario',
-    'ganancia_viaje_estimada',
-    'ganancia_viaje_real',
-  ]
-
-  if (camposMoneda.includes(key)) {
-    return Number(valor).toLocaleString('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    })
-  }
-
-  return valor
-}
-
-function formatFecha(fecha) {
-  if (!fecha) return ''
-  return new Date(fecha).toLocaleDateString('es-CO', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
+    await despuesDeGuardar(consecutivo)
   })
 }
 
+// ─────────────────────────────────────────────────────────────
+// 7. Pago del cliente
+// ─────────────────────────────────────────────────────────────
 
-defineOptions({
-  name: 'ViajesPage',
+const dialogPago = ref(false)
+const formPago = ref({})
+
+function abrirPago() {
+  formPago.value = { fecha: hoyISO() }
+  dialogPago.value = true
+}
+
+async function guardarPago() {
+  const consecutivo = detalle.value.consecutivo
+  await ejecutar(async () => {
+    await useViaje.putCompletarSaldo(consecutivo, { fecha_pago_cliente: formPago.value.fecha })
+    dialogPago.value = false
+    await despuesDeGuardar(consecutivo)
+  })
+}
+
+// ─────────────────────────────────────────────────────────────
+// Editar (admin)
+// ─────────────────────────────────────────────────────────────
+
+const dialogEditar = ref(false)
+const formEditar = ref({})
+
+function abrirEditar() {
+  const v = detalle.value
+  formEditar.value = {
+    cliente: v.cliente,
+    destino: v.destino,
+    fecha_inicio: v.fecha_inicio,
+    valor_anticipo_conductor: Number(v.valor_anticipo_conductor) || null,
+    valor_tonelada_inicial: Number(v.valor_tonelada_inicial) || null,
+    valor_anticipo_consignado: Number(v.valor_anticipo_consignado) || null,
+  }
+  cargarFormCarga()
+  formAprobar.value = { valor_anticipo_cliente: Number(v.valor_anticipo_cliente) || 0 }
+  dialogEditar.value = true
+}
+
+async function guardarEditar() {
+  const v = detalle.value
+  const cerrado = ['completado', 'aprobado'].includes(v.estado_viaje)
+  if (cerrado) {
+    const errorCarga = validarCarga({ obligatorio: false })
+    if (errorCarga) return avisar(errorCarga)
+  }
+  const f = formEditar.value
+  if (f.valor_tonelada_inicial && f.valor_tonelada_inicial < 1000) return avisar('Escriba el valor completo de la tonelada inicial')
+
+  const fd = new FormData()
+  Object.entries(f).forEach(([k, valor]) => {
+    if (valor !== null && valor !== undefined && valor !== '') fd.append(k, String(valor))
+  })
+  if (cerrado) {
+    agregarCarga(fd)
+    agregarGastosAFormData(fd, gastosConductor.value, 'conductor')
+  }
+  if (v.estado_viaje === 'aprobado') {
+    agregarGastosAFormData(fd, gastosPropietario.value, 'propietario')
+    fd.append('valor_anticipo_cliente', String(formAprobar.value.valor_anticipo_cliente || 0))
+  }
+
+  await ejecutar(async () => {
+    await useViaje.putViaje(v.consecutivo, fd)
+    dialogEditar.value = false
+    await despuesDeGuardar(v.consecutivo)
+  })
+}
+
+// ─────────────────────────────────────────────────────────────
+// Legalizar factura de un gasto
+// ─────────────────────────────────────────────────────────────
+
+const dialogLegalizar = ref(false)
+const gastoLegalizar = ref(null)
+const numeroFacturaGasto = ref('')
+
+function abrirLegalizar(gasto) {
+  gastoLegalizar.value = gasto
+  numeroFacturaGasto.value = ''
+  dialogLegalizar.value = true
+}
+
+async function guardarLegalizar() {
+  if (!numeroFacturaGasto.value) return avisar('Escriba el número de factura')
+  const g = gastoLegalizar.value
+  const consecutivo = detalle.value.consecutivo
+  await ejecutar(async () => {
+    await useViaje.putLegalizarFactura(consecutivo, {
+      tipo_gasto: g.tipo_gasto,
+      quien: g.quien,
+      numero_factura: numeroFacturaGasto.value,
+    })
+    dialogLegalizar.value = false
+    await verDetalles(consecutivo)
+  })
+}
+
+// ── Inicio ──
+
+const route = useRoute()
+const router = useRouter()
+
+onMounted(async () => {
+  const lista = await useVehiculo.obtenerVehiculos()
+  vehiculos.value = Array.isArray(lista) ? lista : []
+  await Promise.all([cargarViajes(), cargarClientes()])
+
+  // Desde el inicio se llega con ?viaje=V-12: abre ese viaje y limpia la URL
+  const codigo = String(route.query.viaje || '').trim().toUpperCase()
+  if (codigo) {
+    const resto = { ...route.query }
+    delete resto.viaje
+    router.replace({ query: resto })
+    await verDetalles(codigo)
+  }
 })
 </script>
 
 <style scoped>
-
 .filter-bar {
   background: white;
   border-radius: 12px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   padding: 12px;
 }
-
 .filter-scroll {
   overflow-x: auto;
   flex-wrap: nowrap;
   scrollbar-width: none;
-  -ms-overflow-style: none;
 }
 .filter-scroll::-webkit-scrollbar {
   display: none;
 }
-
 .filter-chip {
   border-radius: 999px !important;
   font-size: 13px;
   flex-shrink: 0;
 }
-
-.cliente-card {
-  border-radius: 12px !important;
-  transition: border-color 0.15s;
-}
-.cliente-card:active {
-  opacity: 0.85;
-}
-
-.avatar-chip {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: #eff6ff;
-  color: #1e50a2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 600;
-  flex-shrink: 0;
-  letter-spacing: 0.5px;
-}
-
-.placa-badge-lg {
-  background: #111827;
-  color: white;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  padding: 6px 20px;
-  border-radius: 8px;
-  font-family: monospace;
-}
-
-.detalle-fila {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
-}
-.detalle-fila:last-child {
-  border-bottom: none;
-}
-.detalle-label {
-  font-size: 13px;
-  color: #9CA3AF;
-}
-.detalle-valor {
-  font-size: 13px;
-  font-weight: 500;
-  color: #111827;
-  text-align: right;
-  max-width: 60%;
-}
-
 .viaje-card {
-  border: 1px solid #E5E7EB !important;
+  border: 1px solid #e5e7eb !important;
   border-radius: 12px !important;
-  transition: border-color 0.15s;
 }
 .viaje-card:active {
   opacity: 0.85;
 }
-
-.seccion-titulo {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: #9CA3AF;
-  margin-bottom: 6px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid rgba(0,0,0,0.06);
-}
-
-.ganancia-banner {
-  border-radius: 10px;
-  padding: 12px 16px;
-}
-.ganancia-positiva {
-  background: #F0FDF4;
-  color: #166534;
-}
-.ganancia-negativa {
-  background: #FEF2F2;
-  color: #991b1b;
-}
-
 .placa-badge {
   background: #111827;
   color: white;
@@ -1994,17 +1049,83 @@ defineOptions({
   border-radius: 6px;
   font-family: monospace;
 }
+.placa-badge-lg {
+  background: #111827;
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 6px 16px;
+  border-radius: 8px;
+  font-family: monospace;
+}
+.seccion-titulo {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #9ca3af;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+.ganancia-banner {
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.ganancia-positiva {
+  background: #f0fdf4;
+  color: #166534;
+}
+.ganancia-negativa {
+  background: #fef2f2;
+  color: #991b1b;
+}
+.sticky-header {
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 2;
+}
+.sticky-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+</style>
 
-.metrica-chip {
+<!-- Sin scoped: los usan los componentes funcionales Fila y ListaGastos -->
+<style>
+.detalle-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+.detalle-label {
+  font-size: 13px;
+  color: #6b7280;
+}
+.detalle-valor {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111827;
+  text-align: right;
+  max-width: 60%;
+}
+.lista-gastos {
   background: #f9fafb;
   border-radius: 8px;
-  padding: 8px 10px;
-  min-width: 0;
+  padding: 6px 10px;
 }
-.metrica-chip.rendimiento-malo {
-  background: #fef2f2;
-}
-.metrica-chip.rendimiento-bueno {
-  background: #f0fdf4;
+.btn-mini {
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 6px;
+  font-size: 12px;
+  padding: 2px 8px;
 }
 </style>

@@ -3,322 +3,154 @@ import axios from 'axios'
 import { ref } from 'vue'
 import { Notify } from 'quasar'
 import { useStoreUsuarios } from './usuarios'
+import { mensajeDeError } from '../utils/formato'
 
-export const useStoreVehiculos = defineStore(
-  'Vehiculo',
-  () => {
-    let loading = ref(false)
-    let vehiculos = ref([])
+// Consultas: devuelven datos (o vacío) y avisan si fallan; no lanzan.
+// Acciones (crear, editar, activar): lanzan Error con el mensaje del backend,
+// así el diálogo NO se cierra y el usuario no pierde lo que llenó.
+//
+// Otras pantallas usan: obtenerVehiculos (selects de placa, devuelve arreglo),
+// obtenerResumenPorPlaca y obtenerResumenVehiculo / postResumenVehiculo* (ResumenVehiculosPage).
 
-    const obtenerVehiculos = async () => {
-      const useUsuario = useStoreUsuarios()
-      loading.value = true
-      try {
-        let response = await axios.get(`api/vehiculos/`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener el vehiculo', error)
-        return { resumen: null }
-      } finally {
-        loading.value = false
-      }
+export const useStoreVehiculos = defineStore('Vehiculo', () => {
+  const loading = ref(false)
+
+  const headers = () => ({ 'x-token': useStoreUsuarios().token })
+  const avisarError = (error, porDefecto) =>
+    Notify.create({ type: 'negative', message: mensajeDeError(error, porDefecto), position: 'bottom' })
+
+  async function accion(fn, porDefecto) {
+    loading.value = true
+    try {
+      const { data } = await fn()
+      if (data?.mensaje) Notify.create({ type: 'positive', message: data.mensaje, position: 'bottom' })
+      return data
+    } catch (error) {
+      throw new Error(mensajeDeError(error, porDefecto))
+    } finally {
+      loading.value = false
     }
+  }
 
-    const obtenerResumenPorPlaca = async (placa) => {
-      const useUsuario = useStoreUsuarios()
-      loading.value = true
-      try {
-        let response = await axios.get(`api/vehiculos/resumen-solicitante/placa/${placa}`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener el resumen por placa', error)
-        return { resumen: null }
-      } finally {
-        loading.value = false
-      }
+  // ── Consultas ──
+
+  /**
+   * Vehículos que el usuario puede ver (el backend filtra: admin todos, los demás sus placas).
+   * Cada uno trae soat / tecnico / poliza ('activo' | 'proxima a vencer' | 'vencido' | 'sin fecha')
+   * y dias_soat / dias_tecnico / dias_poliza calculados al consultar.
+   */
+  const obtenerVehiculos = async () => {
+    loading.value = true
+    try {
+      const { data } = await axios.get('api/vehiculos/', { headers: headers() })
+      return Array.isArray(data) ? data : []
+    } catch (error) {
+      avisarError(error, 'No se pudieron cargar los vehículos')
+      return []
+    } finally {
+      loading.value = false
     }
+  }
 
-    const obtenerVehiculosOrdenados = async (tipo = 'fecha', orden = 'desc') => {
-      const useUsuario = useStoreUsuarios()
-
-      loading.value = true
-      try {
-        const response = await axios.get(`api/vehiculos/ordenados`, {
-          params: { tipo, orden },
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-
-        return response.data
-      } catch (err) {
-        console.error(`No se pudo obtener los vehiculos ordenados por ${tipo}:`, err)
-        throw err
-      } finally {
-        loading.value = false
-      }
+  /** Detalle de un vehículo (mismos campos que la lista) */
+  const obtenerdatodevehiculo = async (placa) => {
+    try {
+      const { data } = await axios.get(`api/vehiculos/obtenerdatosvehiculo/${encodeURIComponent(placa)}`, {
+        headers: headers(),
+      })
+      return data
+    } catch (error) {
+      avisarError(error, 'No se pudo abrir el vehículo')
+      return null
     }
+  }
 
-    const obtenerVehiculosFiltrados = async (tipo, valor) => {
-      const useUsuario = useStoreUsuarios()
-      loading.value = true
-      try {
-        const response = await axios.get(`api/vehiculos/filtrados`, {
-          params: { tipo, valor },
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (err) {
-        console.error(`No se pudo obtener los vehiculos filtrados por ${tipo}:`, err)
-        console.error('Detalles del error:', err.response?.data || err.message)
-        throw err
-      } finally {
-        loading.value = false
-      }
+  /** { ok, resumen: { total: { count, consecutivos } }, placas }. Acepta varias placas separadas por coma */
+  const obtenerResumenPorPlaca = async (placa) => {
+    try {
+      const { data } = await axios.get(`api/vehiculos/resumen-solicitante/placa/${encodeURIComponent(placa)}`, {
+        headers: headers(),
+      })
+      return data
+    } catch (error) {
+      avisarError(error, 'No se pudo obtener el resumen del vehículo')
+      return { ok: false, resumen: null }
     }
+  }
 
-    const obtenerdatodevehiculo = async (placa) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        let response = await axios.get(`api/vehiculos/obtenerdatosvehiculo/${placa}`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener los datos del vehiculo', error)
-        return null
-      } finally {
-        loading.value = false
-      }
+  /** Resumen anual de un vehículo: [12 meses + TOTAL] (ResumenVehiculosPage) */
+  const obtenerResumenVehiculo = async (placa, anio) => {
+    try {
+      const { data } = await axios.get(
+        `api/resumenvehiculo/resumen-vehiculo/${encodeURIComponent(placa)}/${encodeURIComponent(anio)}`,
+        { headers: headers() },
+      )
+      return data
+    } catch (error) {
+      avisarError(error, 'No se pudo obtener el resumen del vehículo')
+      return null
     }
+  }
 
-    const obtenerResumenVehiculo = async (placa, anio) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        let response = await axios.get(`api/resumenvehiculo/resumen-vehiculo/${placa}/${anio}`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener los datos del vehiculo', error)
-        return null
-      } finally {
-        loading.value = false
-      }
+  // ── Resúmenes (ResumenVehiculosPage) ──
+  // Se dejan sin lanzar porque esa pantalla no atrapa el error: avisan y devuelven null.
+
+  const generarResumen = async (url, datos, porDefecto) => {
+    loading.value = true
+    try {
+      const { data } = await axios.post(url, datos, { headers: headers() })
+      if (data?.mensaje) Notify.create({ type: 'positive', message: data.mensaje, position: 'bottom' })
+      return data
+    } catch (error) {
+      avisarError(error, porDefecto)
+      return null
+    } finally {
+      loading.value = false
     }
+  }
 
-    const postVehiculo = async (formData) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        loading.value = true
-        const response = await axios.post('api/vehiculos/crear', formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        Notify.create({
-          message: 'vehiculo creado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
+  const postResumenVehiculoMensual = (datos) =>
+    generarResumen('api/resumenvehiculo/resumen-vehiculo/mensual', datos, 'No se pudo generar el resumen mensual')
 
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al registrar vehiculo',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
+  const postResumenVehiculoAnual = (datos) =>
+    generarResumen('api/resumenvehiculo/resumen-vehiculo/anual', datos, 'No se pudo generar el resumen anual')
 
-    const postResumenVehiculoMensual = async (formData) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        loading.value = true
-        const response = await axios.post(
-          'api/resumenvehiculo/resumen-vehiculo/mensual',
-          formData,
-          {
-            headers: {
-                'x-token': useUsuario.token,
-            },
-          },
-        )
-        Notify.create({
-          message: 'Resumen mensual creado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
+  // ── Acciones (lanzan Error) ──
 
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al registrar resumen mensual',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
+  /** formData con los datos y 'archivos'. Responde { mensaje, placa } */
+  const postVehiculo = (formData) =>
+    accion(() => axios.post('api/vehiculos/crear', formData, { headers: headers() }), 'No se pudo crear el vehículo')
 
-    const postResumenVehiculoAnual = async (formData) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        loading.value = true
-        const response = await axios.post('api/resumenvehiculo/resumen-vehiculo/anual', formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
+  /** La placa va en la URL y no se cambia (es la llave de viajes, gastos, etc.) */
+  const putVehiculo = (placa, formData) =>
+    accion(
+      () => axios.put(`api/vehiculos/editar/${encodeURIComponent(placa)}`, formData, { headers: headers() }),
+      'No se pudo editar el vehículo',
+    )
 
-        Notify.create({
-          message: 'Resumen anual creado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
+  const putActivarVehiculo = (placa) =>
+    accion(
+      () => axios.put(`api/vehiculos/activar/${encodeURIComponent(placa)}`, {}, { headers: headers() }),
+      'No se pudo activar el vehículo',
+    )
 
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al registrar resumen anual',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
+  const putDesactivarVehiculo = (placa) =>
+    accion(
+      () => axios.put(`api/vehiculos/desactivar/${encodeURIComponent(placa)}`, {}, { headers: headers() }),
+      'No se pudo desactivar el vehículo',
+    )
 
-    const putVehiculo = async (placa, formData) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        loading.value = true
-        const response = await axios.put(`api/vehiculos/editar/${placa}`, formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-
-        Notify.create({
-          message: 'Vehiculo editado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
-
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al editar vehiculo',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
-
-    const putActivarVehiculo = async (placa, formData) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        loading.value = true
-        const response = await axios.put(`api/vehiculos/activar/${placa}`, formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-
-        Notify.create({
-          message: 'Vehiculo activado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
-
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al activar vehiculo',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
-
-    const putDesactivarVehiculo = async (placa, formData) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        loading.value = true
-        const response = await axios.put(`api/vehiculos/desactivar/${placa}`, formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-
-        Notify.create({
-          message: 'Vehiculo desactivado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
-
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al desactivar vehiculo',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
-
-    return {
-      obtenerdatodevehiculo,
-      obtenerResumenVehiculo,
-      obtenerVehiculos,
-      obtenerResumenPorPlaca,
-      obtenerVehiculosFiltrados,
-      obtenerVehiculosOrdenados,
-      postVehiculo,
-      postResumenVehiculoMensual,
-      postResumenVehiculoAnual,
-      putVehiculo,
-      putActivarVehiculo,
-      putDesactivarVehiculo,
-      loading,
-      vehiculos,
-    }
-  },
-  { persist: true },
-)
+  return {
+    loading,
+    obtenerVehiculos,
+    obtenerdatodevehiculo,
+    obtenerResumenPorPlaca,
+    obtenerResumenVehiculo,
+    postResumenVehiculoMensual,
+    postResumenVehiculoAnual,
+    postVehiculo,
+    putVehiculo,
+    putActivarVehiculo,
+    putDesactivarVehiculo,
+  }
+})

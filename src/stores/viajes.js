@@ -3,416 +3,139 @@ import axios from 'axios'
 import { ref } from 'vue'
 import { Notify } from 'quasar'
 import { useStoreUsuarios } from './usuarios'
+import { mensajeDeError } from '../utils/formato'
 
-export const useStoreViajes = defineStore(
-  'Viaje',
-  () => {
-    let loading = ref(false)
-    let viajes = ref([])
+// Consultas: devuelven datos (o vacío) y no lanzan.
+// Acciones del flujo: lanzan Error con el mensaje del backend, así el diálogo NO se cierra si algo falla.
 
-    const obtenerViajes = async (pagina = 1) => {
-      const useUsuario = useStoreUsuarios()
-      loading.value = true
-      try {
-        const response = await axios.get(`api/viajes/`, {
-          params: { pagina, limite: 50 },
-          headers: { 'x-token': useUsuario.token },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener el viaje', error)
-        return { datos: [], hayMas: false }
-      } finally {
-        loading.value = false
-      }
+export const useStoreViajes = defineStore('Viaje', () => {
+  const loading = ref(false)
+
+  const headers = () => ({ 'x-token': useStoreUsuarios().token })
+
+  const exito = (mensaje) => Notify.create({ type: 'positive', message: mensaje, position: 'bottom' })
+
+  async function accion(fn, porDefecto) {
+    loading.value = true
+    try {
+      const respuesta = await fn()
+      if (respuesta?.data?.mensaje) exito(respuesta.data.mensaje)
+      return respuesta?.data
+    } catch (error) {
+      throw new Error(mensajeDeError(error, porDefecto))
+    } finally {
+      loading.value = false
     }
+  }
 
-    const obtenerResumenPorEmail = async (email) => {
-      const useUsuario = useStoreUsuarios()
-      loading.value = true
-      try {
-        let response = await axios.get(`api/viajes/resumen-solicitante/${email}`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener el resumen por email', error)
-        return { resumen: null }
-      } finally {
-        loading.value = false
-      }
+  // ── Consultas ──
+
+  /** Lista de la pantalla de viajes. Cada perfil recibe lo suyo. */
+  const listarViajes = async ({ estado = '', placa = '', pagina = 1, limite = 100 } = {}) => {
+    loading.value = true
+    try {
+      const { data } = await axios.get('api/viajes/mis-viajes', {
+        params: { estado, placa, pagina, limite },
+        headers: headers(),
+      })
+      return data
+    } catch (error) {
+      Notify.create({ type: 'negative', message: mensajeDeError(error, 'No se pudieron cargar los viajes'), position: 'bottom' })
+      return { datos: [], hayMas: false, conteo: {}, total: 0 }
+    } finally {
+      loading.value = false
     }
+  }
 
-    const obtenerResumenPorPlaca = async (placa) => {
-      const useUsuario = useStoreUsuarios()
-      loading.value = true
-      try {
-        let response = await axios.get(`api/viajes/resumen-solicitante/placa/${placa}`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener el resumen por placa', error)
-        return { resumen: null }
-      } finally {
-        loading.value = false
-      }
+  /** Detalle completo del viaje con sus gastos */
+  const obtenerdatodeviaje = async (consecutivo) => {
+    try {
+      const { data } = await axios.get(`api/viajes/obtenerdatosviajes/${encodeURIComponent(consecutivo)}`, {
+        headers: headers(),
+      })
+      return data
+    } catch (error) {
+      Notify.create({ type: 'negative', message: mensajeDeError(error, 'No se pudo abrir el viaje'), position: 'bottom' })
+      return null
     }
+  }
 
-    const obtenerViajesOrdenados = async (tipo = 'fecha', orden = 'desc') => {
-      const useUsuario = useStoreUsuarios()
-
-      loading.value = true
-      try {
-        const response = await axios.get(`api/viajes/ordenados`, {
-          params: { tipo, orden },
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-
-        return response.data
-      } catch (err) {
-        console.error(`No se pudo obtener los viajes ordenados por ${tipo}:`, err)
-        throw err
-      } finally {
-        loading.value = false
-      }
+  /** Lo usa Preoperacionales: { ok, resumen: { total: { consecutivos } } } */
+  const obtenerResumenPorPlaca = async (placa) => {
+    try {
+      const { data } = await axios.get(`api/viajes/resumen-solicitante/placa/${encodeURIComponent(placa)}`, {
+        headers: headers(),
+      })
+      return data
+    } catch (error) {
+      console.error('No se pudo obtener el resumen por placa', error)
+      return { ok: false, resumen: null }
     }
+  }
 
-    const obtenerViajesFiltrados = async (tipo, valor) => {
-      const useUsuario = useStoreUsuarios()
-
-      loading.value = true
-
-      try {
-        const response = await axios.get(`api/viajes/filtrados`, {
-          params: { tipo, valor },
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-
-        return response.data
-      } catch (err) {
-        console.error(`No se pudo obtener los viajes filtrados por ${tipo}:`, err)
-        console.error('Detalles del error:', err.response?.data || err.message)
-        throw err
-      } finally {
-        loading.value = false
-      }
+  /** Clientes activos { codigo, empresa } para el formulario (también para el conductor) */
+  const obtenerClientesOpciones = async () => {
+    try {
+      const { data } = await axios.get('api/viajes/clientes-opciones', { headers: headers() })
+      return Array.isArray(data) ? data : []
+    } catch (error) {
+      console.error('No se pudieron cargar los clientes', error)
+      return []
     }
+  }
 
-    const facturarCliente = async (codigoCliente) => {
-      const useUsuario = useStoreUsuarios()
-      loading.value = true
-      try {
-        let response = await axios.get(`api/viajes/facturar-cliente/${codigoCliente}`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener la facturando cliente', error)
-        return { resumen: null }
-      } finally {
-        loading.value = false
-      }
+  const obtenerGastos = async (consecutivo) => {
+    try {
+      const { data } = await axios.get(`api/viajes/gastos/${encodeURIComponent(consecutivo)}`, { headers: headers() })
+      return data
+    } catch (error) {
+      console.error('No se pudieron obtener los gastos', error)
+      return []
     }
+  }
 
-    const obtenerGastos = async (consecutivo) => {
-      const useUsuario = useStoreUsuarios()
-      loading.value = true
-      try {
-        let response = await axios.get(`api/viajes/gastos/${consecutivo}`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener los gastos', error)
-        return []
-      } finally {
-        loading.value = false
-      }
-    }
+  // ── Flujo del viaje (lanzan Error) ──
 
-    const obtenerdatodeviaje = async (consecutivo) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        let response = await axios.get(`api/viajes/obtenerdatosviajes/${consecutivo}`, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        return response.data
-      } catch (error) {
-        console.error('No se pudo obtener los datos del viaje', error)
-        return null
-      } finally {
-        loading.value = false
-      }
-    }
+  const postViaje = (datos) => accion(() => axios.post('api/viajes/crear', datos, { headers: headers() }), 'No se pudo crear el viaje')
 
-    const obtenerArchivosCarpeta = async (folderId = null, fileId = null) => {
-      const useUsuario = useStoreUsuarios()
+  const consignarAnticipo = (consecutivo, formData) =>
+    accion(
+      () => axios.put(`api/viajes/consignar-anticipo/${consecutivo}`, formData, { headers: headers() }),
+      'No se pudo registrar la consignación'
+    )
 
-      try {
-        const params = {}
-        if (folderId) params.folderId = folderId
-        if (fileId) params.fileId = fileId
+  const putCerrarViajeConductor = (consecutivo, formData) =>
+    accion(() => axios.put(`api/viajes/cerrar-conductor/${consecutivo}`, formData, { headers: headers() }), 'No se pudo cerrar el viaje')
 
-        const response = await axios.get(`api/drive/drive-archivos`, {
-          params,
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
+  const putAprobarPropietario = (consecutivo, formData) =>
+    accion(() => axios.put(`api/viajes/aprobar-propietario/${consecutivo}`, formData, { headers: headers() }), 'No se pudo aprobar el viaje')
 
-        return response.data
-      } catch (error) {
-        console.error('Error al obtener archivos:', error)
-        return []
-      }
-    }
+  const putFacturarViaje = (consecutivo, datos) =>
+    accion(() => axios.put(`api/viajes/facturar/${consecutivo}`, datos, { headers: headers() }), 'No se pudo facturar el viaje')
 
-    const postViaje = async (formData) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        loading.value = true
-        const response = await axios.post('api/viajes/crear', formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        Notify.create({
-          message: 'viaje creado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
+  const putCompletarSaldo = (consecutivo, datos = {}) =>
+    accion(() => axios.put(`api/viajes/completar-saldo/${consecutivo}`, datos, { headers: headers() }), 'No se pudo registrar el pago')
 
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al crear el viaje',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
+  const putViaje = (consecutivo, formData) =>
+    accion(() => axios.put(`api/viajes/editar/${consecutivo}`, formData, { headers: headers() }), 'No se pudo editar el viaje')
 
-    const putViaje = async (consecutivo, formData) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        loading.value = true
-        const response = await axios.put(`api/viajes/editar/${consecutivo}`, formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
+  const putLegalizarFactura = (consecutivo, datos) =>
+    accion(() => axios.put(`api/viajes/legalizar-factura/${consecutivo}`, datos, { headers: headers() }), 'No se pudo legalizar')
 
-        Notify.create({
-          message: 'Viaje editado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
-
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al editar el viaje',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
-
-    const putCerrarViajeConductor = async (consecutivo, formData) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        loading.value = true
-        const response = await axios.put(`api/viajes/cerrar-conductor/${consecutivo}`, formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        console.log('Respuesta recibida:', response)
-
-        Notify.create({
-          message: 'Viaje cerrado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
-
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al cerrar el viaje',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
-
-    const putAprobarPropietario = async (consecutivo, formData) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        loading.value = true
-        const response = await axios.put(
-          `api/viajes/aprobar-propietario/${consecutivo}`,
-          formData,
-          {
-            headers: {
-              'x-token': useUsuario.token,
-            },
-          },
-        )
-        Notify.create({
-          message: 'Viaje aprobado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
-
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al aprobar por propietario',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
-
-    const putCompletarSaldo = async (consecutivo, formData) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        loading.value = true
-        const response = await axios.put(`api/viajes/completar-saldo/${consecutivo}`, formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-
-        Notify.create({
-          message: 'Saldo del viaje completado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
-
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al completar el saldo del viaje',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
-
-    const putFacturarViaje = async (consecutivo, formData) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        loading.value = true
-        const response = await axios.put(`api/viajes/facturar/${consecutivo}`, formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        Notify.create({
-          message: 'Viaje facturado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
-
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al facturar el viaje',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
-
-    const putLegalizarFactura = async (consecutivo, formData) => {
-      const useUsuario = useStoreUsuarios()
-      try {
-        loading.value = true
-        const response = await axios.put(`api/viajes/legalizar-factura/${consecutivo}`, formData, {
-          headers: {
-            'x-token': useUsuario.token,
-          },
-        })
-        Notify.create({
-          message: 'Viaje legalizado correctamente',
-          color: 'positive',
-          position: 'bottom',
-        })
-
-        return response
-      } catch (error) {
-        Notify.create({
-          type: 'negative',
-          message: error.response?.data?.mensaje || 'Error al legalizar la factura',
-        })
-        loading.value = true
-        console.log(error)
-        return error
-      } finally {
-        loading.value = false
-      }
-    }
-
-    return {
-      obtenerdatodeviaje,
-      obtenerViajes,
-      obtenerResumenPorPlaca,
-      obtenerViajesFiltrados,
-      obtenerViajesOrdenados,
-      facturarCliente,
-      obtenerGastos,
-      obtenerResumenPorEmail,
-      obtenerArchivosCarpeta,
-      postViaje,
-      putViaje,
-      putCerrarViajeConductor,
-      putAprobarPropietario,
-      putCompletarSaldo,
-      putFacturarViaje,
-      putLegalizarFactura,
-      loading,
-      viajes,
-    }
-  },
-  { persist: true },
-)
+  return {
+    loading,
+    listarViajes,
+    obtenerdatodeviaje,
+    obtenerResumenPorPlaca,
+    obtenerGastos,
+    obtenerClientesOpciones,
+    postViaje,
+    consignarAnticipo,
+    putCerrarViajeConductor,
+    putAprobarPropietario,
+    putFacturarViaje,
+    putCompletarSaldo,
+    putViaje,
+    putLegalizarFactura,
+  }
+})

@@ -1,642 +1,367 @@
 <template>
   <q-page padding class="bg-grey-2">
-
-    <!-- Encabezado -->
-    <div class="row items-center q-mb-sm">
-      <span class="text-subtitle1 text-weight-medium">Préstamos</span>
-      <q-badge color="blue-1" text-color="blue-9" class="q-ml-auto" rounded>
-        {{ prestamos.length }}
-      </q-badge>
+    <!-- Filtros por estado -->
+    <div class="filter-bar q-mb-md">
+      <div class="filter-scroll row no-wrap q-gutter-x-sm">
+        <q-chip
+          v-for="e in opcionesEstado"
+          :key="e.valor"
+          clickable
+          :color="filtroEstado === e.valor ? 'primary' : 'grey-2'"
+          :text-color="filtroEstado === e.valor ? 'white' : 'grey-8'"
+          class="filter-chip"
+          @click="cambiarEstado(e.valor)"
+        >
+          {{ e.etiqueta }}
+          <q-badge v-if="e.cantidad" rounded color="white" text-color="grey-9" class="q-ml-xs">{{ e.cantidad }}</q-badge>
+        </q-chip>
+      </div>
+      <div v-if="porDescontar" class="text-caption text-grey-8 q-mt-sm">
+        Por descontar en salario: <b class="text-negative">{{ formatoPeso(porDescontar) }}</b>
+      </div>
     </div>
 
-    <!-- Cards -->
-    <div class="q-gutter-y-sm">
-      <q-card
-        v-for="prestamo in prestamos"
-        :key="prestamo.consecutivo"
-        flat bordered
-        class="prestamo-card cursor-pointer"
-        @click="verDetalles(prestamo.consecutivo)"
-      >
-        <q-card-section class="q-pa-md">
-
-          <div class="row items-center q-mb-sm">
-            <span class="text-caption text-grey-6" style="font-family: monospace;">#{{ prestamo.consecutivo }}</span>
-            <q-space />
-            <q-badge
-              :color="colorEstadoPrestamo(prestamo.estado_prestamo)"
-              text-color="white"
-              rounded
-            >
-              {{ prestamo.estado_prestamo || 'pendiente' }}
-            </q-badge>
-          </div>
-
-          <div class="row q-gutter-sm">
-            <div class="metrica-chip col">
-              <div class="metrica-label">Valor pedido</div>
-              <div class="metrica-valor">{{ formatPeso(prestamo.valor_pedido) }}</div>
-            </div>
-            <div class="metrica-chip col">
-              <div class="metrica-label">Valor prestado</div>
-              <div class="metrica-valor">{{ formatPeso(prestamo.valor_prestado) }}</div>
-            </div>
-          </div>
-
-          <div class="row items-center q-mt-sm" style="border-top: 1px solid rgba(0,0,0,0.06); padding-top: 8px;">
-            <q-icon name="event" size="13px" color="grey-5" class="q-mr-xs" />
-            <span class="text-caption text-grey-5">{{ formatFecha(prestamo.fecha_creacion) }}</span>
-            <q-space />
-            <q-icon name="chevron_right" color="grey-4" size="16px" />
-          </div>
-
-        </q-card-section>
-      </q-card>
+    <div v-if="!prestamos.length && !usePrestamo.loading" class="text-center text-grey-6 q-py-xl">
+      <q-icon name="savings" size="48px" />
+      <div class="q-mt-sm">No hay préstamos</div>
     </div>
 
-    <!-- Dialog detalles -->
-    <q-dialog v-model="mostrarDetalles" persistent>
-      <q-card style="min-width: 350px; max-width: 95vw; width: 500px; border-radius: 16px !important;">
-
-        <q-card-section class="q-pb-sm">
-          <div class="row items-center">
-            <div>
-              <div class="text-subtitle1 text-weight-medium">Detalles del préstamo</div>
-              <div class="text-caption text-grey-6" v-if="detallesPrestamo">
-                #{{ detallesPrestamo.consecutivo }}
-              </div>
-            </div>
-            <q-space />
-            <q-badge
-              v-if="detallesPrestamo"
-              :color="colorEstadoPrestamo(detallesPrestamo.estado_prestamo)"
-              text-color="white"
-              rounded
-            >
-              {{ detallesPrestamo.estado_prestamo || 'pendiente' }}
-            </q-badge>
-          </div>
-        </q-card-section>
-
-        <q-separator />
-
-        <q-card-section class="q-pt-md" v-if="detallesPrestamo" style="max-height: 65vh; overflow-y: auto;">
-
-          <div class="row q-gutter-sm q-mb-md">
-            <div class="metrica-chip col">
-              <div class="metrica-label">Valor pedido</div>
-              <div class="metrica-valor">{{ formatPeso(detallesPrestamo.valor_pedido) }}</div>
-            </div>
-            <div class="metrica-chip col">
-              <div class="metrica-label">Valor prestado</div>
-              <div class="metrica-valor">{{ formatPeso(detallesPrestamo.valor_prestado) }}</div>
-            </div>
-          </div>
-
-          <div class="seccion-titulo">Información</div>
-          <div class="detalle-fila">
-            <span class="detalle-label">Fecha de solicitud</span>
-            <span class="detalle-valor">{{ formatFecha(detallesPrestamo.fecha_creacion) }}</span>
-          </div>
-          <div class="detalle-fila">
-            <span class="detalle-label">Estado</span>
-            <q-badge
-              :color="colorEstadoPrestamo(detallesPrestamo.estado_prestamo)"
-              text-color="white"
-              rounded
-            >
-              {{ detallesPrestamo.estado_prestamo || 'pendiente' }}
-            </q-badge>
-          </div>
-
-        </q-card-section>
-
-        <DriveVisor
-          v-model="dialogAbierto"
-          :titulo="tituloVisor"
-          :archivos="archivos"
-          :cargando="cargandoVisor"
-          :error="errorVisor"
-          :url-archivo="urlArchivo"
-          :es-imagen="esImagen"
-          :es-pdf="esPdf"
-        />
-
-        <q-separator />
-
-        <q-card-actions class="q-pa-md">
-          <q-btn
-            outline color="secondary" icon="folder" label="Ver archivos" size="sm"
-            @click="abrirVisor(detallesPrestamo.link, 'Documentos')"
-          />
+    <q-card
+      v-for="p in prestamos"
+      :key="p.consecutivo"
+      flat
+      class="tarjeta q-mb-sm cursor-pointer"
+      @click="verDetalle(p.consecutivo)"
+    >
+      <q-card-section class="q-py-sm">
+        <div class="row items-center no-wrap">
+          <span class="text-weight-bold">{{ p.consecutivo }}</span>
+          <span v-if="!esConductor" class="q-ml-sm ellipsis">{{ p.usuario }}</span>
           <q-space />
-          <q-btn
-            v-if="(perfilUsuario === 'propietario' || perfilUsuario === 'administrador') && detallesPrestamo?.estado_prestamo !== 'liquidado'"
-            color="green" icon="payments" label="Registrar pago" size="sm"
-            @click="irAPago"
-          />
-          <q-btn flat label="Cerrar" color="primary" v-close-popup />
-        </q-card-actions>
-
-      </q-card>
-    </q-dialog>
-
-    <!-- Dialog solicitar / registrar pago -->
-    <q-dialog v-model="alert" persistent>
-      <q-card style="min-width: 350px; max-width: 95vw; width: 440px; border-radius: 16px !important;">
-
-        <q-card-section class="q-pb-sm">
-          <div class="text-subtitle1 text-weight-medium">
-            {{ accion == 1 ? 'Solicitar préstamo' : 'Registrar pago' }}
-          </div>
-        </q-card-section>
-
-        <q-separator />
-
-        <q-card-section class="q-pt-md">
-
-          <div v-if="accion == 1">
-            <q-input
-              outlined rounded
-              v-model="valorpedidoFormatted"
-              label="Valor solicitado"
-              :dense="dense"
-              @update:model-value="formatearValorPedido"
-            />
-          </div>
-
-          <template v-if="accion == 2">
-            <q-input
-              outlined rounded
-              v-model="valorprestadoFormatted"
-              label="Valor prestado"
-              :dense="dense"
-              class="q-mb-md"
-              @update:model-value="formatearValorPrestado"
-            />
-
-            <div class="seccion-titulo">Comprobante</div>
-            <q-file
-              label="Seleccionar archivos"
-              outlined rounded multiple
-              v-model="archivosSeleccionados"
-              @update:model-value="manejarSeleccionArchivos"
-              accept="image/*, application/pdf"
-              clearable
-            />
-            <div class="q-mt-sm row q-gutter-xs" v-if="formulario.archivos?.length">
-              <q-chip
-                v-for="(archivo, index) in formulario.archivos"
-                :key="index"
-                removable dense
-                @remove="eliminarArchivo(index)"
-              >
-                {{ archivo.name }}
-              </q-chip>
-            </div>
-          </template>
-
-        </q-card-section>
-
-        <q-separator />
-
-        <q-card-actions class="q-pa-md" align="right">
-          <q-btn outline label="Cancelar" color="grey-7" @click="cerrar()" />
-          <q-btn
-            color="primary"
-            :loading="usePrestamo.loading"
-            @click="guardar"
-          >
-            {{ accion == 1 ? 'Solicitar' : 'Registrar pago' }}
-            <template v-slot:loading>
-              <q-spinner color="white" size="1em" />
-            </template>
-          </q-btn>
-        </q-card-actions>
-
-      </q-card>
-    </q-dialog>
+          <q-badge :color="colorEstado(p.estado_prestamo)" :label="nombreEstado(p.estado_prestamo)" />
+        </div>
+        <div class="row items-center q-mt-xs">
+          <span class="text-caption text-grey-7">{{ formatoFecha(p.fecha_creacion) }}{{ p.motivo ? ` · ${p.motivo}` : '' }}</span>
+          <q-space />
+          <span class="text-body2 text-weight-bold">
+            {{ formatoPeso(p.estado_prestamo === 'pendiente' || p.estado_prestamo === 'rechazado' ? p.valor_pedido : p.valor_prestado) }}
+          </span>
+        </div>
+      </q-card-section>
+    </q-card>
 
     <q-page-sticky position="bottom-right" :offset="[18, 18]">
-      <q-btn fab icon="add" color="primary" @click="abrir" />
+      <q-btn fab icon="add" color="primary" label="Préstamo" @click="abrirSolicitar" />
     </q-page-sticky>
+
+    <!-- ───────────── DETALLE ───────────── -->
+    <q-dialog v-model="dialogDetalle">
+      <q-card v-if="detalle" style="width: 480px; max-width: 95vw">
+        <q-card-section class="row items-center">
+          <div>
+            <div class="text-h6">{{ detalle.consecutivo }}</div>
+            <q-badge :color="colorEstado(detalle.estado_prestamo)" :label="nombreEstado(detalle.estado_prestamo)" />
+          </div>
+          <q-space />
+          <q-btn flat round icon="close" v-close-popup />
+        </q-card-section>
+        <q-separator />
+        <q-card-section>
+          <Fila etiqueta="Conductor" :valor="detalle.usuario" />
+          <Fila etiqueta="Fecha de solicitud" :valor="formatoFecha(detalle.fecha_creacion)" />
+          <Fila etiqueta="Valor pedido" :valor="formatoPeso(detalle.valor_pedido)" />
+          <Fila v-if="detalle.motivo" etiqueta="Motivo" :valor="detalle.motivo" />
+          <template v-if="['desembolsado', 'liquidado'].includes(detalle.estado_prestamo)">
+            <Fila etiqueta="Valor prestado" :valor="formatoPeso(detalle.valor_prestado)" clase="text-weight-bold" />
+            <Fila etiqueta="Fecha desembolso" :valor="formatoFecha(detalle.fecha_desembolso)" />
+          </template>
+          <Fila v-if="detalle.estado_prestamo === 'liquidado'" etiqueta="Descontado en" :valor="detalle.consecutivo_nomina || '—'" />
+          <Fila v-if="detalle.estado_prestamo === 'rechazado'" etiqueta="Motivo del rechazo" :valor="detalle.motivo_rechazo || '—'" />
+          <q-banner v-if="detalle.estado_prestamo === 'desembolsado'" dense rounded class="bg-blue-1 text-blue-10 q-mt-md">
+            Se descuenta completo en la próxima nómina de salario.
+          </q-banner>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn v-if="detalle.link_comprobante" outline size="sm" icon="receipt" label="Comprobante" @click="abrirVisor(detalle.link_comprobante, 'Comprobante del desembolso')" />
+          <q-space />
+          <template v-if="esGestion && detalle.estado_prestamo === 'pendiente'">
+            <q-btn flat color="negative" label="Rechazar" @click="abrirRechazar" />
+            <q-btn unelevated color="green" icon="payments" label="Desembolsar" @click="abrirDesembolsar" />
+          </template>
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- ───────────── SOLICITAR ───────────── -->
+    <q-dialog v-model="dialogSolicitar" persistent>
+      <q-card style="width: 440px; max-width: 95vw">
+        <q-card-section class="bg-grey-1"><div class="text-h6">Solicitar préstamo</div></q-card-section>
+        <q-card-section class="q-gutter-md">
+          <q-select
+            v-if="!esConductor"
+            v-model="formSolicitar.correo_conductor"
+            :options="conductores"
+            label="Conductor"
+            outlined
+            dense
+            emit-value
+            map-options
+          />
+          <CampoNumero v-model="formSolicitar.valor_pedido" label="Valor" moneda />
+          <q-input v-model.trim="formSolicitar.motivo" label="¿Para qué es? (opcional)" outlined dense />
+          <div class="text-caption text-grey-7">Si se aprueba, se descuenta completo de su próximo salario.</div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey-8" v-close-popup />
+          <q-btn unelevated color="primary" label="Solicitar" :loading="guardando" @click="guardarSolicitar" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- ───────────── DESEMBOLSAR ───────────── -->
+    <q-dialog v-model="dialogDesembolsar" persistent>
+      <q-card style="width: 460px; max-width: 95vw">
+        <q-card-section class="bg-grey-1">
+          <div class="text-h6">Desembolsar {{ detalle?.consecutivo }}</div>
+          <div class="text-caption">{{ detalle?.usuario }} pidió {{ formatoPeso(detalle?.valor_pedido) }}</div>
+        </q-card-section>
+        <q-card-section class="q-gutter-md">
+          <CampoNumero v-model="formDesembolso.valor_prestado" label="Valor consignado" moneda hint="Puede ser menor a lo que pidió" />
+          <q-input v-model="formDesembolso.fecha_desembolso" type="date" label="Fecha" outlined dense stack-label />
+          <CampoArchivos v-model="formDesembolso.comprobante" label="Comprobante (obligatorio)" multiple accept="image/*, application/pdf" />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey-8" v-close-popup />
+          <q-btn unelevated color="green" label="Registrar desembolso" :loading="guardando" @click="guardarDesembolso" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- ───────────── RECHAZAR ───────────── -->
+    <q-dialog v-model="dialogRechazar" persistent>
+      <q-card style="width: 420px; max-width: 95vw">
+        <q-card-section class="text-h6">Rechazar {{ detalle?.consecutivo }}</q-card-section>
+        <q-card-section>
+          <q-input v-model.trim="motivoRechazo" label="Motivo (se le muestra al conductor)" outlined dense autogrow />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="grey-8" v-close-popup />
+          <q-btn unelevated color="negative" label="Rechazar" :loading="guardando" @click="guardarRechazo" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
 
   </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed, onMounted, h } from 'vue'
+import { useQuasar } from 'quasar'
 import { useStorePrestamos } from '../stores/prestamos'
 import { useStoreUsuarios } from '../stores/usuarios'
-import { useQuasar } from 'quasar'
-import { useDriveVisor } from '../composables/useDriveVisor'
-import DriveVisor from 'src/components/VisorDrive.vue'
+import { useVisorArchivos } from '../composables/useVisorArchivos'
+import CampoArchivos from 'components/CampoArchivos.vue'
+import CampoNumero from 'components/viajes/CampoNumero.vue'
+import { formatoPeso, formatoFecha, hoyISO } from '../utils/formato'
 
-const {
-  dialogAbierto,
-  archivos,
-  cargando: cargandoVisor,
-  titulo: tituloVisor,
-  error: errorVisor,
-  abrirVisor,
-  urlArchivo,
-  esImagen,
-  esPdf,
-} = useDriveVisor()
+defineOptions({ name: 'PrestamosPage' })
 
+const $q = useQuasar()
 const usePrestamo = useStorePrestamos()
 const useUsuario = useStoreUsuarios()
 
-const alert = ref(false)
-const accion = ref(1)
+// Visor de archivos (con pellizco), montado una sola vez en MainLayout
+const { abrirArchivos: abrirVisor } = useVisorArchivos()
 
-const $q = useQuasar()
-const perfilUsuario = computed(() => useUsuario.perfile)
-const valorpedidoFormatted = ref('')
-const valorprestadoFormatted = ref('')
+const Fila = (p) =>
+  h('div', { class: 'detalle-fila' }, [
+    h('span', { class: 'detalle-label' }, p.etiqueta),
+    h('span', { class: ['detalle-valor', p.clase] }, p.valor),
+  ])
+Fila.props = ['etiqueta', 'valor', 'clase']
 
-defineProps({
-  datos: {
-    type: Object,
-    default: () => ({}),
-  },
-  esEdicion: {
-    type: Boolean,
-    default: false,
-  },
-})
+const esConductor = computed(() => useUsuario.perfile === 'conductor')
+const esGestion = computed(() => ['administrador', 'propietario'].includes(useUsuario.perfile))
 
-const estadoInicial = {
-  valor_pedido: '',
-  valor_prestado: '',
-  archivos: [],
-}
+const ESTADOS = [
+  { valor: 'pendiente', etiqueta: 'Pendiente', color: 'orange' },
+  { valor: 'desembolsado', etiqueta: 'Por descontar', color: 'blue' },
+  { valor: 'liquidado', etiqueta: 'Descontado', color: 'positive' },
+  { valor: 'rechazado', etiqueta: 'Rechazado', color: 'grey-6' },
+]
+const nombreEstado = (e) => ESTADOS.find((x) => x.valor === e)?.etiqueta || e
+const colorEstado = (e) => ESTADOS.find((x) => x.valor === e)?.color || 'grey'
 
-const formulario = ref({ ...estadoInicial })
-
-const cargando = ref(false)
+// ── Lista ──
 
 const prestamos = ref([])
+const totales = ref({})
+const porDescontar = ref(0)
+const filtroEstado = ref('')
 
-const detallesPrestamo = ref(null)
-const mostrarDetalles = ref(false)
+const opcionesEstado = computed(() => [
+  { valor: '', etiqueta: 'Todos', cantidad: Object.values(totales.value).reduce((a, b) => a + b, 0) },
+  ...ESTADOS.map((e) => ({ ...e, cantidad: totales.value[e.valor] || 0 })),
+])
 
-function abrir() {
-  accion.value = 1
-  resetearFormulario()
-  alert.value = true
+async function cargar() {
+  const r = await usePrestamo.listarPrestamos(filtroEstado.value)
+  prestamos.value = r.datos || []
+  totales.value = r.totales || {}
+  porDescontar.value = r.por_descontar || 0
 }
 
-async function irAPago() {
-  mostrarDetalles.value = false
-  resetearFormulario()
-  accion.value = 2  
-  formulario.value.consecutivo = detallesPrestamo.value.consecutivo
-  await new Promise(resolve => setTimeout(resolve, 100))
-  alert.value = true
+function cambiarEstado(valor) {
+  filtroEstado.value = valor
+  cargar()
 }
 
-function cerrar() {
-  alert.value = false
+// ── Detalle ──
+
+const dialogDetalle = ref(false)
+const detalle = ref(null)
+
+async function verDetalle(consecutivo) {
+  const data = await usePrestamo.obtenerdatodeprestamo(consecutivo)
+  if (!data) return
+  detalle.value = data
+  dialogDetalle.value = true
 }
 
-async function guardar() {
-  cargando.value = true
-
-  if (!validar()) {
-    cargando.value = false
-    return
-  }
-
+const guardando = ref(false)
+async function ejecutar(fn) {
+  guardando.value = true
   try {
-    const formData = new FormData()
-
-    Object.entries(formulario.value).forEach(([key, value]) => {
-      if (key === 'archivos') {
-        value.forEach((file) => formData.append('archivos', file))
-      } else if (value !== null && value !== undefined && value !== '') {
-        formData.append(key, value)
-      }
-    })
-
-    let response
-
-    if (accion.value == 1) {
-      response = await usePrestamo.postPrestamo(formData)
-    } else {
-      response = await usePrestamo.putPrestamo(formulario.value.consecutivo, formData)
-    }
-
-    console.log('Respuesta exitosa:', response)
-
-    cerrar()
-
-    cargarPrestamos()
-
-    alert.value = false
-
-    resetearFormulario()
-  } catch (error) {
-    console.error('Error al guardar:', error)
-
-    mostrarMensajeError('Error al guardar el préstamo')
+    await fn()
+  } catch (e) {
+    $q.notify({ type: 'negative', message: e.message, position: 'bottom', timeout: 5000 })
   } finally {
-    cargando.value = false
+    guardando.value = false
   }
 }
+const avisar = (m) => $q.notify({ type: 'warning', message: m, position: 'bottom' })
 
-async function validar() {
-  let verificado = true
+// ── Solicitar ──
 
-  if (accion.value === 1) {
-    if (formulario.value.valor_pedido === '') {
-      mostrarMensajeError('Diligencie el valor del pedido')
-      verificado = false
-    }
+const dialogSolicitar = ref(false)
+const formSolicitar = ref({})
+const conductores = ref([])
+
+async function abrirSolicitar() {
+  formSolicitar.value = { correo_conductor: null, valor_pedido: null, motivo: '' }
+  if (!esConductor.value && !conductores.value.length) {
+    const lista =
+      useUsuario.perfile === 'administrador'
+        ? await useUsuario.listarUsuario()
+        : await useUsuario.obtenerUsuariosPorPropietario(useUsuario.user?.email)
+    conductores.value = (Array.isArray(lista) ? lista : [])
+      .filter((u) => u.perfil === 'conductor' && String(u.estado).toLowerCase() === 'activo')
+      .map((u) => ({ label: u.nombre, value: u.email }))
   }
-
-  if (accion.value === 2) {
-    if (formulario.value.valor_prestado === '') {
-      mostrarMensajeError('Diligencie el valor prestado')
-      verificado = false
-    }
-  }
-
-  return verificado
+  dialogSolicitar.value = true
 }
 
-async function verDetalles(consecutivo) {
-  try {
-    const detalle = await usePrestamo.obtenerdatodelprestamo(consecutivo)
-
-    if (detalle) {
-      detallesPrestamo.value = {
-        consecutivo: detalle['consecutivo'] || '',
-        valor_pedido: detalle['valor_pedido'] || '',
-        valor_prestado: detalle['valor_prestado'] || '',
-        fecha_creacion: detalle['fecha_creacion'] || '',
-        estado_prestamo: detalle['estado_prestamo'] || '',
-        link: detalle['link'] || '',
-      }
-
-      mostrarDetalles.value = true
-    }
-  } catch (error) {
-    console.error('Error al obtener detalles:', error)
-  }
-}
-
-async function cargarPrestamos() {
-  try {
-    let response = []
-    // ADMINISTRADOR
-    if (perfilUsuario.value === 'administrador') {
-      response = await usePrestamo.obtenerPrestamos()
-    }
-
-    // PROPIETARIO
-    else if (perfilUsuario.value === 'propietario') {
-      const data = await usePrestamo.obtenerPrestamosPorPropietario()
-      response = data?.resumen?.total?.consecutivos || []
-    }
-
-    // CONDUCTOR
-    else if (perfilUsuario.value === 'conductor') {
-      const data = await usePrestamo.obtenerResumenPorEmail(useUsuario.user.email)
-      response = data?.resumen?.total?.consecutivos || []
-    }
-    if (Array.isArray(response)) {
-      prestamos.value = response.map((item) => ({
-        consecutivo: item.consecutivo || '',
-        valor_pedido: item.valor_pedido || '',
-        estado_prestamo: item.estado_prestamo || '',
-        valor_prestado: item.valor_prestado || '',
-        fecha_creacion: item.fecha_creacion || '',
-      }))
-    } else {
-      prestamos.value = []
-    }
-  } catch (error) {
-    console.error('Error al cargar préstamos:', error)
-    prestamos.value = []
-  }
-}
-
-onMounted(() => {
-  cargarPrestamos()
-})
-
-function manejarSeleccionArchivos(files) {
-  if (files) {
-    if (Array.isArray(files)) {
-      files.forEach((file) => {
-        const existeArchivo = formulario.value.archivos.some(
-          (a) => a.name === file.name && a.size === file.size && a.type === file.type,
-        )
-
-        if (!existeArchivo) {
-          formulario.value.archivos.push(file)
-        }
-      })
-    } else if (files instanceof File) {
-      const existeArchivo = formulario.value.archivos.some(
-        (a) => a.name === files.name && a.size === files.size && a.type === files.type,
-      )
-
-      if (!existeArchivo) {
-        formulario.value.archivos.push(files)
-      }
-    }
-  }
-}
-
-function eliminarArchivo(index) {
-  formulario.value.archivos.splice(index, 1)
-}
-
-function resetearFormulario() {
-  formulario.value = { ...estadoInicial }
-  accion.value = 1
-}
-
-function formatearValorPedido(val) {
-  valorpedidoFormatted.value = formatearNumero(val)
-
-  formulario.value.valor_pedido = Number(valorpedidoFormatted.value.replace(/\./g, ''))
-}
-
-function formatearValorPrestado(val) {
-  valorprestadoFormatted.value = formatearNumero(val)
-
-  formulario.value.valor_prestado = Number(valorprestadoFormatted.value.replace(/\./g, ''))
-}
-function formatearNumero(valor) {
-  if (!valor) return ''
-
-  const limpio = valor.toString().replace(/\D/g, '')
-
-  return new Intl.NumberFormat('es-CO').format(limpio)
-}
-
-function mostrarMensajeError(mensaje) {
-  $q.notify({
-    type: 'negative',
-    message: mensaje,
-    position: 'bottom-right',
+async function guardarSolicitar() {
+  const f = formSolicitar.value
+  if (!esConductor.value && !f.correo_conductor) return avisar('Seleccione el conductor')
+  if (!(f.valor_pedido > 0)) return avisar('Escriba el valor')
+  await ejecutar(async () => {
+    await usePrestamo.solicitarPrestamo(f)
+    dialogSolicitar.value = false
+    await cargar()
   })
 }
 
-function formatFecha(fecha) {
-  if (!fecha) return ''
-  return new Date(fecha).toLocaleDateString('es-CO', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
+// ── Desembolsar / rechazar ──
+
+const dialogDesembolsar = ref(false)
+const formDesembolso = ref({})
+
+function abrirDesembolsar() {
+  formDesembolso.value = { valor_prestado: Number(detalle.value.valor_pedido) || null, fecha_desembolso: hoyISO(), comprobante: [] }
+  dialogDesembolsar.value = true
+}
+
+async function guardarDesembolso() {
+  const f = formDesembolso.value
+  if (!(f.valor_prestado > 0)) return avisar('Escriba el valor consignado')
+  if (!f.comprobante.length) return avisar('Adjunte el comprobante')
+  const fd = new FormData()
+  fd.append('valor_prestado', String(f.valor_prestado))
+  fd.append('fecha_desembolso', f.fecha_desembolso || '')
+  f.comprobante.forEach((a) => fd.append('comprobante', a))
+  const consecutivo = detalle.value.consecutivo
+  await ejecutar(async () => {
+    await usePrestamo.desembolsarPrestamo(consecutivo, fd)
+    dialogDesembolsar.value = false
+    await cargar()
+    await verDetalle(consecutivo)
   })
 }
 
-function formatPeso(valor) {
-  if (!valor) return '—'
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency', currency: 'COP', maximumFractionDigits: 0
-  }).format(valor)
+const dialogRechazar = ref(false)
+const motivoRechazo = ref('')
+
+function abrirRechazar() {
+  motivoRechazo.value = ''
+  dialogRechazar.value = true
 }
 
-function colorEstadoPrestamo(estado) {
-  const map = {
-    liquidado: 'positive',
-    pendiente: 'warning',
-    aprobado: 'blue',
-    rechazado: 'negative',
-  }
-  return map[estado] || 'grey'
+async function guardarRechazo() {
+  const consecutivo = detalle.value.consecutivo
+  await ejecutar(async () => {
+    await usePrestamo.rechazarPrestamo(consecutivo, motivoRechazo.value)
+    dialogRechazar.value = false
+    await cargar()
+    await verDetalle(consecutivo)
+  })
 }
 
-defineOptions({
-  name: 'PrestamosPage',
-})
-
+onMounted(cargar)
 </script>
 
 <style scoped>
-.placa-badge {
-  background: #111827;
-  color: white;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  padding: 3px 10px;
-  border-radius: 6px;
-  font-family: monospace;
-}
-
-.metrica-chip {
-  background: #f9fafb;
-  border-radius: 8px;
-  padding: 8px 10px;
-  min-width: 0;
-}
-.metrica-chip.rendimiento-malo {
-  background: #fef2f2;
-}
-.metrica-chip.rendimiento-bueno {
-  background: #f0fdf4;
-}
-.metrica-label {
-  font-size: 10px;
-  color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 2px;
-}
-.metrica-valor {
-  font-size: 13px;
-  font-weight: 600;
-  color: #111827;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .filter-bar {
   background: white;
   border-radius: 12px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   padding: 12px;
 }
-
 .filter-scroll {
   overflow-x: auto;
   flex-wrap: nowrap;
   scrollbar-width: none;
-  -ms-overflow-style: none;
 }
 .filter-scroll::-webkit-scrollbar {
   display: none;
 }
-
 .filter-chip {
   border-radius: 999px !important;
   font-size: 13px;
   flex-shrink: 0;
 }
-
-.avatar-chip {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: #eff6ff;
-  color: #1e50a2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 600;
-  flex-shrink: 0;
-  letter-spacing: 0.5px;
+.tarjeta {
+  border: 1px solid #e5e7eb !important;
+  border-radius: 12px !important;
 }
+</style>
 
-.placa-badge-lg {
-  background: #111827;
-  color: white;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  padding: 6px 20px;
-  border-radius: 8px;
-  font-family: monospace;
-}
-
+<style>
 .detalle-fila {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 0;
+  padding: 7px 0;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-.detalle-fila:last-child {
-  border-bottom: none;
 }
 .detalle-label {
   font-size: 13px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 .detalle-valor {
   font-size: 13px;
   font-weight: 500;
-  color: #111827;
   text-align: right;
   max-width: 60%;
 }
-
-.prestamo-card {
-  border: 1px solid #E5E7EB !important;
-  border-radius: 12px !important;
-  transition: border-color 0.15s;
-}
-.prestamo-card:active {
-  opacity: 0.85;
-}
 </style>
-
-

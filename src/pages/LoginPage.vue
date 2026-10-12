@@ -5,31 +5,31 @@
         <form @submit.prevent="iniciar">
           <h1>Inicio</h1>
           <div class="inputbox">
-            <input type="email" required v-model="email" />
+            <input type="email" required v-model="email" autocomplete="username" autocapitalize="off" />
             <label for="">Usuario</label>
           </div>
           <div class="inputbox password-box">
-            <input :type="passwordFieldType" required v-model="passwordLogin" />
+            <input :type="passwordFieldType" required v-model="passwordLogin" autocomplete="current-password" />
             <label for="">Contraseña</label>
             <i
               :class="['eye-icon', passwordVisible ? 'fas fa-eye-slash' : 'fas fa-eye']"
               @click="togglePasswordVisibility"
             ></i>
           </div>
-          <button type="submit">Iniciar</button>
+          <button type="submit" :disabled="cargando">{{ cargando ? 'Ingresando...' : 'Iniciar' }}</button>
           <div class="register"></div>
-          <button class="btrecuperar" @click="activador()">¿Olvidaste la contraseña?</button>
+          <button type="button" class="btrecuperar" @click="activador()">¿Olvidaste la contraseña?</button>
         </form>
       </section>
       <div class="recuperarcontrasena" v-if="vifRecontrasena">
         <div class="divbtx">
-          <button type="submit" class="btx" @click="cerrar()">X</button>
+          <button type="button" class="btx" @click="cerrar()">X</button>
         </div>
         <div class="inputbox">
           <input type="email" required v-model="emailrecuperador" />
           <label for="">Ingresar correo</label>
         </div>
-        <button type="submit" @click="recuperar()">Recuperar contraseña</button>
+        <button type="button" :disabled="UseUsuario.loading" @click="recuperar()">Enviar código</button>
       </div>
 
       <!-- Paso 2: verificar código -->
@@ -38,10 +38,10 @@
           <button type="button" class="btx" @click="cerrar()">X</button>
         </div>
         <div class="inputbox">
-          <input type="text" required v-model="codigoIngresado" />
+          <input type="text" inputmode="numeric" maxlength="6" required v-model="codigoIngresado" />
           <label>Código recibido</label>
         </div>
-        <button type="button" @click="verificarCodigo()">Verificar código</button>
+        <button type="button" :disabled="UseUsuario.loading" @click="verificarCodigo()">Verificar código</button>
       </div>
 
       <!-- Paso 3: nueva contraseña -->
@@ -57,9 +57,17 @@
           <input type="password" required v-model="confirmarPassword" />
           <label>Confirmar contraseña</label>
         </div>
-        <button type="button" @click="cambiarPassword()">Cambiar contraseña</button>
+        <button type="button" :disabled="UseUsuario.loading" @click="cambiarPassword()">Cambiar contraseña</button>
       </div>
     </div>
+
+    <!-- Primer ingreso: obligatorio cambiar la contraseña asignada -->
+    <CambiarPassword
+      v-model="dialogCambiarPassword"
+      obligatorio
+      @cambiada="entrarALaApp"
+      @salir="salirSinCambiar"
+    />
   </div>
 </template>
 
@@ -68,57 +76,76 @@ import { ref, computed } from 'vue'
 import { useStoreUsuarios } from '../stores/usuarios'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
+import CambiarPassword from '../components/CambiarPassword.vue'
 
 const router = useRouter()
 const UseUsuario = useStoreUsuarios()
+const $q = useQuasar()
+
 const email = ref('')
 const passwordLogin = ref('')
 const passwordVisible = ref(false)
-const $q = useQuasar()
+const cargando = ref(false)
+const dialogCambiarPassword = ref(false)
+
+// Recuperación: paso 1 correo, paso 2 código, paso 3 nueva contraseña
 const vifRecontrasena = ref(false)
 const emailrecuperador = ref('')
-
-// Paso 2: verificar código
 const vifVerificarCodigo = ref(false)
 const codigoIngresado = ref('')
-
-// Paso 3: nueva contraseña
 const vifNuevaPassword = ref(false)
 const nuevaPassword = ref('')
 const confirmarPassword = ref('')
 
 const passwordFieldType = computed(() => (passwordVisible.value ? 'text' : 'password'))
+
 const togglePasswordVisibility = () => {
   passwordVisible.value = !passwordVisible.value
 }
 
 function mostrarMensajeError(mensaje) {
-  $q.notify({ type: 'negative', message: mensaje, position: 'bottom-right' })
+  $q.notify({ type: 'negative', message: mensaje, position: 'bottom' })
 }
+
 function mostrarMensajeExito(mensaje) {
-  $q.notify({ type: 'positive', message: mensaje, position: 'bottom-right' })
+  $q.notify({ type: 'positive', message: mensaje, position: 'bottom' })
+}
+
+function entrarALaApp() {
+  router.push('/IndexPage')
+}
+
+function salirSinCambiar() {
+  dialogCambiarPassword.value = false
+  UseUsuario.eliminarToken()
 }
 
 const iniciar = async () => {
-  if (email.value === '' || passwordLogin.value === '') {
+  if (!email.value || !passwordLogin.value) {
     mostrarMensajeError('El correo y la contraseña son obligatorios')
     return
   }
+  cargando.value = true
   try {
-    const res = await UseUsuario.login(email.value, passwordLogin.value)
-    if (res && res.status === 200) {
-      router.push('/IndexPage')
+    await UseUsuario.login(email.value, passwordLogin.value)
+    passwordLogin.value = ''
+    if (UseUsuario.debeCambiarPassword) {
+      dialogCambiarPassword.value = true
     } else {
-      mostrarMensajeError('Correo o contraseña incorrectos')
+      entrarALaApp()
     }
   } catch (error) {
-    console.log(error)
+    mostrarMensajeError(error.message)
+  } finally {
+    cargando.value = false
   }
 }
 
 function activador() {
+  emailrecuperador.value = email.value
   vifRecontrasena.value = true
 }
+
 function cerrar() {
   vifRecontrasena.value = false
   vifVerificarCodigo.value = false
@@ -131,14 +158,16 @@ function cerrar() {
 
 async function recuperar() {
   if (!emailrecuperador.value) {
-    mostrarMensajeError('Ingrese correo electrónico')
+    mostrarMensajeError('Ingrese su correo electrónico')
     return
   }
-  const res = await UseUsuario.solicitarRecuperacion(emailrecuperador.value)
-  if (res?.status === 200) {
-    mostrarMensajeExito('Código enviado al correo')
+  try {
+    const res = await UseUsuario.solicitarRecuperacion(emailrecuperador.value)
+    mostrarMensajeExito(res.data?.mensaje || 'Revise su correo')
     vifRecontrasena.value = false
     vifVerificarCodigo.value = true
+  } catch (error) {
+    mostrarMensajeError(error.message)
   }
 }
 
@@ -147,11 +176,13 @@ async function verificarCodigo() {
     mostrarMensajeError('Ingrese el código')
     return
   }
-  const res = await UseUsuario.verificarCodigo(emailrecuperador.value, codigoIngresado.value)
-  if (res?.status === 200) {
+  try {
+    await UseUsuario.verificarCodigo(emailrecuperador.value, codigoIngresado.value)
     mostrarMensajeExito('Código correcto')
     vifVerificarCodigo.value = false
     vifNuevaPassword.value = true
+  } catch (error) {
+    mostrarMensajeError(error.message)
   }
 }
 
@@ -160,18 +191,21 @@ async function cambiarPassword() {
     mostrarMensajeError('Complete los campos')
     return
   }
+  if (nuevaPassword.value.length < 6) {
+    mostrarMensajeError('La contraseña debe tener al menos 6 caracteres')
+    return
+  }
   if (nuevaPassword.value !== confirmarPassword.value) {
     mostrarMensajeError('Las contraseñas no coinciden')
     return
   }
-  const res = await UseUsuario.cambiarPassword(
-    emailrecuperador.value,
-    codigoIngresado.value,
-    nuevaPassword.value,
-  )
-  if (res?.status === 200) {
-    mostrarMensajeExito('Contraseña actualizada correctamente')
+  try {
+    await UseUsuario.cambiarPassword(emailrecuperador.value, codigoIngresado.value, nuevaPassword.value)
+    mostrarMensajeExito('Contraseña actualizada. Ya puede iniciar sesión.')
+    email.value = emailrecuperador.value
     cerrar()
+  } catch (error) {
+    mostrarMensajeError(error.message)
   }
 }
 

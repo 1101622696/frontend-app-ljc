@@ -21,13 +21,6 @@ export const linksList = [
     perfiles: ['administrador', 'propietario', 'conductor'],
   },
   {
-    title: 'GPS',
-    caption: 'Prueba gps',
-    icon: 'las la-map-marked-alt',
-    link: 'gpsPage',
-    perfiles: ['administrador', 'propietario', 'conductor'],
-  },
-  {
     title: 'Viajes',
     caption: 'Viajes',
     icon: 'las la-route',
